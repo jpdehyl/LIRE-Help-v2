@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LIRE Help — AI-Powered Tenant Operations for Light Industrial Real Estate</title>
-  <meta name="description" content="LIRE Help is an AI-powered tenant operations platform for light industrial property management. 24/7 maintenance requests, instant answers, zero hold time." />
+  <title>LIRE Help — AI que ejecuta. No que promete.</title>
+  <meta name="description" content="LIRE Help scales light industrial operations with an AI-powered 24/7 property management team. Tenant comms, maintenance dispatch, compliance — autonomous at scale." />
 
   <!-- Open Graph -->
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="LIRE Help — AI Tenant Operations for Light Industrial" />
-  <meta property="og:description" content="24/7 AI concierge for light industrial tenants. Maintenance requests, property info, lease FAQ — instant answers, zero hold time." />
+  <meta property="og:title" content="LIRE Help — Scaling Industrial Intelligence" />
+  <meta property="og:description" content="AI-powered 24/7 property management team for light industrial portfolios. Autonomous tenant comms, maintenance dispatch, and compliance." />
   <meta property="og:locale" content="en_US" />
 
-  <!-- Favicon — simple building icon as data URI -->
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏭</text></svg>" />
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%232563EB'/><path d='M25 70V40l15-12v42H25zm17 0V35l16-13v48H42zm18 0V30l15-10v50H60z' fill='white'/></svg>" />
 
   <!-- Schema.org JSON-LD -->
   <script type="application/ld+json">
@@ -21,7 +21,7 @@
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     "name": "LIRE Help",
-    "description": "AI-powered tenant operations platform for light industrial property management. 24/7 maintenance requests, instant answers, zero hold time.",
+    "description": "AI-powered 24/7 property management platform for light industrial real estate. Autonomous tenant communications, maintenance dispatch, and portfolio compliance.",
     "applicationCategory": "BusinessApplication",
     "operatingSystem": "Web",
     "creator": {
@@ -77,6 +77,7 @@
     .reveal-delay-1 { transition-delay: 0.1s; }
     .reveal-delay-2 { transition-delay: 0.2s; }
     .reveal-delay-3 { transition-delay: 0.3s; }
+    .reveal-delay-4 { transition-delay: 0.4s; }
 
     /* ── Nav ── */
     nav {
@@ -109,6 +110,8 @@
       justify-content: center;
       font-size: 1.1rem;
     }
+    .nav-logo-icon svg { width: 20px; height: 20px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .icon-inline { width: 1em; height: 1em; vertical-align: -0.125em; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .nav-logo-text {
       font-size: 1.05rem;
       font-weight: 700;
@@ -262,41 +265,49 @@
     }
     .hero-skyline svg { width: 100%; height: auto; display: block; }
 
-    /* ── Segments strip ── */
-    .segments-strip {
-      background: var(--gray-1);
-      padding: 32px 24px;
-      border-bottom: 1px solid var(--gray-2);
+    /* ── Stats strip ── */
+    .stats-strip {
+      background: var(--ink);
+      padding: 40px 24px;
+      border-bottom: 1px solid var(--ink-3);
     }
-    .segments-inner {
-      max-width: 1040px;
+    .stats-inner {
+      max-width: 900px;
       margin: 0 auto;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 32px;
+      text-align: center;
     }
-    .segment-item {
-      background: var(--white);
-      border: 1px solid var(--gray-2);
-      border-radius: 12px;
-      padding: 20px;
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-    .segment-item:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
-    .segment-tag {
-      font-size: 0.68rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--steel);
+    .stat-item {}
+    .stat-number {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-size: clamp(2.2rem, 5vw, 3.2rem);
+      font-weight: 400;
+      color: var(--steel-light);
+      line-height: 1;
       margin-bottom: 6px;
     }
-    .segment-title { font-size: 1rem; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
-    .segment-locs { font-size: 0.82rem; color: var(--gray-4); }
+    .stat-label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: rgba(255,255,255,0.45);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    @media (max-width: 520px) { .stats-inner { grid-template-columns: 1fr; gap: 20px; } }
 
-    /* ── Dark sections ── */
+    /* ── Generic section helpers ── */
     .dark-bg {
       background: var(--ink);
+      padding: 80px 24px;
+    }
+    .light-bg {
+      background: var(--gray-1);
+      padding: 80px 24px;
+    }
+    .white-bg {
+      background: var(--white);
       padding: 80px 24px;
     }
     .section-tag {
@@ -313,73 +324,453 @@
     h2.white { color: var(--white); }
     .section-sub { font-size: 1.05rem; color: var(--gray-4); line-height: 1.7; max-width: 620px; margin: 12px auto 48px; }
     .section-sub.white { color: rgba(255,255,255,0.55); }
+    .section-center { max-width: 1040px; margin: 0 auto; text-align: center; }
 
-    /* ── Pain Points ── */
-    .pain-section { max-width: 1040px; margin: 0 auto; text-align: center; }
-    .pain-grid {
+    /* ── Four Frictions ── */
+    .friction-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 20px;
       text-align: left;
     }
-    .pain-card {
+    .friction-card {
       background: var(--ink-2);
       border: 1px solid var(--ink-3);
       border-radius: 14px;
       padding: 28px;
     }
-    .pain-icon { font-size: 1.8rem; margin-bottom: 12px; }
-    .pain-card h3 { font-size: 1.05rem; font-weight: 700; color: var(--white); margin-bottom: 8px; }
-    .pain-card p { font-size: 0.88rem; color: rgba(255,255,255,0.55); line-height: 1.65; margin-bottom: 12px; }
-    .pain-resolve {
-      font-size: 0.82rem;
+    .friction-icon { font-size: 1.8rem; margin-bottom: 12px; }
+    .friction-card h3 { font-size: 1.05rem; font-weight: 700; color: var(--white); margin-bottom: 8px; }
+    .friction-card p { font-size: 0.88rem; color: rgba(255,255,255,0.55); line-height: 1.65; }
+
+    /* ── Comparison table ── */
+    .compare-table {
+      width: 100%;
+      max-width: 800px;
+      margin: 0 auto;
+      border-collapse: collapse;
+      text-align: left;
+    }
+    .compare-table th {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 14px 20px;
+      border-bottom: 2px solid var(--ink-3);
+    }
+    .compare-table th:first-child { color: var(--gray-3); }
+    .compare-table th.legacy { color: var(--gray-3); }
+    .compare-table th.ai { color: var(--steel-light); }
+    .compare-table td {
+      font-size: 0.88rem;
+      padding: 14px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      vertical-align: top;
+    }
+    .compare-table td:first-child {
       font-weight: 600;
+      color: var(--white);
+      width: 160px;
+    }
+    .compare-table td.legacy-cell { color: rgba(255,255,255,0.4); }
+    .compare-table td.ai-cell { color: var(--steel-light); font-weight: 500; }
+
+    /* ── Dark compare (Slide 4) ── */
+    .paradigm-grid {
+      display: grid;
+      grid-template-columns: 1fr 60px 1fr;
+      gap: 0;
+      max-width: 800px;
+      margin: 0 auto;
+      align-items: stretch;
+    }
+    .paradigm-col {
+      padding: 32px;
+      border-radius: 14px;
+    }
+    .paradigm-col.legacy {
+      background: var(--ink-2);
+      border: 1px solid var(--ink-3);
+    }
+    .paradigm-col.ai {
+      background: linear-gradient(135deg, var(--ink-2) 0%, rgba(37,99,235,0.12) 100%);
+      border: 1px solid var(--steel);
+    }
+    .paradigm-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
       color: var(--steel-light);
-      padding-top: 12px;
-      border-top: 1px solid var(--ink-3);
+      font-size: 1.8rem;
+    }
+    .paradigm-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .paradigm-col.legacy .paradigm-label { color: var(--gray-3); }
+    .paradigm-col.ai .paradigm-label { color: var(--steel-light); }
+    .paradigm-col h3 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 8px;
+    }
+    .paradigm-col p {
+      font-size: 0.88rem;
+      color: rgba(255,255,255,0.5);
+      line-height: 1.65;
+    }
+    @media (max-width: 700px) {
+      .paradigm-grid { grid-template-columns: 1fr; gap: 16px; }
+      .paradigm-arrow { transform: rotate(90deg); padding: 8px 0; }
     }
 
-    /* ── Services section ── */
-    .services-section { max-width: 1040px; margin: 0 auto; text-align: center; }
-    .services-grid {
+    /* ── Command Center ── */
+    .cc-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      grid-template-columns: repeat(3, 1fr);
       gap: 20px;
       text-align: left;
     }
-    .service-card {
+    .cc-card {
+      background: var(--white);
+      border: 1px solid var(--gray-2);
+      border-radius: 14px;
+      padding: 28px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .cc-card:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
+    .cc-icon { font-size: 1.8rem; margin-bottom: 14px; }
+    .cc-card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; }
+    .cc-card p { font-size: 0.88rem; color: var(--gray-4); line-height: 1.65; }
+    @media (max-width: 768px) { .cc-grid { grid-template-columns: 1fr; } }
+
+    /* ── Digital PM section ── */
+    .dpm-layout {
+      max-width: 1040px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      align-items: center;
+    }
+    @media (max-width: 768px) { .dpm-layout { grid-template-columns: 1fr; } }
+    .dpm-features { list-style: none; }
+    .dpm-features li {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 16px;
+      font-size: 0.92rem;
+      color: rgba(255,255,255,0.75);
+      line-height: 1.55;
+    }
+    .dpm-features .feat-icon {
+      width: 32px; height: 32px; flex-shrink: 0;
+      background: rgba(96,165,250,0.12);
+      border: 1px solid rgba(96,165,250,0.25);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.85rem;
+    }
+    .dpm-features strong { color: var(--white); }
+    .dpm-chat {
+      background: var(--ink-2);
+      border: 1px solid var(--ink-3);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .dpm-chat-header {
+      background: var(--slate);
+      padding: 12px 16px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .dpm-chat-dot { width: 8px; height: 8px; background: #22c55e; border-radius: 50%; }
+    .dpm-chat-title { font-size: 0.78rem; font-weight: 600; color: rgba(255,255,255,0.7); }
+    .dpm-chat-messages { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+    .dpm-bubble {
+      max-width: 85%;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 0.82rem;
+      line-height: 1.55;
+    }
+    .dpm-bubble.tenant {
+      background: rgba(96,165,250,0.12);
+      color: var(--steel-light);
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+    }
+    .dpm-bubble.ai {
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.8);
+      align-self: flex-start;
+      border-bottom-left-radius: 4px;
+    }
+    .dpm-bubble-lang {
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: var(--gray-3);
+      margin-bottom: 4px;
+    }
+
+    /* ── Workflow timeline (2 AM) ── */
+    .workflow-section {
+      background: linear-gradient(180deg, var(--slate) 0%, #162d4a 100%);
+      padding: 80px 24px;
+      text-align: center;
+    }
+    .workflow-inner { max-width: 900px; margin: 0 auto; }
+    .wf-timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      text-align: left;
+      margin-top: 48px;
+      position: relative;
+    }
+    .wf-timeline::before {
+      content: '';
+      position: absolute;
+      left: 28px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(to bottom, var(--steel), rgba(96,165,250,0.15));
+    }
+    .wf-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 20px;
+      padding: 20px 0;
+      position: relative;
+    }
+    .wf-dot {
+      width: 56px; height: 56px; flex-shrink: 0;
+      background: rgba(37,99,235,0.15);
+      border: 2px solid var(--steel);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem;
+      z-index: 2;
+    }
+    .wf-step-content { flex: 1; padding-top: 6px; }
+    .wf-step-time {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--steel-light);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .wf-step-content h3 { font-size: 1.05rem; font-weight: 700; color: var(--white); margin-bottom: 6px; }
+    .wf-step-content p { font-size: 0.88rem; color: rgba(255,255,255,0.55); line-height: 1.6; }
+
+    /* ── Compliance timeline ── */
+    .compliance-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      max-width: 900px;
+      margin: 0 auto;
+      text-align: left;
+    }
+    .compliance-card {
+      background: var(--white);
+      border: 1px solid var(--gray-2);
+      border-radius: 14px;
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+    .compliance-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+    }
+    .compliance-card.d60::before { background: var(--steel-light); }
+    .compliance-card.d30::before { background: var(--steel); }
+    .compliance-card.d15::before { background: var(--warm); }
+    .compliance-card.d7::before { background: #ef4444; }
+    .compliance-days {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-size: 1.6rem;
+      font-weight: 400;
+      color: var(--ink);
+      margin-bottom: 4px;
+    }
+    .compliance-card h4 { font-size: 0.82rem; font-weight: 700; color: var(--ink); margin-bottom: 6px; }
+    .compliance-card p { font-size: 0.78rem; color: var(--gray-4); line-height: 1.55; }
+    @media (max-width: 768px) { .compliance-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 480px) { .compliance-grid { grid-template-columns: 1fr; } }
+
+    /* ── 90/10 Split ── */
+    .split-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      max-width: 900px;
+      margin: 0 auto;
+      text-align: left;
+    }
+    .split-col {
+      border-radius: 14px;
+      padding: 32px;
+    }
+    .split-col.ai-col {
+      background: var(--ink-2);
+      border: 1px solid var(--ink-3);
+    }
+    .split-col.human-col {
+      background: linear-gradient(135deg, var(--ink-2) 0%, rgba(245,158,11,0.08) 100%);
+      border: 1px solid rgba(245,158,11,0.3);
+    }
+    .split-pct {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-size: 2.8rem;
+      font-weight: 400;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .split-col.ai-col .split-pct { color: var(--steel-light); }
+    .split-col.human-col .split-pct { color: var(--warm-light); }
+    .split-col h3 { font-size: 0.88rem; font-weight: 700; color: var(--white); margin-bottom: 16px; }
+    .split-col ul { list-style: none; }
+    .split-col li {
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.55);
+      padding: 7px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .split-col li:last-child { border-bottom: none; }
+    .split-col li::before { content: ''; width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+    .split-col.ai-col li::before { background: var(--steel-light); }
+    .split-col.human-col li::before { background: var(--warm-light); }
+    @media (max-width: 600px) { .split-grid { grid-template-columns: 1fr; } }
+
+    /* ── Learning Engine ── */
+    .engine-flow {
+      display: grid;
+      grid-template-columns: 1fr 48px 1fr 48px 1fr;
+      gap: 0;
+      max-width: 900px;
+      margin: 0 auto;
+      align-items: center;
+    }
+    .engine-step {
       background: var(--ink-2);
       border: 1px solid var(--ink-3);
       border-radius: 14px;
       padding: 28px;
-      transition: transform 0.2s, border-color 0.2s;
+      text-align: center;
     }
-    .service-card:hover { transform: translateY(-2px); border-color: var(--steel); }
-    .service-card.highlighted {
-      border-color: var(--steel);
-      background: linear-gradient(135deg, var(--ink-2) 0%, rgba(37,99,235,0.08) 100%);
-      grid-column: 1 / -1;
+    .engine-step .e-icon { font-size: 2rem; margin-bottom: 12px; }
+    .engine-step h3 { font-size: 0.95rem; font-weight: 700; color: var(--white); margin-bottom: 8px; }
+    .engine-step p { font-size: 0.82rem; color: rgba(255,255,255,0.5); line-height: 1.55; }
+    .engine-arrow { text-align: center; color: var(--steel-light); font-size: 1.6rem; }
+    @media (max-width: 768px) {
+      .engine-flow { grid-template-columns: 1fr; gap: 12px; }
+      .engine-arrow { transform: rotate(90deg); }
     }
-    .service-highlight-badge {
-      display: inline-block;
+
+    /* ── How It Works (Onboarding) ── */
+    .section {
+      padding: 80px 24px;
+      text-align: center;
+      max-width: 1040px;
+      margin: 0 auto;
+    }
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 24px;
+      margin-top: 48px;
+      text-align: left;
+    }
+    .step-card {
+      background: var(--white);
+      border: 1px solid var(--gray-2);
+      border-radius: 14px;
+      padding: 28px;
+      position: relative;
+    }
+    .step-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+    .step-number {
+      width: 36px; height: 36px;
       background: var(--steel);
       color: var(--white);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.88rem;
+      font-weight: 800;
+      margin-bottom: 16px;
+    }
+    .step-card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; }
+    .step-card p { font-size: 0.88rem; color: var(--gray-4); line-height: 1.65; }
+
+    /* ── Pricing Tiers ── */
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      max-width: 960px;
+      margin: 0 auto;
+      text-align: left;
+    }
+    .pricing-card {
+      background: var(--ink-2);
+      border: 1px solid var(--ink-3);
+      border-radius: 14px;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+    }
+    .pricing-card.featured {
+      border-color: var(--steel);
+      background: linear-gradient(135deg, var(--ink-2) 0%, rgba(37,99,235,0.08) 100%);
+    }
+    .pricing-badge {
+      display: inline-block;
       font-size: 0.68rem;
       font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
       padding: 4px 10px;
       border-radius: 6px;
-      margin-bottom: 12px;
-      letter-spacing: 0.04em;
+      margin-bottom: 16px;
+      width: fit-content;
     }
-    .service-icon { font-size: 1.6rem; margin-bottom: 10px; }
-    .service-card h3 { font-size: 1.05rem; font-weight: 700; color: var(--white); margin-bottom: 8px; }
-    .service-card p { font-size: 0.88rem; color: rgba(255,255,255,0.55); line-height: 1.65; }
+    .pricing-card .pricing-badge { background: rgba(255,255,255,0.06); color: var(--gray-3); }
+    .pricing-card.featured .pricing-badge { background: var(--steel); color: var(--white); }
+    .pricing-card h3 { font-size: 1.15rem; font-weight: 700; color: var(--white); margin-bottom: 6px; }
+    .pricing-card .pricing-desc { font-size: 0.82rem; color: rgba(255,255,255,0.45); margin-bottom: 20px; line-height: 1.5; }
+    .pricing-features { list-style: none; flex: 1; }
+    .pricing-features li {
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.6);
+      padding: 7px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .pricing-features li::before {
+      content: '';
+      width: 6px; height: 6px;
+      background: var(--steel-light);
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    @media (max-width: 768px) { .pricing-grid { grid-template-columns: 1fr; } }
 
-    /* ── Demo section (light) ── */
-    .light-bg {
-      background: var(--gray-1);
-      padding: 80px 24px;
-    }
+    /* ── Demo section ── */
     .demo-section {
       max-width: 1040px;
       margin: 0 auto;
@@ -408,21 +799,6 @@
       display: flex; align-items: center; justify-content: center;
       font-size: 0.72rem; font-weight: 800;
     }
-    .btn-demo {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: var(--steel);
-      color: var(--white);
-      font-family: inherit;
-      font-size: 0.95rem;
-      font-weight: 700;
-      padding: 14px 28px;
-      border-radius: 10px;
-      text-decoration: none;
-      transition: background 0.15s, transform 0.1s;
-    }
-    .btn-demo:hover { background: var(--steel-mid); transform: translateY(-2px); }
     .demo-note {
       display: flex;
       align-items: center;
@@ -437,7 +813,6 @@
       border-radius: 50%;
       animation: livePulse 2s infinite;
     }
-
     /* Demo chat widget (static) */
     .demo-widget {
       background: var(--white);
@@ -526,81 +901,6 @@
     }
     .demo-send svg { width: 15px; height: 15px; stroke: #fff; fill: none; stroke-width: 2; }
 
-    /* ── How it works ── */
-    .section {
-      padding: 80px 24px;
-      text-align: center;
-      max-width: 1040px;
-      margin: 0 auto;
-    }
-    .steps-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 24px;
-      margin-top: 48px;
-      text-align: left;
-    }
-    .step-card {
-      background: var(--white);
-      border: 1px solid var(--gray-2);
-      border-radius: 14px;
-      padding: 28px;
-      position: relative;
-    }
-    .step-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
-    .step-number {
-      width: 36px; height: 36px;
-      background: var(--steel);
-      color: var(--white);
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 0.88rem;
-      font-weight: 800;
-      margin-bottom: 16px;
-    }
-    .step-card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; }
-    .step-card p { font-size: 0.88rem; color: var(--gray-4); line-height: 1.65; }
-
-    /* ── Autonomy section ── */
-    .forest-bg {
-      background: linear-gradient(180deg, var(--slate) 0%, #162d4a 100%);
-      padding: 80px 24px;
-      text-align: center;
-    }
-    .loop-section { max-width: 1040px; margin: 0 auto; }
-    .loop-headline {
-      font-family: 'Instrument Serif', Georgia, serif;
-      font-size: clamp(2rem, 4.5vw, 3.2rem);
-      font-weight: 400;
-      color: var(--white);
-      line-height: 1.15;
-    }
-    .loop-headline-accent { color: var(--steel-light); font-style: italic; font-family: 'Instrument Serif', Georgia, serif; font-size: clamp(2rem, 4.5vw, 3.2rem); line-height: 1.15; margin-bottom: 20px; }
-    .loop-sub { font-size: 1.05rem; color: rgba(255,255,255,0.55); max-width: 620px; margin: 0 auto 48px; line-height: 1.7; }
-    .loop-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 20px;
-      text-align: left;
-    }
-    .loop-col {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 14px;
-      padding: 28px;
-    }
-    .loop-col-icon { font-size: 1.6rem; display: block; margin-bottom: 12px; }
-    .loop-col h3 { font-size: 1rem; font-weight: 700; color: var(--white); margin-bottom: 14px; }
-    .loop-col ul { list-style: none; }
-    .loop-col li {
-      font-size: 0.85rem;
-      color: rgba(255,255,255,0.55);
-      padding: 6px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-      line-height: 1.5;
-    }
-    .loop-col li:last-child { border-bottom: none; }
-
     /* ── CTA banner ── */
     .cta-banner {
       background: var(--steel);
@@ -672,38 +972,40 @@
 <!-- ── Nav ── -->
 <nav>
   <a href="/" class="nav-logo">
-    <div class="nav-logo-icon">🏭</div>
+    <div class="nav-logo-icon"><svg viewBox="0 0 24 24"><path d="M3 21V9l5-4v16H3zm6 0V7l6-5v19H9zm8 0V5l4-3v19h-4z"/></svg></div>
     <span class="nav-logo-text">LIRE<span>-Help</span>.com</span>
   </a>
   <ul class="nav-links">
-    <li><a href="#challenges">Challenges</a></li>
-    <li><a href="#services">The Platform</a></li>
-    <li><a href="#concierge">Concierge Demo</a></li>
-    <li><a href="#how-it-works">How It Works</a></li>
+    <li><a href="#frictions">Challenges</a></li>
+    <li><a href="#command-center">Platform</a></li>
+    <li><a href="#workflow">Workflow</a></li>
+    <li><a href="#concierge">Live Demo</a></li>
+    <li><a href="#pricing">Pricing</a></li>
   </ul>
-  <a href="#concierge" class="nav-cta">See Demo</a>
+  <a href="https://app.lire-help.com/dashboard" class="nav-cta">Dashboard</a>
 </nav>
 
-<!-- ── Hero ── -->
+<!-- ═══════════════════════════════════════════════
+     SLIDE 1 — Hero
+     ═══════════════════════════════════════════════ -->
 <section class="hero">
   <div class="hero-glow"></div>
   <div class="hero-inner">
     <div class="hero-badge">
       <div class="hero-badge-dot"></div>
-      AI-Powered Tenant Operations
+      The Future of Light Industrial Management
     </div>
     <h1>
-      Your tenants get answers.
-      <span class="hero-accent">Your team gets time back.</span>
+      AI que ejecuta.
+      <span class="hero-accent">No que promete.</span>
     </h1>
-    <p>An AI concierge that handles maintenance requests, answers tenant questions, and keeps your properties running — 24/7, without adding headcount.</p>
+    <p>Growth should not mean linear complexity. Managing distributed industrial assets means multiplying human friction. Adding square footage shouldn't require a proportional increase in operational chaos.</p>
     <div class="hero-btns">
       <a href="#concierge" class="btn-primary">Try the Demo</a>
-      <a href="#services" class="btn-ghost">See How It Works</a>
+      <a href="#command-center" class="btn-ghost">See the Platform</a>
     </div>
   </div>
 
-  <!-- Industrial skyline SVG -->
   <div class="hero-skyline">
     <svg viewBox="0 0 1440 180" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
       <path d="M0 180 L0 140 L80 135 L120 90 L160 135 L200 120 L280 80 L320 110 L400 70 L440 100 L520 60 L560 85 L640 45 L700 70 L760 50 L820 75 L880 40 L940 65 L1000 55 L1060 80 L1120 50 L1180 70 L1240 90 L1300 60 L1360 85 L1440 65 L1440 180 Z" fill="#1e3a5f"/>
@@ -712,125 +1014,486 @@
   </div>
 </section>
 
-<!-- ── Segments strip ── -->
-<div class="segments-strip">
-  <div class="segments-inner">
-    <div class="segment-item reveal">
-      <div class="segment-tag">Core Focus</div>
-      <div class="segment-title">Warehouses & Distribution</div>
-      <div class="segment-locs">Oakland · Richmond · Hayward</div>
+<!-- ═══════════════════════════════════════════════
+     SLIDE 2 — Stats Strip
+     ═══════════════════════════════════════════════ -->
+<div class="stats-strip">
+  <div class="stats-inner">
+    <div class="stat-item reveal">
+      <div class="stat-number">280+</div>
+      <div class="stat-label">Active Investments</div>
     </div>
-    <div class="segment-item reveal reveal-delay-1">
-      <div class="segment-tag">Growing Segment</div>
-      <div class="segment-title">Flex Industrial Spaces</div>
-      <div class="segment-locs">San Leandro · Fremont · Milpitas</div>
+    <div class="stat-item reveal reveal-delay-1">
+      <div class="stat-number">15</div>
+      <div class="stat-label">Target Growth Markets</div>
     </div>
-    <div class="segment-item reveal reveal-delay-2">
-      <div class="segment-tag">High Demand</div>
-      <div class="segment-title">Last-Mile Logistics</div>
-      <div class="segment-locs">San Francisco · South SF · Daly City</div>
+    <div class="stat-item reveal reveal-delay-2">
+      <div class="stat-number">14M+</div>
+      <div class="stat-label">SQ FT Under Management</div>
     </div>
   </div>
 </div>
 
-<!-- ── Pain Points section ── -->
-<div class="dark-bg" id="challenges">
-  <div class="pain-section">
-    <span class="section-tag light reveal">THE CHALLENGES</span>
-    <h2 class="white reveal">What keeps property managers up at night</h2>
-    <p class="section-sub white reveal">Every industrial PM knows these problems. Most just live with them.</p>
+<!-- ═══════════════════════════════════════════════
+     SLIDE 3 — The Four Frictions of Industrial Scale
+     ═══════════════════════════════════════════════ -->
+<div class="dark-bg" id="frictions">
+  <div class="section-center">
+    <span class="section-tag light reveal">THE PROBLEM</span>
+    <h2 class="white reveal">The Four Frictions of Industrial Scale</h2>
+    <p class="section-sub white reveal">Every portfolio that grows past a handful of assets hits the same bottlenecks.</p>
 
-    <div class="pain-grid">
-      <div class="pain-card reveal">
-        <span class="pain-icon">📞</span>
-        <h3>Tenant calls that never stop</h3>
-        <p>Loading dock questions, maintenance requests, lease FAQ — your team spends 60% of their day answering the same questions over and over.</p>
-        <div class="pain-resolve">AI Concierge handles routine inquiries 24/7</div>
+    <div class="friction-grid">
+      <div class="friction-card reveal">
+        <span class="friction-icon"><svg class="icon-inline" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg></span>
+        <h3>Reactive Maintenance</h3>
+        <p>Issues discovered too late. Damage reports lost; repairs are always emergencies, never orchestrated.</p>
       </div>
-      <div class="pain-card reveal reveal-delay-1">
-        <span class="pain-icon">🔧</span>
-        <h3>Maintenance requests lost in email</h3>
-        <p>Tenants email, call, or text. Requests get lost, duplicated, or forgotten. No tracking, no accountability, no SLA visibility.</p>
-        <div class="pain-resolve">Structured intake with ticket tracking and SLA monitoring</div>
+      <div class="friction-card reveal reveal-delay-1">
+        <span class="friction-icon"><svg class="icon-inline" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+        <h3>24/7 Tenant Demands</h3>
+        <p>Logistics supply chains never sleep. Human managers forced to answer inquiries on weekends and midnight.</p>
       </div>
-      <div class="pain-card reveal">
-        <span class="pain-icon">🕐</span>
-        <h3>After-hours emergencies</h3>
-        <p>Water leak at 2 AM? Power outage on a holiday? Someone needs to answer — and know the right protocol for each property.</p>
-        <div class="pain-resolve">24/7 emergency triage with auto-escalation to on-call</div>
+      <div class="friction-card reveal reveal-delay-2">
+        <span class="friction-icon"><svg class="icon-inline" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></span>
+        <h3>Compliance Blindspots</h3>
+        <p>Critical dates for municipal certifications, insurance, and lease expirations tracked manually and missed.</p>
       </div>
-      <div class="pain-card reveal reveal-delay-1">
-        <span class="pain-icon">📋</span>
-        <h3>Onboarding new tenants is manual</h3>
-        <p>Every new tenant needs the same walkthrough: dock hours, parking, access cards, emergency contacts, CAM breakdown. Every. Single. Time.</p>
-        <div class="pain-resolve">Automated tenant onboarding with property-specific knowledge</div>
-      </div>
-      <div class="pain-card reveal">
-        <span class="pain-icon">📊</span>
-        <h3>No visibility into tenant satisfaction</h3>
-        <p>You find out tenants are unhappy when they don't renew. No pulse checks, no interaction data, no early warning system.</p>
-        <div class="pain-resolve">Conversation analytics and sentiment tracking per tenant</div>
-      </div>
-      <div class="pain-card reveal reveal-delay-1">
-        <span class="pain-icon">🏗️</span>
-        <h3>Scaling means hiring</h3>
-        <p>More properties = more PMs, more coordinators, more overhead. The traditional model doesn't scale without linear cost growth.</p>
-        <div class="pain-resolve">Handle 3x the portfolio without adding headcount</div>
+      <div class="friction-card reveal reveal-delay-3">
+        <span class="friction-icon"><svg class="icon-inline" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
+        <h3>Fragmented Data</h3>
+        <p>Legacy systems act as passive storage. Vital knowledge siloed across PDFs and managers' heads.</p>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ── Services section ── -->
-<div class="dark-bg" id="services" style="border-top:1px solid #1E293B;">
-  <div class="services-section">
-    <span class="section-tag light reveal">THE PLATFORM</span>
-    <h2 class="white reveal">One platform. Every tenant touchpoint covered.</h2>
-    <p class="section-sub white reveal">Not a chatbot bolted onto your website — an operations layer that integrates with how tenants actually communicate.</p>
+<!-- ═══════════════════════════════════════════════
+     SLIDE 4 — From Passive Database to Active Digital Workforce
+     ═══════════════════════════════════════════════ -->
+<div class="dark-bg" style="border-top:1px solid #1E293B;">
+  <div class="section-center">
+    <span class="section-tag light reveal">THE PARADIGM SHIFT</span>
+    <h2 class="white reveal">From Passive Databases to an Active Digital Workforce</h2>
+    <p class="section-sub white reveal">You don't need another dashboard to look at. You need an autonomous team that operates inside the dashboard.</p>
 
-    <div class="services-grid">
-      <div class="service-card highlighted reveal">
-        <div class="service-highlight-badge">Core Feature</div>
-        <div class="service-icon">🤖</div>
-        <h3>AI Tenant Concierge</h3>
-        <p>Answers tenant questions 24/7 — loading dock schedules, parking rules, lease terms, building access. Knows each property's specific details. Handles maintenance request intake with structured data collection (unit, description, urgency). Escalates to the right person when human judgment is needed.</p>
+    <div class="paradigm-grid reveal">
+      <div class="paradigm-col legacy">
+        <div class="paradigm-label">Legacy PM Software</div>
+        <h3>Passive Database</h3>
+        <p>Requires constant human input to function. Data sits idle until someone pulls a report.</p>
       </div>
-      <div class="service-card reveal reveal-delay-1">
-        <div class="service-icon">🔧</div>
-        <h3>Maintenance Operations</h3>
-        <p>Structured work order creation with automatic routing. Tenants submit via chat, receive ticket numbers and ETAs. PM dashboard shows all open tickets, SLA status, and resolution history.</p>
-      </div>
-      <div class="service-card reveal reveal-delay-2">
-        <div class="service-icon">📊</div>
-        <h3>Property Dashboard</h3>
-        <p>Real-time visibility across your portfolio. Active conversations, open maintenance tickets, tenant satisfaction scores, response time metrics — one screen, all properties.</p>
-      </div>
-      <div class="service-card reveal">
-        <div class="service-icon">📚</div>
-        <h3>Property Knowledge Base</h3>
-        <p>Each property gets its own knowledge base — dock hours, emergency procedures, vendor contacts, lease specifics. The concierge learns from it. You edit it in plain English.</p>
-      </div>
-      <div class="service-card reveal reveal-delay-1">
-        <div class="service-icon">🔔</div>
-        <h3>Smart Escalation</h3>
-        <p>Not everything needs AI. Emergencies, billing disputes, and lease negotiations route to the right person via email, SMS, or Slack — with full conversation context attached.</p>
-      </div>
-      <div class="service-card reveal reveal-delay-2">
-        <div class="service-icon">📈</div>
-        <h3>Tenant Analytics</h3>
-        <p>Understand your tenants better. Conversation volume, common issues, satisfaction trends, and early churn signals — all derived from actual interactions, not annual surveys.</p>
+      <div class="paradigm-arrow">&#8594;</div>
+      <div class="paradigm-col ai">
+        <div class="paradigm-label">AI-Augmented PM</div>
+        <h3>Active Digital Workforce</h3>
+        <p>Executes routines, escalates anomalies. The system works while your team sleeps.</p>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ── Concierge Demo section ── -->
+<!-- ═══════════════════════════════════════════════
+     SLIDE 5 — The Command Center Architecture
+     ═══════════════════════════════════════════════ -->
+<div class="white-bg" id="command-center">
+  <div class="section-center">
+    <span class="section-tag reveal">COMMAND CENTER</span>
+    <h2 class="reveal">One centralized control tower.</h2>
+    <p class="section-sub reveal">The AI orchestrates the daily routine; you dictate the portfolio strategy.</p>
+
+    <div class="cc-grid">
+      <div class="cc-card reveal">
+        <div class="cc-icon"><svg class="icon-inline" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+        <h3>Tenant Conversations</h3>
+        <p>Real-time multi-channel inbox. Every SMS, WhatsApp message, and web chat in one stream — with full AI-generated context.</p>
+      </div>
+      <div class="cc-card reveal reveal-delay-1">
+        <div class="cc-icon"><svg class="icon-inline" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg></div>
+        <h3>Maintenance Dispatch</h3>
+        <p>Live tracking of vendor assignments and costs. Automatic routing, SLA enforcement, and resolution logging — no manual follow-up.</p>
+      </div>
+      <div class="cc-card reveal reveal-delay-2">
+        <div class="cc-icon"><svg class="icon-inline" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div>
+        <h3>Portfolio Compliance</h3>
+        <p>Automated timeline of upcoming lease and municipal deadlines. The system audits, escalates, and documents — you approve.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 6 — The 24/7 Digital Property Manager
+     ═══════════════════════════════════════════════ -->
+<div class="dark-bg" id="digital-pm">
+  <div class="dpm-layout">
+    <div>
+      <span class="section-tag light reveal">24/7 DIGITAL PROPERTY MANAGER</span>
+      <h2 class="white reveal" style="margin-bottom:16px;">Always on. Always informed.</h2>
+      <p class="section-sub white reveal" style="margin:0 0 32px;">Native multi-lingual — automatically detects and naturally converses in English, Spanish, and French.</p>
+
+      <ul class="dpm-features reveal">
+        <li>
+          <div class="feat-icon"><svg class="icon-inline" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg></div>
+          <span><strong>Always On:</strong> Handles inquiries 24/7 via SMS, WhatsApp, or Web.</span>
+        </li>
+        <li>
+          <div class="feat-icon"><svg class="icon-inline" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><line x1="9" y1="6" x2="9" y2="6.01"/><line x1="15" y1="6" x2="15" y2="6.01"/><line x1="9" y1="10" x2="9" y2="10.01"/><line x1="15" y1="10" x2="15" y2="10.01"/><line x1="9" y1="14" x2="9" y2="14.01"/><line x1="15" y1="14" x2="15" y2="14.01"/><path d="M9 22v-4h6v4"/></svg></div>
+          <span><strong>Deep Property Knowledge:</strong> Recalls lease specifics, loading dock dimensions, building rules.</span>
+        </li>
+        <li>
+          <div class="feat-icon"><svg class="icon-inline" viewBox="0 0 24 24"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg></div>
+          <span><strong>Access Control:</strong> Instantly manages facility access codes and security protocols.</span>
+        </li>
+        <li>
+          <div class="feat-icon"><svg class="icon-inline" viewBox="0 0 24 24"><path d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"/></svg></div>
+          <span><strong>Multi-lingual:</strong> Detects language automatically and responds naturally in English, Spanish, or French.</span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Conversation example -->
+    <div class="reveal reveal-delay-1">
+      <div class="dpm-chat">
+        <div class="dpm-chat-header">
+          <div class="dpm-chat-dot"></div>
+          <div class="dpm-chat-title">Live Conversation — Unit 4 Tenant</div>
+        </div>
+        <div class="dpm-chat-messages">
+          <div class="dpm-bubble tenant">
+            <div class="dpm-bubble-lang">Spanish detected</div>
+            Problemas con el porton de carga en la unidad 4.
+          </div>
+          <div class="dpm-bubble ai">
+            Entendido. Revisando su contrato de arrendamiento. Enviare al tecnico asignado hoy a las 14:00.
+          </div>
+          <div class="dpm-bubble ai" style="margin-top:6px; font-size:0.75rem; color:rgba(255,255,255,0.4);">
+            &#9432; Ticket #MX-0417 created &middot; Vendor: Bay Area Dock Services &middot; ETA: 2:00 PM
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 7 — Orchestrating Proactive Maintenance
+     ═══════════════════════════════════════════════ -->
+<div class="light-bg">
+  <div class="section-center">
+    <span class="section-tag reveal">PROACTIVE MAINTENANCE</span>
+    <h2 class="reveal">From frantic phone calls to silent orchestration.</h2>
+    <p class="section-sub reveal">Transform maintenance from a chain of emergencies into a structured, automated process.</p>
+
+    <div class="cc-grid">
+      <div class="cc-card reveal">
+        <div class="cc-icon"><svg class="icon-inline" viewBox="0 0 24 24"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg></div>
+        <h3>Automatic Intake</h3>
+        <p>Receives and categorizes tenant issue reports automatically. No missed emails, no lost voicemails.</p>
+      </div>
+      <div class="cc-card reveal reveal-delay-1">
+        <div class="cc-icon"><svg class="icon-inline" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg></div>
+        <h3>Vendor Assignment</h3>
+        <p>Assigns authorized local vendors and sets strict resolution deadlines based on urgency and SLA.</p>
+      </div>
+      <div class="cc-card reveal reveal-delay-2">
+        <div class="cc-icon"><svg class="icon-inline" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+        <h3>Cost & Progress Tracking</h3>
+        <p>Logs all repair costs and tracks real-time progress without manual intervention. Full audit trail.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 8 — Cognitive Workflow: The 2 AM Dock Door Failure
+     ═══════════════════════════════════════════════ -->
+<div class="workflow-section" id="workflow">
+  <div class="workflow-inner">
+    <span class="section-tag light reveal">SIGNATURE WORKFLOW</span>
+    <h2 class="white reveal">The 2 AM Dock Door Failure</h2>
+    <p class="section-sub white reveal" style="margin-bottom:32px;">A real scenario. Fully autonomous resolution. Your manager wakes up to a summary, not a crisis.</p>
+
+    <div class="wf-timeline">
+      <div class="wf-step reveal">
+        <div class="wf-dot"><svg class="icon-inline" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></div>
+        <div class="wf-step-content">
+          <div class="wf-step-time">2:00 AM &mdash; Intake</div>
+          <h3>Tenant texts the system</h3>
+          <p>Tenant reports a jammed loading dock door via SMS. The AI acknowledges instantly and begins processing.</p>
+        </div>
+      </div>
+      <div class="wf-step reveal reveal-delay-1">
+        <div class="wf-dot"><svg class="icon-inline" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+        <div class="wf-step-content">
+          <div class="wf-step-time">2:01 AM &mdash; Analysis</div>
+          <h3>Lease cross-reference</h3>
+          <p>AI instantly cross-references the tenant's lease to determine repair responsibility and relevant SLA terms.</p>
+        </div>
+      </div>
+      <div class="wf-step reveal reveal-delay-2">
+        <div class="wf-dot"><svg class="icon-inline" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg></div>
+        <div class="wf-step-content">
+          <div class="wf-step-time">2:03 AM &mdash; Dispatch</div>
+          <h3>Vendor contacted automatically</h3>
+          <p>AI contacts the preferred local vendor for that specific property. Emergency callout scheduled.</p>
+        </div>
+      </div>
+      <div class="wf-step reveal reveal-delay-3">
+        <div class="wf-dot"><svg class="icon-inline" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div>
+        <div class="wf-step-content">
+          <div class="wf-step-time">2:04 AM &mdash; Logging</div>
+          <h3>Full documentation created</h3>
+          <p>AI creates a fully documented ticket in the Command Center with timestamps, lease references, and vendor details.</p>
+        </div>
+      </div>
+      <div class="wf-step reveal reveal-delay-4">
+        <div class="wf-dot"><svg class="icon-inline" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></div>
+        <div class="wf-step-content">
+          <div class="wf-step-time">7:00 AM &mdash; Resolution</div>
+          <h3>Manager gets a morning summary</h3>
+          <p>Asset Manager wakes up at 7:00 AM to a concise summary of a resolved issue. No fire drills. No missed calls.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 9 — Invisible Portfolio Compliance
+     ═══════════════════════════════════════════════ -->
+<div class="white-bg" id="compliance">
+  <div class="section-center">
+    <span class="section-tag reveal">PORTFOLIO COMPLIANCE</span>
+    <h2 class="reveal">Never miss a critical date.</h2>
+    <p class="section-sub reveal">The system continuously audits your portfolio's legal and municipal standing with a 60/30/15/7 escalation ladder.</p>
+
+    <div class="compliance-grid">
+      <div class="compliance-card d60 reveal">
+        <div class="compliance-days">60</div>
+        <h4>Days Prior</h4>
+        <p>Initial audit and early warning. System flags upcoming deadlines across the portfolio.</p>
+      </div>
+      <div class="compliance-card d30 reveal reveal-delay-1">
+        <div class="compliance-days">30</div>
+        <h4>Days Prior</h4>
+        <p>Automated document requests sent to vendors and tenants. Collection tracking begins.</p>
+      </div>
+      <div class="compliance-card d15 reveal reveal-delay-2">
+        <div class="compliance-days">15</div>
+        <h4>Days Prior</h4>
+        <p>Escalation to vendor or tenant if documents outstanding. Follow-up sequence activated.</p>
+      </div>
+      <div class="compliance-card d7 reveal reveal-delay-3">
+        <div class="compliance-days">7</div>
+        <h4>Days Prior</h4>
+        <p>Final manager alert. Direct human oversight required before deadline expires.</p>
+      </div>
+    </div>
+
+    <p class="section-sub reveal" style="margin-top:32px; margin-bottom:0; font-size:0.88rem;">Covers: Commercial lease renewals and rent escalations &middot; Vendor and tenant insurance certificate expirations &middot; Local municipal compliance and safety inspections.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 10 — Total Control Through Strategic Escalation (90/10)
+     ═══════════════════════════════════════════════ -->
+<div class="dark-bg">
+  <div class="section-center">
+    <span class="section-tag light reveal">STRATEGIC ESCALATION</span>
+    <h2 class="white reveal">Cede the routine. Gain complete oversight.</h2>
+    <p class="section-sub white reveal">The AI handles the daily friction so your team can focus on asset yield.</p>
+
+    <div class="split-grid">
+      <div class="split-col ai-col reveal">
+        <div class="split-pct">90%</div>
+        <h3>Routine Work (AI-handled)</h3>
+        <ul>
+          <li>Tenant FAQs & inquiries</li>
+          <li>Basic maintenance dispatch</li>
+          <li>Document collection</li>
+          <li>Automated follow-ups</li>
+          <li>Compliance monitoring</li>
+        </ul>
+      </div>
+      <div class="split-col human-col reveal reveal-delay-1">
+        <div class="split-pct">10%</div>
+        <h3>High-Stakes Escalation (Human)</h3>
+        <ul>
+          <li>Major structural incidents</li>
+          <li>Lease defaults</li>
+          <li>Payment irregularities</li>
+          <li>Unapproved cost overruns</li>
+          <li>Strategic portfolio decisions</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 11 — Evaluating the Paradigm Shift (Comparison Table)
+     ═══════════════════════════════════════════════ -->
+<div class="dark-bg" style="border-top:1px solid #1E293B;">
+  <div class="section-center">
+    <span class="section-tag light reveal">THE COMPARISON</span>
+    <h2 class="white reveal">Legacy Software vs. AI-Augmented Operations</h2>
+    <p class="section-sub white reveal">Every friction point, transformed.</p>
+
+    <div class="reveal" style="overflow-x:auto;">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th class="legacy">Legacy Software</th>
+            <th class="ai">AI-Augmented Operations</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Tenant Comms</td>
+            <td class="legacy-cell">Manual inbox management</td>
+            <td class="ai-cell">Instant 24/7 multi-lingual resolution</td>
+          </tr>
+          <tr>
+            <td>Maintenance</td>
+            <td class="legacy-cell">Requires human dispatch & follow-up</td>
+            <td class="ai-cell">Autonomous vendor routing & tracking</td>
+          </tr>
+          <tr>
+            <td>Compliance</td>
+            <td class="legacy-cell">Passive calendar reminders</td>
+            <td class="ai-cell">Active document auditing and escalation</td>
+          </tr>
+          <tr>
+            <td>Scalability</td>
+            <td class="legacy-cell">Requires more headcount as SQ FT grows</td>
+            <td class="ai-cell">Infinite scale without added friction</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 12 — A Continuous Learning Engine
+     ═══════════════════════════════════════════════ -->
+<div class="dark-bg" style="border-top:1px solid #1E293B;">
+  <div class="section-center">
+    <span class="section-tag light reveal">KNOWLEDGE ENGINE</span>
+    <h2 class="white reveal">The system gets smarter after every interaction.</h2>
+    <p class="section-sub white reveal">Permanently retaining institutional knowledge — no manual data entry required.</p>
+
+    <div class="engine-flow reveal">
+      <div class="engine-step">
+        <div class="e-icon"><svg class="icon-inline" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+        <h3>Natural Conversation</h3>
+        <p>Tenant interacts with the AI via any channel — chat, SMS, or WhatsApp.</p>
+      </div>
+      <div class="engine-arrow">&#8594;</div>
+      <div class="engine-step">
+        <div class="e-icon"><svg class="icon-inline" viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div>
+        <h3>AI Extracts Facts</h3>
+        <p>Identifies new parameters — e.g., "Gate code changed to 4321."</p>
+      </div>
+      <div class="engine-arrow">&#8594;</div>
+      <div class="engine-step">
+        <div class="e-icon"><svg class="icon-inline" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg></div>
+        <h3>Knowledge Base Update</h3>
+        <p>Automatically rewrites the property operational manual. Zero human data entry.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 13 — Operational in Days, Not Months
+     ═══════════════════════════════════════════════ -->
+<section class="section" id="how-it-works">
+  <span class="section-tag reveal">ONBOARDING</span>
+  <h2 class="reveal">Operational in Days, Not Months</h2>
+  <p class="section-sub reveal">No complex IT overhaul. The AI learns instantly from your existing documentation.</p>
+
+  <div class="steps-grid">
+    <div class="step-card reveal">
+      <div class="step-number">1</div>
+      <h3>Configure Data Base</h3>
+      <p>Upload existing leases, building spec sheets, and vendor lists. The AI instantly reads and understands the portfolio.</p>
+    </div>
+    <div class="step-card reveal reveal-delay-1">
+      <div class="step-number">2</div>
+      <h3>Connect Communications</h3>
+      <p>Link existing email domains and dedicated WhatsApp business numbers. Multi-channel from day one.</p>
+    </div>
+    <div class="step-card reveal reveal-delay-2">
+      <div class="step-number">3</div>
+      <h3>Go Live</h3>
+      <p>Deploy the 24/7 digital team across all tenant touchpoints immediately. Full dashboard access from launch.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 14 — Value Tiers
+     ═══════════════════════════════════════════════ -->
+<div class="dark-bg" id="pricing">
+  <div class="section-center">
+    <span class="section-tag light reveal">PRICING</span>
+    <h2 class="white reveal">Value Tiers Engineered for Portfolio Scale</h2>
+    <p class="section-sub white reveal">Transparent structuring. No hidden friction.</p>
+
+    <div class="pricing-grid">
+      <div class="pricing-card reveal">
+        <div class="pricing-badge">Basic Portfolio</div>
+        <h3>Basic</h3>
+        <p class="pricing-desc">Ideal for initial market testing.</p>
+        <ul class="pricing-features">
+          <li>Core AI agent</li>
+          <li>Central dashboard</li>
+          <li>Web chat channel</li>
+          <li>Property knowledge base</li>
+        </ul>
+      </div>
+      <div class="pricing-card featured reveal reveal-delay-1">
+        <div class="pricing-badge">Professional Portfolio</div>
+        <h3>Professional</h3>
+        <p class="pricing-desc">Comprehensive operations for growing portfolios.</p>
+        <ul class="pricing-features">
+          <li>Everything in Basic</li>
+          <li>Proactive maintenance dispatch</li>
+          <li>Automated compliance engine</li>
+          <li>Real-time manager alerts</li>
+          <li>Multi-channel (SMS + WhatsApp)</li>
+        </ul>
+      </div>
+      <div class="pricing-card reveal reveal-delay-2">
+        <div class="pricing-badge">Enterprise Portfolio</div>
+        <h3>Enterprise</h3>
+        <p class="pricing-desc">Designed for 10M+ SQ FT portfolios.</p>
+        <ul class="pricing-features">
+          <li>Everything in Professional</li>
+          <li>Unlimited properties</li>
+          <li>Full white-labeling</li>
+          <li>Dedicated account management</li>
+          <li>Guaranteed SLAs</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     Live Demo Section (Concierge)
+     ═══════════════════════════════════════════════ -->
 <div class="light-bg" id="concierge">
   <div class="demo-section">
     <div>
-      <span class="section-tag reveal">AI CONCIERGE</span>
+      <span class="section-tag reveal">LIVE AI CONCIERGE</span>
       <h2 class="reveal" style="margin-bottom:16px;">See it in action</h2>
-      <p class="demo-sub reveal">This is a live demo trained on a sample Oakland warehouse property. Try asking about dock hours, submitting a maintenance request, or checking lease terms. In production, each property gets its own trained concierge.</p>
+      <p class="demo-sub reveal">This is a live demo trained on a sample Oakland warehouse property. Try asking about dock hours, submitting a maintenance request, or checking lease terms.</p>
       <ul class="demo-bullets reveal">
         <li>
           <div class="bullet-dot">&#10003;</div>
@@ -843,10 +1506,6 @@
         <li>
           <div class="bullet-dot">&#10003;</div>
           <span>Knows your property's specific rules, contacts, and procedures</span>
-        </li>
-        <li>
-          <div class="bullet-dot">&#10003;</div>
-          <span>Escalates to property management when human judgment is needed</span>
         </li>
         <li>
           <div class="bullet-dot">&#10003;</div>
@@ -865,7 +1524,7 @@
     <div class="reveal">
       <div class="demo-widget">
         <div class="demo-header">
-          <div class="demo-avatar">🏭</div>
+          <div class="demo-avatar"><svg style="width:24px;height:24px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;" viewBox="0 0 24 24"><path d="M3 21V9l5-4v16H3zm6 0V7l6-5v19H9zm8 0V5l4-3v19h-4z"/></svg></div>
           <div class="demo-header-info">
             <div class="demo-name">LIRE Help Concierge</div>
             <div class="demo-status">Online now</div>
@@ -874,9 +1533,9 @@
         <div class="demo-messages">
           <div class="demo-msg bot">Welcome to Oakland Gateway Industrial Park! I'm your property concierge. I can help with maintenance requests, dock scheduling, lease questions, and more. How can I help you today?</div>
           <div class="demo-msg user">What are the loading dock hours?</div>
-          <div class="demo-msg bot">Loading docks are open <strong>Monday through Saturday, 6:00 AM to 10:00 PM</strong>. A few key rules: max trailer dwell time is 4 hours at dock positions, overnight parking requires 48-hour advance notice, and no engine idling beyond 5 minutes per BAAQMD regulations. Need to schedule a dock slot?</div>
+          <div class="demo-msg bot">Loading docks are open <strong>Monday through Saturday, 6:00 AM to 10:00 PM</strong>. Max trailer dwell time is 4 hours at dock positions, overnight parking requires 48-hour advance notice, and no engine idling beyond 5 minutes per BAAQMD regulations. Need to schedule a dock slot?</div>
           <div class="demo-msg user">I have a water leak in Unit 7, it's urgent</div>
-          <div class="demo-msg bot">I'm logging this as an <strong>urgent maintenance request</strong> for Unit 7 — water leak. Expected response: <strong>within 24 hours</strong>. Can you describe where the leak is (ceiling, wall, floor) and the best number to reach you for building access?</div>
+          <div class="demo-msg bot">I'm logging this as an <strong>urgent maintenance request</strong> for Unit 7 — water leak. Expected response: <strong>within 24 hours</strong>. Can you describe where the leak is (ceiling, wall, floor) and the best number to reach you?</div>
           <div class="demo-typing">
             <span></span><span></span><span></span>
           </div>
@@ -892,86 +1551,15 @@
   </div>
 </div>
 
-<!-- ── Autonomy + Control ── -->
-<div class="forest-bg">
-  <div class="loop-section">
-    <span class="section-tag light reveal">AI + HUMAN OVERSIGHT</span>
-    <div class="loop-headline reveal">AI handles the volume.</div>
-    <div class="loop-headline-accent reveal">Your team handles the judgment calls.</div>
-    <p class="loop-sub reveal">The concierge operates autonomously on routine requests. Your property managers get alerts on what matters. The portfolio scales without the headcount.</p>
-
-    <div class="loop-grid">
-      <div class="loop-col reveal">
-        <span class="loop-col-icon">🤖</span>
-        <h3>AI handles automatically</h3>
-        <ul>
-          <li>Tenant inquiries 24/7</li>
-          <li>Maintenance request intake and logging</li>
-          <li>Property info and procedure questions</li>
-          <li>Dock scheduling coordination</li>
-          <li>New tenant onboarding walkthroughs</li>
-        </ul>
-      </div>
-      <div class="loop-col reveal reveal-delay-1">
-        <span class="loop-col-icon">🔔</span>
-        <h3>Escalates to your team</h3>
-        <ul>
-          <li>Emergency situations (water, fire, security)</li>
-          <li>Billing disputes and payment issues</li>
-          <li>Lease renewal and expansion discussions</li>
-          <li>Unresolved tickets past SLA</li>
-          <li>Tenants requesting human contact</li>
-        </ul>
-      </div>
-      <div class="loop-col reveal reveal-delay-2">
-        <span class="loop-col-icon">📊</span>
-        <h3>Your dashboard shows everything</h3>
-        <ul>
-          <li>All conversations in real time</li>
-          <li>Open maintenance tickets and SLA status</li>
-          <li>Tenant satisfaction scores</li>
-          <li>Response time and resolution metrics</li>
-          <li>Portfolio-wide analytics</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ── How It Works ── -->
-<section class="section" id="how-it-works">
-  <span class="section-tag reveal">HOW IT WORKS</span>
-  <h2 class="reveal">Live in under a week</h2>
-  <p class="section-sub reveal">No IT projects. No integrations to manage. We train the AI on your properties and hand you the keys.</p>
-
-  <div class="steps-grid">
-    <div class="step-card reveal">
-      <div class="step-number">1</div>
-      <h3>Share your property details</h3>
-      <p>Dock hours, emergency contacts, lease terms, vendor list, building rules. We build a knowledge base for each property in your portfolio.</p>
-    </div>
-    <div class="step-card reveal reveal-delay-1">
-      <div class="step-number">2</div>
-      <h3>We configure your concierge</h3>
-      <p>Each property gets a trained AI concierge that knows its specific details, procedures, and escalation contacts. You review and approve.</p>
-    </div>
-    <div class="step-card reveal reveal-delay-2">
-      <div class="step-number">3</div>
-      <h3>Tenants start using it</h3>
-      <p>Embed on your website, share via QR codes at properties, or add to your tenant portal. Dashboard goes live from day one.</p>
-    </div>
-  </div>
-</section>
-
-<hr class="divider" />
-
-<!-- ── CTA banner ── -->
+<!-- ═══════════════════════════════════════════════
+     SLIDE 15 — CTA
+     ═══════════════════════════════════════════════ -->
 <section class="cta-banner">
   <div class="cta-banner-inner">
-    <h2 class="reveal">Light industrial is scaling. <span class="accent">Your operations should too.</span></h2>
-    <p class="reveal">See how LIRE Help works for your portfolio — bring your property data, we'll show you the concierge live.</p>
-    <a href="mailto:hello@lire-help.com" class="btn-primary reveal">Schedule a Demo</a>
-    <p class="cta-sub-note reveal">15-minute walkthrough with your property data</p>
+    <h2 class="reveal">Stop Managing Friction. <span class="accent">Start Scaling Operations.</span></h2>
+    <p class="reveal">Activate your AI operations team today. See how LIRE Help works with your portfolio data.</p>
+    <a href="#concierge" class="btn-primary reveal">Try the Demo</a>
+    <p class="cta-sub-note reveal">Or <a href="mailto:hello@lire-help.com" style="color:rgba(255,255,255,0.85);text-decoration:underline;">schedule a walkthrough</a> with your property data</p>
   </div>
 </section>
 
@@ -979,14 +1567,15 @@
 <footer>
   <div class="footer-inner">
     <div class="footer-brand">
-      <div class="footer-brand-icon">🏭</div>
+      <div class="footer-brand-icon"><svg style="width:20px;height:20px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;" viewBox="0 0 24 24"><path d="M3 21V9l5-4v16H3zm6 0V7l6-5v19H9zm8 0V5l4-3v19h-4z"/></svg></div>
       <span class="footer-brand-name">LIRE Help</span>
     </div>
     <div class="footer-links">
-      <a href="#challenges">Challenges</a>
-      <a href="#services">Platform</a>
+      <a href="#frictions">Challenges</a>
+      <a href="#command-center">Platform</a>
+      <a href="#workflow">Workflow</a>
       <a href="#concierge">Demo</a>
-      <a href="#how-it-works">How It Works</a>
+      <a href="#pricing">Pricing</a>
       <a href="mailto:hello@lire-help.com">Contact</a>
     </div>
   </div>
@@ -1224,7 +1813,7 @@
 <!-- Chat panel -->
 <div class="bp-panel" id="bpPanel">
   <div class="bp-header">
-    <div class="bp-avatar">🏭</div>
+    <div class="bp-avatar"><svg style="width:20px;height:20px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;" viewBox="0 0 24 24"><path d="M3 21V9l5-4v16H3zm6 0V7l6-5v19H9zm8 0V5l4-3v19h-4z"/></svg></div>
     <div class="bp-header-info">
       <div class="bp-header-name">LIRE Help Concierge</div>
       <div class="bp-header-status">

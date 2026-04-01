@@ -221,12 +221,34 @@ Response + Action Log
 
 ---
 
-## 12. Relationship to Host Help
+## 12. Multi-Tenant Architecture
+
+LIRE Help follows the same multi-tenant pattern established by Host Help (capitan-dd). Each vertical is a fork of the platform engine, and each client gets their own tenant subdomain with a dedicated AI agent.
+
+### Platform Structure
+
+```
+capitan-dd (platform engine)
+├── Host Help (hospitality vertical) — host-help.com
+│   ├── app.host-help.com/dashboard          → Platform admin
+│   └── sancibrian.host-help.com/dashboard   → Tenant #1 (Cabaña Sancibrian, agent: El Capitán)
+│
+└── LIRE Help (industrial vertical) — lire-help.com
+    ├── app.lire-help.com/dashboard          → Platform admin
+    └── berkeley.lire-help.com/dashboard     → Tenant #1 (Berkeley Partners, agent: TBD)
+```
+
+### URL Pattern (standard for all verticals)
+- `app.<vertical>.com/dashboard` — Platform admin dashboard
+- `<tenant>.<vertical>.com/dashboard` — Tenant-specific dashboard with dedicated AI agent
+
+### Relationship Table
 
 | | Host Help | LIRE |
 |---|---|---|
 | **Segment** | Short-term rental hosts | Industrial landlords |
-| **Agent Name** | Capitán DD (Sancibrian) | TBD |
+| **Tenant #1** | Cabaña Sancibrian | Berkeley Partners |
+| **Agent Name** | El Capitán (Sancibrian) | TBD |
 | **Primary Channel** | WhatsApp | WhatsApp + Email |
 | **Core Problem** | Guest experience + ops | Tenant ops + compliance |
 | **AI Stack** | Claude API (Sonnet + Haiku) | Claude API (Sonnet + Haiku) |
