@@ -355,6 +355,19 @@ RESTRICTIONS:
   });
 
   // ─── Diagnostic (temporary) ───────────────────────────────────────────────
+  app.get("/api/debug-data", async (_req: Request, res: Response) => {
+    try {
+      const { db } = await import("./server/db.js");
+      const schema = await import("./shared/schema.js");
+      const t = await db.select().from(schema.tenants);
+      const p = await db.select().from(schema.properties);
+      const a = await db.select().from(schema.agents);
+      res.json({ tenants: t.length, properties: p.length, agents: a.length, firstTenant: t[0] ?? null });
+    } catch (err: unknown) {
+      res.status(500).json({ error: String(err) });
+    }
+  });
+
   app.get("/api/debug-session", async (req: Request, res: Response) => {
     const results: Record<string, unknown> = {};
     try {
