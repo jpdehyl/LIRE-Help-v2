@@ -2085,7 +2085,7 @@
       isTyping = false;
       document.getElementById('bpSendBtn').disabled = false;
 
-      var reply = data.response || 'Something went wrong. Please try again.';
+      var reply = data.response || data.detail || data.error || 'Something went wrong. Please try again.';
       addBotMsg(reply);
       messages.push({ role: 'assistant', content: reply });
       exchangeCount++;

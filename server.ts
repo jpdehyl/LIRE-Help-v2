@@ -328,8 +328,8 @@ RESTRICTIONS:
 
       if (!upstream.ok) {
         const err = await upstream.text();
-        console.error("Anthropic error:", err);
-        return res.status(502).json({ error: "upstream_error" });
+        console.error("Anthropic error:", upstream.status, err);
+        return res.status(502).json({ error: "upstream_error", detail: err });
       }
 
       const data = (await upstream.json()) as {
