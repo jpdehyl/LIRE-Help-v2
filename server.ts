@@ -5,8 +5,9 @@ import express, { type Request, type Response } from "express";
 import helmet from "helmet";
 import path from "path";
 
-// In ESM: use import.meta.url; in CJS (esbuild output): __dirname is available
-const root = typeof __dirname !== "undefined" ? __dirname : path.dirname(new URL(import.meta.url).pathname);
+// In CJS (esbuild output): __dirname = dist/, so resolve project root one level up
+const bundleDir = typeof __dirname !== "undefined" ? __dirname : path.dirname(new URL(import.meta.url).pathname);
+const root = path.resolve(bundleDir, "..");
 
 async function main() {
   const app = express();
