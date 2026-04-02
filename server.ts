@@ -50,10 +50,16 @@ async function main() {
   const ConnectPgSimple = (await import("connect-pg-simple")).default;
   const PgSession = ConnectPgSimple(session);
 
+  const { Pool } = await import("pg");
+  const sessionPool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: !isDev ? { rejectUnauthorized: false } : undefined,
+  });
+
   app.use(
     session({
       store: new PgSession({
-        conString: process.env.DATABASE_URL,
+        pool: sessionPool,
         tableName: "staff_sessions",
         createTableIfMissing: true,
       }),

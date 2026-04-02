@@ -46,7 +46,7 @@ router.post("/logout", (req, res) => {
   req.session.destroy(() => {
     const isDev = process.env.NODE_ENV !== "production";
     res.clearCookie("connect.sid", {
-      domain: isDev ? undefined : (process.env.COOKIE_DOMAIN ?? ".lire-help.com"),
+      domain: process.env.COOKIE_DOMAIN || undefined,
     });
     res.json({ ok: true });
   });
