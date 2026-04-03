@@ -148,7 +148,19 @@
       transition: background 0.15s, transform 0.1s;
     }
     .nav-cta:hover { background: var(--steel-mid); transform: translateY(-1px); }
-    @media (max-width: 768px) { .nav-links { display: none; } }
+    .nav-hamburger {
+      display: none; background: none; border: none; cursor: pointer;
+      padding: 6px; color: var(--gray-4); flex-shrink: 0;
+    }
+    .nav-hamburger svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    @media (max-width: 768px) {
+      .nav-links { display: none; position: absolute; top: 64px; left: 0; right: 0; background: rgba(15,23,42,0.97); backdrop-filter: blur(12px); flex-direction: column; padding: 16px 24px; gap: 12px; z-index: 99; }
+      .nav-links.open { display: flex; }
+      .nav-links a { color: rgba(255,255,255,0.85); font-size: 1rem; }
+      .nav-hamburger { display: block; }
+      [data-theme="light"] .nav-links { background: rgba(255,255,255,0.97); }
+      [data-theme="light"] .nav-links a { color: #334155; }
+    }
 
     /* ── Hero ── */
     .hero {
@@ -1176,6 +1188,9 @@
     <li><a href="#concierge">Live Demo</a></li>
     <li><a href="#pricing">Pricing</a></li>
   </ul>
+  <button class="nav-hamburger" id="navHamburger" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Menu">
+    <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
   <div style="display:flex;align-items:center;gap:8px;">
     <a href="#concierge" class="nav-cta">Try Demo</a>
     <a href="/es/" class="lang-toggle" aria-label="Español">ES</a>
@@ -2171,10 +2186,25 @@
     });
   };
 
+  function simpleMarkdown(text) {
+    // Sanitize HTML entities first
+    var s = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    // Bold: **text**
+    s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    // Numbered lists: lines starting with "1. ", "2. " etc
+    s = s.replace(/^(\d+)\.\s+(.+)$/gm, '<li>$2</li>');
+    if (s.indexOf('<li>') !== -1) s = s.replace(/(<li>.*<\/li>)/gs, '<ol style="margin:4px 0;padding-left:18px;">$1</ol>');
+    // Bullet lists: lines starting with "- "
+    s = s.replace(/^-\s+(.+)$/gm, '<li>$1</li>');
+    // Line breaks
+    s = s.replace(/\n/g, '<br>');
+    return s;
+  }
+
   function addBotMsg(text) {
     var el = document.createElement('div');
     el.className = 'bp-msg bot';
-    el.textContent = text;
+    el.innerHTML = simpleMarkdown(text);
     append(el);
   }
 
