@@ -1994,6 +1994,17 @@
   .bp-send:hover { background: #3B82F6; transform: scale(1.06); }
   .bp-send:disabled { opacity: 0.5; cursor: default; }
   .bp-send svg { width: 15px; height: 15px; stroke: #fff; fill: none; stroke-width: 2; }
+  .bp-mic {
+    width: 36px; height: 36px;
+    background: #1E293B; border: 1px solid #334155;
+    border-radius: 50%; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    font-size: 1rem; line-height: 1;
+  }
+  .bp-mic:hover { background: #334155; transform: scale(1.06); }
+  .bp-mic.listening { background: #ef4444; border-color: #ef4444; animation: bpMicPulse 1.5s infinite; }
+  @keyframes bpMicPulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.4)} 50%{box-shadow:0 0 0 8px rgba(239,68,68,0)} }
 </style>
 
 <!-- Toggle button -->
@@ -2027,6 +2038,7 @@
   </div>
 
   <div class="bp-input-row">
+    <button class="bp-mic" id="bpMic" onclick="bpMicToggle()" aria-label="Voice input" title="Speak" style="display:none">🎙️</button>
     <input class="bp-input" id="bpInput" type="text"
            placeholder="Ask about dock hours, maintenance, lease..."
            onkeydown="if(event.key==='Enter')bpSend()" />
@@ -2043,6 +2055,63 @@
   var sessionId = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36));
   var isOpen = false;
   var isTyping = false;
+  var bpRecognition = null;
+  var bpListening = false;
+
+  // Show mic button if browser supports Speech Recognition
+  var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (SpeechRec) {
+    document.getElementById('bpMic').style.display = 'flex';
+  }
+
+  window.bpMicToggle = function() {
+    if (!SpeechRec) return;
+    var mic = document.getElementById('bpMic');
+    var input = document.getElementById('bpInput');
+
+    if (bpListening) {
+      if (bpRecognition) bpRecognition.stop();
+      bpListening = false;
+      mic.classList.remove('listening');
+      mic.title = 'Speak';
+      input.placeholder = 'Ask about dock hours, maintenance, lease...';
+      input.style.borderColor = '';
+      return;
+    }
+
+    var recognition = new SpeechRec();
+    recognition.lang = 'en-US';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    bpRecognition = recognition;
+
+    recognition.onstart = function() {
+      bpListening = true;
+      mic.classList.add('listening');
+      mic.title = 'Stop';
+      input.placeholder = '🎙️ Listening...';
+      input.style.borderColor = '#ef4444';
+    };
+    recognition.onend = function() {
+      bpListening = false;
+      mic.classList.remove('listening');
+      mic.title = 'Speak';
+      input.placeholder = 'Ask about dock hours, maintenance, lease...';
+      input.style.borderColor = '';
+    };
+    recognition.onerror = function() {
+      bpListening = false;
+      mic.classList.remove('listening');
+      input.placeholder = 'Ask about dock hours, maintenance, lease...';
+      input.style.borderColor = '';
+    };
+    recognition.onresult = function(e) {
+      var transcript = e.results[0][0].transcript;
+      input.value = input.value ? input.value + ' ' + transcript : transcript;
+      input.focus();
+    };
+    recognition.start();
+  };
 
   window.bpToggle = function() {
     isOpen = !isOpen;
