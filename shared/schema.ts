@@ -18,7 +18,6 @@ export const tenants = pgTable("tenants", {
   timezone: text("timezone").default("America/Los_Angeles"),
   isActive: boolean("is_active").default(true).notNull(),
   trialEndsAt: timestamp("trial_ends_at"),
-  monthlyBudgetUsd: text("monthly_budget_usd"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

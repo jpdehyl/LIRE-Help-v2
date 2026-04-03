@@ -66,7 +66,7 @@ router.get("/", requireAdmin, async (req, res) => {
       // 6. Per-tenant metrics
       db.execute(sql`
         SELECT
-          t.id as tenant_id, t.name, t.monthly_budget_usd,
+          t.id as tenant_id, t.name,
           COALESCE(tk.tokens, 0)::int as tokens,
           COALESCE(tk.cost, '0') as cost,
           COALESCE(ps.convos, 0)::int as conversations,
@@ -128,7 +128,7 @@ router.get("/", requireAdmin, async (req, res) => {
         tokens: r.tokens,
         cost: parseFloat(r.cost || "0").toFixed(2),
         escalationRate: parseFloat((r.escalation_rate || 0).toFixed(2)),
-        monthlyBudgetUsd: r.monthly_budget_usd,
+        monthlyBudgetUsd: null,
       })),
       projection: {
         monthlyEstimate: (dailyAvg * 30).toFixed(2),
