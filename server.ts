@@ -160,11 +160,27 @@ async function main() {
     }
   });
 
-  // ─── System Prompt (concierge) ────────────────────────────────────────────
+  // ─── System Prompt (concierge) — base instructions + dynamic KB ───────────
 
-  const SYSTEM_PROMPT = `You are the LIRE Help Concierge — an AI-powered tenant assistant for light industrial real estate properties.
+  async function buildSystemPrompt(): Promise<string> {
+    // Fetch KB entries from database
+    let kbContent = "";
+    try {
+      const { getPlatformKnowledge } = await import("./server/storage.js");
+      const entries = await getPlatformKnowledge();
+      if (entries.length > 0) {
+        kbContent = "\n\nPROPERTY KNOWLEDGE BASE (from database — this is your source of truth):\n\n" +
+          entries.map(e => `## ${e.title}\n${e.content}`).join("\n\n");
+      }
+    } catch (err) {
+      console.error("[chat] KB fetch error:", err);
+    }
+
+    return `You are the LIRE Help Concierge — an AI-powered tenant assistant for light industrial real estate properties.
 
 Your mission: help tenants get answers fast, submit maintenance requests, and navigate their lease and property details — 24/7, without waiting on hold or sending emails into a void.
+
+${kbContent ? "IMPORTANT: Use the PROPERTY KNOWLEDGE BASE below as your primary source of truth. If info is in the KB, use it. If not in the KB, say you don't have that specific information and offer to escalate." : ""}
 
 ABOUT LIRE HELP:
 - LIRE Help (Light Industrial Real Estate Help) is an AI operations platform for property managers
@@ -215,56 +231,7 @@ KEY SERVICES YOU PROVIDE:
    - Neighbor contact protocols (noise, shared spaces)
    - Property management team directory
 
-DEMO PROPERTY — OAKLAND GATEWAY INDUSTRIAL PARK:
-- Address: 1200 Maritime Street, Oakland, CA 94607
-- Type: Multi-tenant light industrial / warehouse complex
-- Total area: 185,000 sq ft across 12 units (8,000–25,000 sq ft each)
-- Loading docks: 18 grade-level doors + 6 dock-high positions
-- Clear height: 24 ft
-- Power: 400A 3-phase per unit
-- Parking: 120 spaces + 8 trailer staging positions
-- Security: 24/7 camera surveillance, gated entry with key card access
-- Property Manager: Sarah Chen (sarah@oaklandgateway.com)
-- Emergency Maintenance: (510) 555-0142
-- Leasing: Mike Torres (mike@oaklandgateway.com)
-
-LOADING DOCK RULES:
-- Dock hours: Monday–Saturday, 6:00 AM – 10:00 PM
-- Overnight parking of trailers requires 48-hour advance notice
-- Maximum trailer dwell time: 4 hours at dock positions
-- Shared dock scheduling via the tenant portal or this concierge
-- No idling engines beyond 5 minutes (BAAQMD regulation)
-
-HVAC & MAINTENANCE SCHEDULES:
-- HVAC preventive maintenance: quarterly (Jan, Apr, Jul, Oct) — tenants notified 7 days in advance
-- Roof inspections: semi-annual (March, September)
-- Fire sprinkler testing: annual (February) — requires clear 18" below sprinkler heads
-- Parking lot sweeping: weekly (Sundays, 6–9 AM)
-- Landscaping: bi-weekly (Tuesdays)
-- Pest control: monthly (first Wednesday) — interior treatment available on request
-
-EMERGENCY CONTACTS:
-- Fire/Police/Medical: 911
-- Property Emergency Line (24/7): (510) 555-0142
-- Water leak / flooding: Call emergency line → maintenance dispatched within 30 min
-- Power outage: Check PG&E outage map first → if building-specific, call emergency line
-- Security concern: Call emergency line + activate panic button at main entrance
-
-RENT & LEASE INFO:
-- Lease type: NNN (Triple Net) — tenant pays base rent + proportional share of taxes, insurance, and CAM
-- CAM charges typically include: landscaping, parking lot maintenance, security, common area utilities, property management fee
-- Rent due: 1st of each month, 5-day grace period
-- Payment: Online portal (portal.oaklandgateway.com), ACH, or check
-- Late fee: 5% after the 5th
-- Lease renewal: management reaches out 180 days before expiration
-- TI requests: submit via property manager, typical approval 2–4 weeks
-
-PEST CONTROL:
-- Exterior perimeter treatment: monthly
-- Interior treatment: available on request (schedule via this concierge)
-- Rodent bait stations: checked monthly at all dock doors
-- Tenant responsibility: keep dock doors closed when not in active use, no food storage in warehouse areas
-- Report pest sightings immediately — we respond within 24 hours
+${kbContent}
 
 TONE AND STYLE:
 - Professional but approachable — think "helpful building manager who actually responds"
@@ -327,9 +294,10 @@ Then confirm with a ticket summary and expected response time.
 RESTRICTIONS:
 - NEVER mention that you are Claude, Anthropic, GPT, OpenAI, or any external AI model
 - You are the LIRE Help Concierge — if asked about the technology, say it's a proprietary AI platform built by DeHyl for light industrial property management
-- Do not make up property details, contacts, or procedures not in this prompt
+- Do not make up property details, contacts, or procedures not in the Knowledge Base above
 - Do not provide legal advice — direct lease disputes to the property manager
 - Do not share other tenants' information`;
+  }
 
   // ─── Rate limiting (chat endpoint) ─────────────────────────────────────────
 
@@ -362,7 +330,7 @@ RESTRICTIONS:
         body: JSON.stringify({
           model: "claude-haiku-4-5-20251001",
           max_tokens: 512,
-          system: SYSTEM_PROMPT,
+          system: await buildSystemPrompt(),
           messages: trimmed,
         }),
       });
@@ -408,61 +376,6 @@ RESTRICTIONS:
 
   app.get("/api/health", (_req: Request, res: Response) => {
     res.json({ status: "ok", service: "lire-help" });
-  });
-
-  // ─── Diagnostic (temporary) ───────────────────────────────────────────────
-  app.get("/api/debug-data", async (req: Request, res: Response) => {
-    try {
-      const { db } = await import("./server/db.js");
-      const schema = await import("./shared/schema.js");
-      const t = await db.select().from(schema.tenants);
-      const p = await db.select().from(schema.properties);
-      const a = await db.select().from(schema.agents);
-      const sess = req.session as any;
-      res.json({
-        tenants: t.length, properties: p.length, agents: a.length,
-        firstTenant: t[0] ?? null,
-        session: { staffId: sess?.staffId, staffRole: sess?.staffRole, staffTenantId: sess?.staffTenantId },
-      });
-    } catch (err: unknown) {
-      res.status(500).json({ error: String(err) });
-    }
-  });
-
-  app.get("/api/debug-session", async (req: Request, res: Response) => {
-    const results: Record<string, unknown> = {};
-    try {
-      // Test 1: Can pg Pool connect?
-      const poolRes = await sessionPool.query("SELECT 1 as connected");
-      results.poolConnect = poolRes.rows[0];
-
-      // Test 2: Does staff_sessions table exist?
-      const tableCheck = await sessionPool.query(
-        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='staff_sessions')"
-      );
-      results.staffSessionsTable = tableCheck.rows[0];
-
-      // Test 3: Session object state
-      results.sessionID = req.sessionID;
-      results.sessionExists = !!req.session;
-
-      // Test 4: Try session save
-      (req.session as any).testWrite = Date.now();
-      await new Promise<void>((resolve, reject) => {
-        req.session.save((err) => {
-          if (err) {
-            results.sessionSaveError = String(err);
-            reject(err);
-          } else {
-            results.sessionSave = "OK";
-            resolve();
-          }
-        });
-      });
-    } catch (err: unknown) {
-      results.error = String(err);
-    }
-    res.json(results);
   });
 
   // ─── One-time setup (push schema + seed superadmin) ───────────────────────
