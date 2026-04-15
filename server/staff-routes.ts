@@ -81,9 +81,12 @@ router.patch("/:id", requireStaff, async (req, res) => {
       updates.passwordHash = await hashPassword(password);
     }
 
+    const userId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    if (!userId) return res.status(400).json({ message: "User id is required" });
+
     const where = isSuperadmin
-      ? eq(staffUsers.id, req.params.id!)
-      : and(eq(staffUsers.id, req.params.id!), eq(staffUsers.tenantId, sess.staffTenantId));
+      ? eq(staffUsers.id, userId)
+      : and(eq(staffUsers.id, userId), eq(staffUsers.tenantId, sess.staffTenantId));
     const [updated] = await db.update(staffUsers).set(updates).where(where).returning();
     if (!updated) return res.status(404).json({ message: "User not found" });
     res.json(safeUser(updated));
@@ -99,9 +102,12 @@ router.delete("/:id", requireStaff, async (req, res) => {
     const isOwner = sess.staffRole === "owner";
     if (!isSuperadmin && !isOwner) return res.status(403).json({ message: "Insufficient permissions" });
 
+    const userId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    if (!userId) return res.status(400).json({ message: "User id is required" });
+
     const where = isSuperadmin
-      ? eq(staffUsers.id, req.params.id!)
-      : and(eq(staffUsers.id, req.params.id!), eq(staffUsers.tenantId, sess.staffTenantId));
+      ? eq(staffUsers.id, userId)
+      : and(eq(staffUsers.id, userId), eq(staffUsers.tenantId, sess.staffTenantId));
     const [updated] = await db.update(staffUsers).set({ isActive: false, updatedAt: new Date() }).where(where).returning();
     if (!updated) return res.status(404).json({ message: "User not found" });
     res.json({ ok: true });

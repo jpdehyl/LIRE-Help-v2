@@ -1,27 +1,79 @@
-import { Route, Switch, Redirect } from "wouter";
+import type { ReactNode } from "react";
+import { Redirect, Route, Switch } from "wouter";
 import { AuthProvider, useAuth } from "./lib/auth";
-import PlatformDashboard from "./pages/platform-dashboard";
+import DashboardPage from "./pages/dashboard";
+import InboxPage from "./pages/inbox";
 import LoginPage from "./pages/login";
+import PlatformDashboard from "./pages/platform-dashboard";
+import TicketsPage from "./pages/tickets";
+import CustomersPage from "./pages/customers";
+import SettingsPage from "./pages/settings";
 
-function ProtectedRoute({ component: Component }: { component: React.ComponentType<any> }) {
+function LoadingScreen() {
+  return <div className="flex min-h-screen items-center justify-center text-gray-400">Loading...</div>;
+}
+
+function RequireAuth({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
-  if (loading) return <div className="flex items-center justify-center min-h-screen text-gray-400">Loading...</div>;
+
+  if (loading) return <LoadingScreen />;
   if (!user) return <Redirect to="/login" />;
-  return <Component />;
+
+  return <>{children}</>;
 }
 
 function AppRoutes() {
   const { user, loading } = useAuth();
-  if (loading) return <div className="flex items-center justify-center min-h-screen text-gray-400">Loading...</div>;
+
+  if (loading) return <LoadingScreen />;
 
   return (
     <Switch>
       <Route path="/login">
         {user ? <Redirect to="/dashboard" /> : <LoginPage />}
       </Route>
+
+      {/* Phase 1 workspace route group: shell-backed operator surfaces */}
       <Route path="/dashboard">
-        <ProtectedRoute component={PlatformDashboard} />
+        <RequireAuth>
+          <DashboardPage />
+        </RequireAuth>
       </Route>
+      <Route path="/inbox/:viewId">
+        {(params) => (
+          <RequireAuth>
+            <InboxPage viewId={params.viewId} />
+          </RequireAuth>
+        )}
+      </Route>
+      <Route path="/inbox">
+        <RequireAuth>
+          <InboxPage />
+        </RequireAuth>
+      </Route>
+      <Route path="/tickets">
+        <RequireAuth>
+          <TicketsPage />
+        </RequireAuth>
+      </Route>
+      <Route path="/customers">
+        <RequireAuth>
+          <CustomersPage />
+        </RequireAuth>
+      </Route>
+      <Route path="/settings">
+        <RequireAuth>
+          <SettingsPage />
+        </RequireAuth>
+      </Route>
+
+      {/* Legacy platform admin preserved during redesign */}
+      <Route path="/platform-dashboard">
+        <RequireAuth>
+          <PlatformDashboard />
+        </RequireAuth>
+      </Route>
+
       <Route>
         {user ? <Redirect to="/dashboard" /> : <Redirect to="/login" />}
       </Route>
