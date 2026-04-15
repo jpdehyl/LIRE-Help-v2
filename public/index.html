@@ -1,2241 +1,834 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
-  <script>document.documentElement.setAttribute('data-theme',localStorage.getItem('lire-theme')||'dark')</script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LIRE Help — AI-Powered 24/7 Property Management for Light Industrial Real Estate</title>
-  <meta name="description" content="LIRE Help scales light industrial operations with an AI-powered 24/7 property management team. Tenant comms, maintenance dispatch, compliance — autonomous at scale." />
-
-  <!-- Open Graph -->
+  <title>LIRE Help — Customer operations workspace for industrial teams</title>
+  <meta name="description" content="LIRE Help gives industrial operators an Intercom-style support layer for tenant conversations, triage, and follow-through without changing existing workflows." />
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="LIRE Help — Scaling Industrial Intelligence" />
-  <meta property="og:description" content="AI-powered 24/7 property management team for light industrial portfolios. Autonomous tenant comms, maintenance dispatch, and compliance." />
+  <meta property="og:title" content="LIRE Help — Customer operations workspace" />
+  <meta property="og:description" content="A cleaner support workspace for industrial teams handling conversations, tickets, and operational follow-through." />
   <meta property="og:locale" content="en_US" />
-
-  <!-- Favicon -->
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%232563EB'/><path d='M25 70V40l15-12v42H25zm17 0V35l16-13v48H42zm18 0V30l15-10v50H60z' fill='white'/></svg>" />
-
-  <!-- Schema.org JSON-LD -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "name": "LIRE Help",
-    "description": "AI-powered 24/7 property management platform for light industrial real estate. Autonomous tenant communications, maintenance dispatch, and portfolio compliance.",
-    "applicationCategory": "BusinessApplication",
-    "operatingSystem": "Web",
-    "creator": {
-      "@type": "Organization",
-      "name": "DeHyl",
-      "url": "https://dehyl.ca"
-    },
-    "inLanguage": "en"
-  }
-  </script>
-
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23111627'/><path d='M25 72V42l15-12v42H25zm18 0V36l16-13v49H43zm19 0V31l14-10v51H62z' fill='%23ffffff'/></svg>" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
-
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --ink:         #0F172A;
-      --ink-2:       #1E293B;
-      --ink-3:       #334155;
-      --slate:       #0F2942;
-      --steel:       #2563EB;
-      --steel-mid:   #3B82F6;
-      --steel-light: #60A5FA;
-      --steel-glow:  rgba(37,99,235,0.18);
-      --warm:        #F59E0B;
-      --warm-light:  #FCD34D;
-      --gray-1:      #F8FAFC;
-      --gray-2:      #E2E8F0;
-      --gray-3:      #94A3B8;
-      --gray-4:      #64748B;
-      --white:       #FFFFFF;
+      --bg: #f4f7f8;
+      --surface: #ffffff;
+      --surface-muted: #f7f8fa;
+      --line: #dfe5ea;
+      --line-strong: #c9d3dc;
+      --text: #111827;
+      --muted: #5c6b7a;
+      --muted-2: #7a8896;
+      --accent: #111827;
+      --accent-soft: #ebeff3;
+      --green: #0f766e;
+      --shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
+      --radius-xl: 28px;
+      --radius-lg: 20px;
+      --radius-md: 14px;
+      --content: 1180px;
     }
 
+    * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
-
     body {
+      margin: 0;
       font-family: 'Inter', system-ui, sans-serif;
-      background: var(--white);
-      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(17,24,39,0.05), transparent 26%),
+        linear-gradient(180deg, #fbfcfd 0%, var(--bg) 100%);
+      color: var(--text);
       -webkit-font-smoothing: antialiased;
     }
+    a { color: inherit; }
 
-    /* ── Reveal animations ── */
-    .reveal {
-      opacity: 0;
-      transform: translateY(28px);
-      transition: opacity 0.65s ease, transform 0.65s ease;
+    .container {
+      width: min(var(--content), calc(100% - 32px));
+      margin: 0 auto;
     }
-    .reveal.visible { opacity: 1; transform: translateY(0); }
-    .reveal-delay-1 { transition-delay: 0.1s; }
-    .reveal-delay-2 { transition-delay: 0.2s; }
-    .reveal-delay-3 { transition-delay: 0.3s; }
-    .reveal-delay-4 { transition-delay: 0.4s; }
 
-    /* ── Nav ── */
-    nav {
+    .site-nav {
       position: sticky;
       top: 0;
       z-index: 100;
-      background: rgba(255,255,255,0.94);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      border-bottom: 1px solid var(--gray-2);
-      padding: 0 24px;
-      height: 64px;
+      backdrop-filter: blur(18px);
+      background: rgba(244,247,248,0.86);
+      border-bottom: 1px solid rgba(201,211,220,0.7);
+    }
+    .site-nav-inner {
+      height: 74px;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 20px;
     }
-    .nav-logo {
-      display: flex;
+    .brand {
+      display: inline-flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
       text-decoration: none;
-    }
-    .nav-logo-icon {
-      width: 36px;
-      height: 36px;
-      background: var(--steel);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.1rem;
-    }
-    .nav-logo-icon svg { width: 20px; height: 20px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .icon-inline { width: 1em; height: 1em; vertical-align: -0.125em; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .nav-logo-text {
-      font-size: 1.05rem;
       font-weight: 700;
-      color: var(--ink);
-      letter-spacing: -0.01em;
+      letter-spacing: -0.02em;
     }
-    .nav-logo-text span { color: var(--steel); }
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background: var(--accent);
+      display: grid;
+      place-items: center;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
+    }
+    .brand-mark svg { width: 20px; height: 20px; stroke: white; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .brand-copy small {
+      display: block;
+      color: var(--muted-2);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      margin-bottom: 2px;
+    }
+    .brand-copy span { font-size: 16px; }
+
     .nav-links {
       display: flex;
       align-items: center;
-      gap: 28px;
-      list-style: none;
+      gap: 24px;
+      color: var(--muted);
+      font-size: 14px;
     }
     .nav-links a {
-      font-size: 0.875rem;
+      text-decoration: none;
       font-weight: 500;
-      color: var(--gray-4);
-      text-decoration: none;
-      transition: color 0.15s;
     }
-    .nav-links a:hover { color: var(--ink); }
-    .nav-cta {
-      background: var(--steel);
-      color: var(--white);
-      font-family: inherit;
-      font-size: 0.875rem;
-      font-weight: 600;
-      padding: 10px 20px;
-      border-radius: 8px;
-      text-decoration: none;
-      border: none;
-      cursor: pointer;
-      transition: background 0.15s, transform 0.1s;
-    }
-    .nav-cta:hover { background: var(--steel-mid); transform: translateY(-1px); }
-    .nav-hamburger {
-      display: none; background: none; border: none; cursor: pointer;
-      padding: 6px; color: var(--gray-4); flex-shrink: 0;
-    }
-    .nav-hamburger svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    @media (max-width: 768px) {
-      .nav-links { display: none; position: absolute; top: 64px; left: 0; right: 0; background: rgba(15,23,42,0.97); backdrop-filter: blur(12px); flex-direction: column; padding: 16px 24px; gap: 12px; z-index: 99; }
-      .nav-links.open { display: flex; }
-      .nav-links a { color: rgba(255,255,255,0.85); font-size: 1rem; }
-      .nav-hamburger { display: block; }
-      [data-theme="light"] .nav-links { background: rgba(255,255,255,0.97); }
-      [data-theme="light"] .nav-links a { color: #334155; }
+    .nav-links a:hover { color: var(--text); }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
 
-    /* ── Hero ── */
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 44px;
+      padding: 0 18px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      border: 1px solid transparent;
+      transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+    .button:hover { transform: translateY(-1px); }
+    .button-primary {
+      background: var(--accent);
+      color: white;
+      box-shadow: 0 10px 30px rgba(17, 24, 39, 0.15);
+    }
+    .button-secondary {
+      background: rgba(255,255,255,0.75);
+      color: var(--text);
+      border-color: var(--line);
+    }
+
     .hero {
-      background: linear-gradient(180deg, var(--slate) 0%, #162d4a 60%, #1a3555 100%);
-      color: var(--white);
-      padding: 72px 24px 10px;
-      text-align: center;
-      position: relative;
-      overflow: hidden;
+      padding: 56px 0 44px;
     }
-    .hero-glow {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      background:
-        radial-gradient(ellipse 70% 45% at 50% 0%, rgba(37,99,235,0.22) 0%, transparent 65%),
-        radial-gradient(ellipse 40% 30% at 20% 80%, rgba(96,165,250,0.06) 0%, transparent 60%);
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr);
+      gap: 30px;
+      align-items: center;
     }
-    .hero-inner {
-      position: relative;
-      max-width: 800px;
-      margin: 0 auto;
-      z-index: 2;
-    }
-    .hero-badge {
+    .eyebrow {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      background: rgba(96,165,250,0.12);
-      border: 1px solid rgba(96,165,250,0.3);
-      color: var(--steel-light);
+      min-height: 34px;
+      padding: 0 14px;
       border-radius: 999px;
-      padding: 6px 16px;
-      font-size: 0.75rem;
+      background: rgba(255,255,255,0.8);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      margin-bottom: 28px;
     }
-    .hero-badge-dot {
-      width: 7px; height: 7px;
-      background: var(--steel-light);
-      border-radius: 50%;
-      animation: livePulse 2s infinite;
-      flex-shrink: 0;
+    .eyebrow-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--green);
+      box-shadow: 0 0 0 5px rgba(15,118,110,0.12);
     }
-    @keyframes livePulse {
-      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(96,165,250,0.6); }
-      50% { opacity: 0.7; box-shadow: 0 0 0 5px rgba(96,165,250,0); }
-    }
-    .hero h1 {
-      font-family: 'Instrument Serif', Georgia, serif;
-      font-size: clamp(2.6rem, 6vw, 4.2rem);
-      font-weight: 400;
-      letter-spacing: -0.01em;
-      line-height: 1.12;
-      margin-bottom: 10px;
-    }
-    .hero h1 .hero-accent {
-      display: block;
-      color: var(--steel-light);
-      font-style: italic;
+    h1 {
+      margin: 20px 0 16px;
+      font-size: clamp(2.7rem, 5vw, 4.6rem);
+      line-height: 0.98;
+      letter-spacing: -0.05em;
+      max-width: 640px;
     }
     .hero p {
-      font-size: clamp(1rem, 2vw, 1.18rem);
-      color: rgba(255,255,255,0.65);
-      line-height: 1.75;
-      max-width: 620px;
-      margin: 14px auto 24px;
+      max-width: 590px;
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.72;
+      color: var(--muted);
     }
-    .hero-btns {
+    .hero-actions {
+      margin-top: 28px;
       display: flex;
-      gap: 12px;
-      justify-content: center;
       flex-wrap: wrap;
-    }
-    .btn-primary {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: var(--steel);
-      color: var(--white);
-      font-family: inherit;
-      font-size: 0.98rem;
-      font-weight: 700;
-      padding: 15px 32px;
-      border-radius: 10px;
-      text-decoration: none;
-      border: none;
-      cursor: pointer;
-      transition: background 0.15s, transform 0.1s;
-    }
-    .btn-primary:hover { background: var(--steel-mid); transform: translateY(-2px); }
-    .btn-ghost {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(255,255,255,0.08);
-      color: rgba(255,255,255,0.85);
-      font-family: inherit;
-      font-size: 0.98rem;
-      font-weight: 600;
-      padding: 15px 32px;
-      border-radius: 10px;
-      text-decoration: none;
-      border: 1px solid rgba(255,255,255,0.15);
-      transition: background 0.15s, border-color 0.15s;
-    }
-    .btn-ghost:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.3); }
-
-    /* ── Skyline SVG ── */
-    .hero-skyline {
-      position: relative;
-      margin-top: 20px;
-    }
-    .hero-skyline svg { width: 100%; height: auto; display: block; max-height: 120px; }
-
-    /* ── Stats strip ── */
-    .stats-strip {
-      background: var(--ink);
-      padding: 40px 24px;
-      border-bottom: 1px solid var(--ink-3);
-    }
-    .stats-inner {
-      max-width: 900px;
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 32px;
-      text-align: center;
-    }
-    .stat-item {}
-    .stat-number {
-      font-family: 'Instrument Serif', Georgia, serif;
-      font-size: clamp(2.2rem, 5vw, 3.2rem);
-      font-weight: 400;
-      color: var(--steel-light);
-      line-height: 1;
-      margin-bottom: 6px;
-    }
-    .stat-label {
-      font-size: 0.82rem;
-      font-weight: 600;
-      color: rgba(255,255,255,0.45);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-    @media (max-width: 520px) { .stats-inner { grid-template-columns: 1fr; gap: 20px; } }
-
-    /* ── Generic section helpers ── */
-    .dark-bg {
-      background: var(--ink);
-      padding: 56px 24px;
-    }
-    .light-bg {
-      background: var(--gray-1);
-      padding: 56px 24px;
-    }
-    .white-bg {
-      background: var(--white);
-      padding: 56px 24px;
-    }
-    .section-tag {
-      display: inline-block;
-      font-size: 0.72rem;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--steel);
-      margin-bottom: 12px;
-    }
-    .section-tag.light { color: var(--steel-light); }
-    h2 { font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; }
-    h2.white { color: var(--white); }
-    .section-sub { font-size: 1.05rem; color: var(--gray-4); line-height: 1.7; max-width: 620px; margin: 12px auto 48px; }
-    .section-sub.white { color: rgba(255,255,255,0.55); }
-    .section-center { max-width: 1040px; margin: 0 auto; text-align: center; }
-
-    /* ── Four Frictions ── */
-    .friction-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 20px;
-      text-align: left;
-    }
-    .friction-card {
-      background: var(--ink-2);
-      border: 1px solid var(--ink-3);
-      border-radius: 14px;
-      padding: 28px;
-    }
-    .friction-icon { font-size: 1.8rem; margin-bottom: 12px; }
-    .friction-card h3 { font-size: 1.05rem; font-weight: 700; color: var(--white); margin-bottom: 8px; }
-    .friction-card p { font-size: 0.88rem; color: rgba(255,255,255,0.55); line-height: 1.65; }
-
-    /* ── Comparison table ── */
-    .compare-table {
-      width: 100%;
-      max-width: 800px;
-      margin: 0 auto;
-      border-collapse: collapse;
-      text-align: left;
-    }
-    .compare-table th {
-      font-size: 0.72rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      padding: 14px 20px;
-      border-bottom: 2px solid var(--ink-3);
-    }
-    .compare-table th:first-child { color: var(--gray-3); }
-    .compare-table th.legacy { color: var(--gray-3); }
-    .compare-table th.ai { color: var(--steel-light); }
-    .compare-table td {
-      font-size: 0.88rem;
-      padding: 14px 20px;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-      vertical-align: top;
-    }
-    .compare-table td:first-child {
-      font-weight: 600;
-      color: var(--white);
-      width: 160px;
-    }
-    .compare-table td.legacy-cell { color: rgba(255,255,255,0.4); }
-    .compare-table td.ai-cell { color: var(--steel-light); font-weight: 500; }
-
-    /* ── Dark compare (Slide 4) ── */
-    .paradigm-grid {
-      display: grid;
-      grid-template-columns: 1fr 60px 1fr;
-      gap: 0;
-      max-width: 800px;
-      margin: 0 auto;
-      align-items: stretch;
-    }
-    .paradigm-col {
-      padding: 32px;
-      border-radius: 14px;
-    }
-    .paradigm-col.legacy {
-      background: var(--ink-2);
-      border: 1px solid var(--ink-3);
-    }
-    .paradigm-col.ai {
-      background: linear-gradient(135deg, var(--ink-2) 0%, rgba(37,99,235,0.12) 100%);
-      border: 1px solid var(--steel);
-    }
-    .paradigm-arrow {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--steel-light);
-      font-size: 1.8rem;
-    }
-    .paradigm-label {
-      font-size: 0.72rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      margin-bottom: 12px;
-    }
-    .paradigm-col.legacy .paradigm-label { color: var(--gray-3); }
-    .paradigm-col.ai .paradigm-label { color: var(--steel-light); }
-    .paradigm-col h3 {
-      font-size: 1.15rem;
-      font-weight: 700;
-      color: var(--white);
-      margin-bottom: 8px;
-    }
-    .paradigm-col p {
-      font-size: 0.88rem;
-      color: rgba(255,255,255,0.5);
-      line-height: 1.65;
-    }
-    @media (max-width: 700px) {
-      .paradigm-grid { grid-template-columns: 1fr; gap: 16px; }
-      .paradigm-arrow { transform: rotate(90deg); padding: 8px 0; }
-    }
-
-    /* ── Command Center ── */
-    .cc-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 20px;
-      text-align: left;
-    }
-    .cc-card {
-      background: var(--white);
-      border: 1px solid var(--gray-2);
-      border-radius: 14px;
-      padding: 28px;
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-    .cc-card:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
-    .cc-icon { font-size: 1.8rem; margin-bottom: 14px; }
-    .cc-card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; }
-    .cc-card p { font-size: 0.88rem; color: var(--gray-4); line-height: 1.65; }
-    @media (max-width: 768px) { .cc-grid { grid-template-columns: 1fr; } }
-
-    /* ── Digital PM section ── */
-    .dpm-layout {
-      max-width: 1040px;
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 48px;
-      align-items: center;
-    }
-    @media (max-width: 768px) { .dpm-layout { grid-template-columns: 1fr; } }
-    .dpm-features { list-style: none; }
-    .dpm-features li {
-      display: flex;
-      align-items: flex-start;
       gap: 12px;
-      margin-bottom: 16px;
-      font-size: 0.92rem;
-      color: rgba(255,255,255,0.75);
-      line-height: 1.55;
     }
-    .dpm-features .feat-icon {
-      width: 32px; height: 32px; flex-shrink: 0;
-      background: rgba(96,165,250,0.12);
-      border: 1px solid rgba(96,165,250,0.25);
-      border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 0.85rem;
+    .hero-meta {
+      margin-top: 28px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0,1fr));
+      gap: 14px;
     }
-    .dpm-features strong { color: var(--white); }
-    .dpm-chat {
-      background: var(--ink-2);
-      border: 1px solid var(--ink-3);
-      border-radius: 16px;
-      overflow: hidden;
+    .meta-card {
+      padding: 16px 18px;
+      border-radius: var(--radius-md);
+      background: rgba(255,255,255,0.72);
+      border: 1px solid var(--line);
     }
-    .dpm-chat-header {
-      background: var(--slate);
-      padding: 12px 16px;
-      display: flex; align-items: center; gap: 10px;
+    .meta-card strong {
+      display: block;
+      font-size: 26px;
+      letter-spacing: -0.04em;
+      margin-bottom: 4px;
     }
-    .dpm-chat-dot { width: 8px; height: 8px; background: #22c55e; border-radius: 50%; }
-    .dpm-chat-title { font-size: 0.78rem; font-weight: 600; color: rgba(255,255,255,0.7); }
-    .dpm-chat-messages { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
-    .dpm-bubble {
-      max-width: 85%;
-      border-radius: 12px;
-      padding: 10px 14px;
-      font-size: 0.82rem;
-      line-height: 1.55;
+    .meta-card span {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
     }
-    .dpm-bubble.tenant {
-      background: rgba(96,165,250,0.12);
-      color: var(--steel-light);
-      align-self: flex-end;
-      border-bottom-right-radius: 4px;
+
+    .product-frame {
+      background: linear-gradient(180deg, #fdfefe 0%, #eef3f6 100%);
+      border: 1px solid var(--line);
+      border-radius: 32px;
+      padding: 16px;
+      box-shadow: var(--shadow);
     }
-    .dpm-bubble.ai {
-      background: rgba(255,255,255,0.06);
-      color: rgba(255,255,255,0.8);
-      align-self: flex-start;
-      border-bottom-left-radius: 4px;
+    .frame-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 8px 16px;
     }
-    .dpm-bubble-lang {
-      font-size: 0.68rem;
+    .frame-dots { display: flex; gap: 7px; }
+    .frame-dots span {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: #d0d8df;
+    }
+    .frame-toolbar-badge {
+      min-height: 30px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: white;
+      font-size: 12px;
       font-weight: 600;
-      color: var(--gray-3);
-      margin-bottom: 4px;
+      color: var(--muted);
+      display: inline-flex;
+      align-items: center;
     }
-
-    /* ── Workflow timeline (2 AM) ── */
-    .workflow-section {
-      background: linear-gradient(180deg, var(--slate) 0%, #162d4a 100%);
-      padding: 56px 24px;
-      text-align: center;
+    .workspace-mock {
+      display: grid;
+      grid-template-columns: 208px 1fr;
+      gap: 14px;
+      min-height: 520px;
     }
-    .workflow-inner { max-width: 900px; margin: 0 auto; }
-    .wf-timeline {
+    .mock-sidebar,
+    .mock-main,
+    .mock-panel,
+    .mock-card {
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: rgba(255,255,255,0.88);
+    }
+    .mock-sidebar {
+      padding: 18px 14px;
       display: flex;
       flex-direction: column;
-      gap: 0;
-      text-align: left;
-      margin-top: 48px;
-      position: relative;
+      gap: 14px;
     }
-    .wf-timeline::before {
-      content: '';
-      position: absolute;
-      left: 28px;
-      top: 0;
-      bottom: 0;
-      width: 2px;
-      background: linear-gradient(to bottom, var(--steel), rgba(96,165,250,0.15));
+    .mock-sidebar .pill,
+    .mock-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: var(--surface-muted);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
     }
-    .wf-step {
-      display: flex;
-      align-items: flex-start;
-      gap: 20px;
-      padding: 20px 0;
-      position: relative;
+    .mock-nav-item {
+      padding: 12px 14px;
+      border-radius: 18px;
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid transparent;
     }
-    .wf-dot {
-      width: 56px; height: 56px; flex-shrink: 0;
-      background: rgba(37,99,235,0.15);
-      border: 2px solid var(--steel);
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.3rem;
-      z-index: 2;
+    .mock-nav-item.active {
+      background: #111827;
+      color: white;
+      border-color: #111827;
     }
-    .wf-step-content { flex: 1; padding-top: 6px; }
-    .wf-step-time {
-      font-size: 0.72rem;
-      font-weight: 700;
-      color: var(--steel-light);
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      margin-bottom: 4px;
+    .mock-nav-item strong,
+    .mock-row strong,
+    .mock-card strong {
+      display: block;
+      font-size: 13px;
+      line-height: 1.4;
+      letter-spacing: -0.01em;
     }
-    .wf-step-content h3 { font-size: 1.05rem; font-weight: 700; color: var(--white); margin-bottom: 6px; }
-    .wf-step-content p { font-size: 0.88rem; color: rgba(255,255,255,0.55); line-height: 1.6; }
-
-    /* ── Compliance timeline ── */
-    .compliance-grid {
+    .mock-nav-item span,
+    .mock-row span,
+    .mock-card span,
+    .mock-panel span {
+      display: block;
+      margin-top: 4px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: inherit;
+      opacity: 0.76;
+    }
+    .mock-main {
+      padding: 14px;
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 16px;
-      max-width: 900px;
-      margin: 0 auto;
-      text-align: left;
+      grid-template-rows: auto 1fr;
+      gap: 14px;
     }
-    .compliance-card {
-      background: var(--white);
-      border: 1px solid var(--gray-2);
-      border-radius: 14px;
-      padding: 24px;
-      position: relative;
-      overflow: hidden;
-    }
-    .compliance-card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 3px;
-    }
-    .compliance-card.d60::before { background: var(--steel-light); }
-    .compliance-card.d30::before { background: var(--steel); }
-    .compliance-card.d15::before { background: var(--warm); }
-    .compliance-card.d7::before { background: #ef4444; }
-    .compliance-days {
-      font-family: 'Instrument Serif', Georgia, serif;
-      font-size: 1.6rem;
-      font-weight: 400;
-      color: var(--ink);
-      margin-bottom: 4px;
-    }
-    .compliance-card h4 { font-size: 0.82rem; font-weight: 700; color: var(--ink); margin-bottom: 6px; }
-    .compliance-card p { font-size: 0.78rem; color: var(--gray-4); line-height: 1.55; }
-    @media (max-width: 768px) { .compliance-grid { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 480px) { .compliance-grid { grid-template-columns: 1fr; } }
-
-    /* ── 90/10 Split ── */
-    .split-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 24px;
-      max-width: 900px;
-      margin: 0 auto;
-      text-align: left;
-    }
-    .split-col {
-      border-radius: 14px;
-      padding: 32px;
-    }
-    .split-col.ai-col {
-      background: var(--ink-2);
-      border: 1px solid var(--ink-3);
-    }
-    .split-col.human-col {
-      background: linear-gradient(135deg, var(--ink-2) 0%, rgba(245,158,11,0.08) 100%);
-      border: 1px solid rgba(245,158,11,0.3);
-    }
-    .split-pct {
-      font-family: 'Instrument Serif', Georgia, serif;
-      font-size: 2.8rem;
-      font-weight: 400;
-      line-height: 1;
-      margin-bottom: 4px;
-    }
-    .split-col.ai-col .split-pct { color: var(--steel-light); }
-    .split-col.human-col .split-pct { color: var(--warm-light); }
-    .split-col h3 { font-size: 0.88rem; font-weight: 700; color: var(--white); margin-bottom: 16px; }
-    .split-col ul { list-style: none; }
-    .split-col li {
-      font-size: 0.85rem;
-      color: rgba(255,255,255,0.55);
-      padding: 7px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+    .mock-header {
       display: flex;
       align-items: center;
-      gap: 8px;
-    }
-    .split-col li:last-child { border-bottom: none; }
-    .split-col li::before { content: ''; width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
-    .split-col.ai-col li::before { background: var(--steel-light); }
-    .split-col.human-col li::before { background: var(--warm-light); }
-    @media (max-width: 600px) { .split-grid { grid-template-columns: 1fr; } }
-
-    /* ── Learning Engine ── */
-    .engine-flow {
-      display: grid;
-      grid-template-columns: 1fr 48px 1fr 48px 1fr;
-      gap: 0;
-      max-width: 900px;
-      margin: 0 auto;
-      align-items: center;
-    }
-    .engine-step {
-      background: var(--ink-2);
-      border: 1px solid var(--ink-3);
-      border-radius: 14px;
-      padding: 28px;
-      text-align: center;
-    }
-    .engine-step .e-icon { font-size: 2rem; margin-bottom: 12px; }
-    .engine-step h3 { font-size: 0.95rem; font-weight: 700; color: var(--white); margin-bottom: 8px; }
-    .engine-step p { font-size: 0.82rem; color: rgba(255,255,255,0.5); line-height: 1.55; }
-    .engine-arrow { text-align: center; color: var(--steel-light); font-size: 1.6rem; }
-    @media (max-width: 768px) {
-      .engine-flow { grid-template-columns: 1fr; gap: 12px; }
-      .engine-arrow { transform: rotate(90deg); }
-    }
-
-    /* ── How It Works (Onboarding) ── */
-    .section {
-      padding: 56px 24px;
-      text-align: center;
-      max-width: 1040px;
-      margin: 0 auto;
-    }
-    .steps-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 24px;
-      margin-top: 48px;
-      text-align: left;
-    }
-    .step-card {
-      background: var(--white);
-      border: 1px solid var(--gray-2);
-      border-radius: 14px;
-      padding: 28px;
-      position: relative;
-    }
-    .step-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
-    .step-number {
-      width: 36px; height: 36px;
-      background: var(--steel);
-      color: var(--white);
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 0.88rem;
-      font-weight: 800;
-      margin-bottom: 16px;
-    }
-    .step-card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; }
-    .step-card p { font-size: 0.88rem; color: var(--gray-4); line-height: 1.65; }
-
-    /* ── Pricing Tiers ── */
-    .pricing-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 20px;
-      max-width: 960px;
-      margin: 0 auto;
-      text-align: left;
-    }
-    .pricing-card {
-      background: var(--ink-2);
-      border: 1px solid var(--ink-3);
-      border-radius: 14px;
-      padding: 32px;
-      display: flex;
-      flex-direction: column;
-    }
-    .pricing-card.featured {
-      border-color: var(--steel);
-      background: linear-gradient(135deg, var(--ink-2) 0%, rgba(37,99,235,0.08) 100%);
-    }
-    .pricing-badge {
-      display: inline-block;
-      font-size: 0.68rem;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      padding: 4px 10px;
-      border-radius: 6px;
-      margin-bottom: 16px;
-      width: fit-content;
-    }
-    .pricing-card .pricing-badge { background: rgba(255,255,255,0.06); color: var(--gray-3); }
-    .pricing-card.featured .pricing-badge { background: var(--steel); color: var(--white); }
-    .pricing-card h3 { font-size: 1.15rem; font-weight: 700; color: var(--white); margin-bottom: 6px; }
-    .pricing-card .pricing-desc { font-size: 0.82rem; color: rgba(255,255,255,0.45); margin-bottom: 20px; line-height: 1.5; }
-    .pricing-features { list-style: none; flex: 1; }
-    .pricing-features li {
-      font-size: 0.85rem;
-      color: rgba(255,255,255,0.6);
-      padding: 7px 0;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .pricing-features li::before {
-      content: '';
-      width: 6px; height: 6px;
-      background: var(--steel-light);
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-    @media (max-width: 768px) { .pricing-grid { grid-template-columns: 1fr; } }
-
-    /* ── Demo section ── */
-    .demo-section {
-      max-width: 1040px;
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 48px;
-      align-items: center;
-    }
-    @media (max-width: 768px) { .demo-section { grid-template-columns: 1fr; } }
-    .demo-sub { font-size: 1rem; color: var(--gray-4); line-height: 1.7; margin-bottom: 24px; }
-    .demo-bullets { list-style: none; margin-bottom: 32px; }
-    .demo-bullets li {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      margin-bottom: 14px;
-      font-size: 0.92rem;
-      color: var(--ink-2);
-      line-height: 1.55;
-    }
-    .bullet-dot {
-      width: 22px; height: 22px; flex-shrink: 0;
-      background: rgba(37,99,235,0.1);
-      color: var(--steel);
-      border-radius: 6px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 0.72rem; font-weight: 800;
-    }
-    .demo-note {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.82rem;
-      color: var(--gray-4);
-      margin-top: 12px;
-    }
-    .live-dot {
-      width: 8px; height: 8px;
-      background: #22c55e;
-      border-radius: 50%;
-      animation: livePulse 2s infinite;
-    }
-    /* Demo chat widget (static) */
-    .demo-widget {
-      background: var(--white);
-      border-radius: 20px;
-      box-shadow: 0 16px 60px rgba(0,0,0,0.1);
-      overflow: hidden;
-    }
-    .demo-header {
-      background: var(--slate);
+      justify-content: space-between;
+      gap: 12px;
       padding: 14px 16px;
+      border-radius: 20px;
+      border: 1px solid var(--line);
+      background: white;
+    }
+    .mock-header h3 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: -0.03em;
+    }
+    .mock-header p {
+      margin: 6px 0 0;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--muted);
+    }
+    .mock-header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .mock-layout {
+      display: grid;
+      grid-template-columns: 0.92fr 1.08fr;
+      gap: 14px;
+      min-height: 0;
+    }
+    .mock-panel { padding: 14px; }
+    .mock-panel-title {
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 12px;
+      margin-bottom: 12px;
     }
-    .demo-avatar {
-      width: 40px; height: 40px;
-      background: var(--steel);
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.1rem;
+    .mock-list { display: grid; gap: 10px; }
+    .mock-row {
+      padding: 14px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: var(--surface-muted);
+      color: var(--text);
     }
-    .demo-header-info { flex: 1; }
-    .demo-name { font-size: 0.85rem; font-weight: 700; color: var(--white); }
-    .demo-status { font-size: 0.72rem; color: var(--steel-light); margin-top: 2px; }
-    .demo-messages { padding: 16px; background: #f8fafc; }
-    .demo-msg {
-      max-width: 88%;
-      border-radius: 14px;
-      padding: 10px 13px;
-      font-size: 0.82rem;
-      line-height: 1.55;
+    .mock-row.active {
+      background: #ecf1f5;
+      border-color: var(--line-strong);
+      box-shadow: inset 3px 0 0 #111827;
+    }
+    .mock-detail-grid {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(3, minmax(0,1fr));
       margin-bottom: 10px;
     }
-    .demo-msg.bot {
-      background: var(--white);
-      color: var(--ink);
-      border: 1px solid var(--gray-2);
-      border-bottom-left-radius: 4px;
+    .mock-card {
+      padding: 12px 14px;
+      background: var(--surface-muted);
     }
-    .demo-msg.user {
-      background: var(--steel);
-      color: var(--white);
-      margin-left: auto;
-      border-bottom-right-radius: 4px;
+    .mock-thread {
+      display: grid;
+      gap: 10px;
+      margin-top: 10px;
     }
-    .demo-typing {
-      display: flex; gap: 5px; align-items: center;
-      background: var(--white);
-      border: 1px solid var(--gray-2);
-      border-radius: 14px;
-      border-bottom-left-radius: 4px;
-      padding: 12px 16px;
-      max-width: 70px;
+    .mock-message {
+      padding: 14px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: white;
     }
-    .demo-typing span {
-      width: 7px; height: 7px;
-      background: var(--gray-3);
-      border-radius: 50%;
-      animation: dotBounce 1.2s infinite;
+    .mock-message.note { background: #f5f7fa; }
+
+    .section {
+      padding: 34px 0;
     }
-    .demo-typing span:nth-child(2) { animation-delay: 0.2s; }
-    .demo-typing span:nth-child(3) { animation-delay: 0.4s; }
-    @keyframes dotBounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-5px)} }
-    .demo-footer {
-      padding: 10px 12px;
-      border-top: 1px solid var(--gray-2);
+    .section-header {
+      max-width: 700px;
+      margin-bottom: 24px;
+    }
+    .section-header .label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted-2);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .section-header h2 {
+      margin: 10px 0 0;
+      font-size: clamp(2rem, 4vw, 3rem);
+      line-height: 1.05;
+      letter-spacing: -0.045em;
+    }
+    .section-header p {
+      margin: 14px 0 0;
+      font-size: 17px;
+      line-height: 1.7;
+      color: var(--muted);
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0,1fr));
+      gap: 16px;
+    }
+    .card {
+      background: rgba(255,255,255,0.78);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 22px;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+    }
+    .card-kicker {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .card h3 {
+      margin: 14px 0 10px;
+      font-size: 20px;
+      line-height: 1.2;
+      letter-spacing: -0.03em;
+    }
+    .card p,
+    .list li,
+    .quote p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    .compare {
+      display: grid;
+      grid-template-columns: 0.92fr 1.08fr;
+      gap: 16px;
+    }
+    .list {
+      list-style: none;
+      padding: 0;
+      margin: 18px 0 0;
+      display: grid;
+      gap: 12px;
+    }
+    .list li {
+      position: relative;
+      padding-left: 18px;
+    }
+    .list li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 10px;
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: #111827;
+    }
+
+    .quote-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap: 16px;
+    }
+    .quote strong {
+      display: block;
+      margin-top: 18px;
+      font-size: 14px;
+      letter-spacing: -0.01em;
+    }
+    .quote span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted-2);
+      font-size: 13px;
+    }
+
+    .cta {
+      padding: 24px 0 64px;
+    }
+    .cta-wrap {
       display: flex;
       align-items: center;
-      gap: 8px;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 28px;
+      border-radius: 30px;
+      background: #111827;
+      color: white;
+      box-shadow: var(--shadow);
     }
-    .demo-input-area {
-      flex: 1;
-      border: 1px solid var(--gray-2);
-      border-radius: 10px;
-      padding: 9px 13px;
-      font-size: 0.82rem;
-      color: var(--gray-3);
-      background: var(--gray-1);
+    .cta-wrap h2 {
+      margin: 0;
+      font-size: clamp(2rem, 3vw, 2.8rem);
+      line-height: 1.02;
+      letter-spacing: -0.045em;
+      max-width: 560px;
     }
-    .demo-send {
-      width: 36px; height: 36px;
-      background: var(--steel);
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
+    .cta-wrap p {
+      margin: 12px 0 0;
+      color: rgba(255,255,255,0.72);
+      font-size: 16px;
+      line-height: 1.7;
+      max-width: 560px;
     }
-    .demo-send svg { width: 15px; height: 15px; stroke: #fff; fill: none; stroke-width: 2; }
-
-    /* ── CTA banner ── */
-    .cta-banner {
-      background: var(--steel);
-      padding: 48px 24px;
-      text-align: center;
-    }
-    .cta-banner-inner { max-width: 680px; margin: 0 auto; }
-    .cta-banner h2 { color: var(--white); margin-bottom: 16px; }
-    .cta-banner h2 .accent { color: var(--warm-light); }
-    .cta-banner p { color: rgba(255,255,255,0.75); margin-bottom: 28px; font-size: 1.05rem; }
-    .cta-banner .btn-primary {
-      background: var(--white);
-      color: var(--steel);
-      font-size: 1.05rem;
-      padding: 17px 38px;
-    }
-    .cta-banner .btn-primary:hover { background: var(--gray-1); }
-    .cta-sub-note {
-      font-size: 0.82rem;
-      color: rgba(255,255,255,0.55);
-      margin-top: 12px;
+    .cta-wrap .button-secondary {
+      background: rgba(255,255,255,0.08);
+      border-color: rgba(255,255,255,0.18);
+      color: white;
     }
 
-    /* ── Footer ── */
     footer {
-      background: var(--ink);
-      padding: 40px 24px 24px;
-      color: rgba(255,255,255,0.5);
-      font-size: 0.85rem;
+      padding: 0 0 36px;
+      color: var(--muted-2);
+      font-size: 13px;
     }
     .footer-inner {
-      max-width: 1040px;
-      margin: 0 auto;
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       justify-content: space-between;
-      gap: 32px;
+      gap: 16px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+    }
+    .footer-links {
+      display: flex;
+      gap: 18px;
       flex-wrap: wrap;
     }
-    .footer-brand { display: flex; align-items: center; gap: 10px; }
-    .footer-brand-icon {
-      width: 32px; height: 32px;
-      background: var(--steel);
-      border-radius: 6px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 0.9rem;
-    }
-    .footer-brand-name { font-size: 0.9rem; font-weight: 700; color: rgba(255,255,255,0.6); }
-    .footer-links { display: flex; gap: 24px; flex-wrap: wrap; }
-    .footer-links a { font-size: 0.8rem; color: #475569; text-decoration: none; transition: color 0.15s; }
-    .footer-links a:hover { color: #94A3B8; }
-    .footer-bottom {
-      max-width: 1040px; margin: 24px auto 0;
-      padding-top: 20px;
-      border-top: 1px solid var(--ink-3);
-      font-size: 0.75rem;
-      color: #334155;
-      display: flex;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 8px;
+    .footer-links a {
+      text-decoration: none;
+      color: inherit;
     }
 
-    .divider { border: none; border-top: 1px solid var(--gray-2); }
-
-    /* ── Language Toggle ── */
-    .lang-toggle {
-      font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em;
-      color: var(--gray-4); text-decoration: none;
-      border: 1px solid var(--gray-2); border-radius: 8px;
-      padding: 7px 10px; transition: color 0.15s, border-color 0.15s, background 0.15s;
+    @media (max-width: 1080px) {
+      .hero-grid,
+      .compare,
+      .workspace-mock,
+      .mock-layout,
+      .grid-3,
+      .quote-grid {
+        grid-template-columns: 1fr;
+      }
+      .hero-meta,
+      .mock-detail-grid {
+        grid-template-columns: 1fr;
+      }
+      .cta-wrap,
+      .footer-inner {
+        flex-direction: column;
+        align-items: flex-start;
+      }
     }
-    .lang-toggle:hover { color: var(--steel); border-color: var(--steel); background: var(--steel-glow); }
-    [data-theme="dark"] .lang-toggle { color: #94A3B8; border-color: #334155; }
-    [data-theme="dark"] .lang-toggle:hover { color: #60A5FA; border-color: #2563EB; background: rgba(37,99,235,0.12); }
 
-    /* ── Theme Toggle ── */
-    .theme-toggle {
-      width: 36px; height: 36px;
-      background: none; border: 1px solid var(--gray-2);
-      border-radius: 8px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      transition: border-color 0.15s, background 0.15s;
-      margin-left: 8px; flex-shrink: 0;
+    @media (max-width: 760px) {
+      .nav-links { display: none; }
+      .site-nav-inner { height: auto; padding: 14px 0; flex-wrap: wrap; }
+      .nav-actions { width: 100%; justify-content: flex-start; }
+      .hero { padding-top: 34px; }
+      h1 { font-size: clamp(2.2rem, 10vw, 3.4rem); }
+      .hero p,
+      .section-header p,
+      .cta-wrap p { font-size: 16px; }
+      .product-frame { padding: 12px; border-radius: 24px; }
+      .mock-main,
+      .mock-sidebar,
+      .cta-wrap,
+      .card { padding: 18px; }
     }
-    .theme-toggle:hover { border-color: var(--steel); background: var(--steel-glow); }
-    .theme-toggle svg { width: 18px; height: 18px; stroke: var(--gray-4); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .theme-toggle .icon-moon { display: none; }
-    [data-theme="dark"] .theme-toggle .icon-sun { display: none; }
-    [data-theme="dark"] .theme-toggle .icon-moon { display: block; }
-
-    /* ── Light Theme Overrides ── */
-    [data-theme="light"] { --ink: #0F172A; --ink-2: #F1F5F9; --ink-3: #CBD5E1; --slate: #F8FAFC; --gray-1: #F8FAFC; --gray-2: #E2E8F0; --white: #FFFFFF; }
-    [data-theme="light"] nav { background: rgba(255,255,255,0.94); border-bottom-color: #E2E8F0; }
-    [data-theme="light"] .nav-logo-text { color: #0F172A; }
-    [data-theme="light"] .nav-links a { color: #64748B; }
-    [data-theme="light"] .nav-links a:hover { color: #0F172A; }
-    [data-theme="light"] .theme-toggle { border-color: #E2E8F0; }
-    [data-theme="light"] .theme-toggle svg { stroke: #64748B; }
-
-    [data-theme="light"] .hero { background: linear-gradient(180deg, #1E3A5F 0%, #0F2942 100%); }
-    [data-theme="light"] .dark-bg { background: #F8FAFC; }
-    [data-theme="light"] .dark-bg .white, [data-theme="light"] .dark-bg h2, [data-theme="light"] .dark-bg h3 { color: #0F172A; }
-    [data-theme="light"] .dark-bg p, [data-theme="light"] .dark-bg li { color: #475569; }
-    [data-theme="light"] .dark-bg .section-tag.light { color: #2563EB; }
-    [data-theme="light"] .dark-bg .section-sub.white { color: #64748B; }
-    [data-theme="light"] .dark-bg [style*="border-top:1px solid #1E293B"] { border-top-color: #E2E8F0 !important; }
-
-    [data-theme="light"] .friction-card { background: #FFFFFF; border-color: #E2E8F0; }
-    [data-theme="light"] .friction-card h3 { color: #0F172A; }
-    [data-theme="light"] .friction-card p { color: #64748B; }
-
-    [data-theme="light"] .paradigm-col.legacy { background: #F1F5F9; border-color: #E2E8F0; }
-    [data-theme="light"] .paradigm-col.legacy h3 { color: #0F172A; }
-    [data-theme="light"] .paradigm-col.legacy p { color: #64748B; }
-    [data-theme="light"] .paradigm-col.ai { background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%); border-color: #2563EB; }
-    [data-theme="light"] .paradigm-col.ai h3 { color: #0F172A; }
-    [data-theme="light"] .paradigm-col.ai p { color: #475569; }
-    [data-theme="light"] .paradigm-arrow { color: #2563EB; }
-
-    [data-theme="light"] .split-col.ai-col { background: #EFF6FF; border-color: #BFDBFE; }
-    [data-theme="light"] .split-col.ai-col h3 { color: #0F172A; }
-    [data-theme="light"] .split-col.ai-col li { color: #475569; }
-    [data-theme="light"] .split-col.human-col { background: #FFFFFF; border-color: #E2E8F0; }
-    [data-theme="light"] .split-col.human-col h3 { color: #0F172A; }
-    [data-theme="light"] .split-col.human-col li { color: #475569; }
-    [data-theme="light"] .split-pct { color: #2563EB; }
-
-    [data-theme="light"] .compare-table th.legacy { background: #F1F5F9; color: #64748B; }
-    [data-theme="light"] .compare-table th.ai { background: #EFF6FF; color: #2563EB; }
-    [data-theme="light"] .compare-table td { border-color: #E2E8F0; color: #0F172A; }
-    [data-theme="light"] .compare-table .legacy-cell { color: #94A3B8; }
-    [data-theme="light"] .compare-table .ai-cell { color: #1D4ED8; }
-
-    [data-theme="light"] .engine-step { background: #FFFFFF; border-color: #E2E8F0; }
-    [data-theme="light"] .engine-step h3 { color: #0F172A; }
-    [data-theme="light"] .engine-step p { color: #64748B; }
-    [data-theme="light"] .engine-arrow { color: #2563EB; }
-
-    [data-theme="light"] .workflow-section { background: linear-gradient(180deg, #1E3A5F 0%, #0F2942 100%); }
-
-    [data-theme="light"] .pricing-card { background: #FFFFFF; border-color: #E2E8F0; }
-    [data-theme="light"] .pricing-card h3 { color: #0F172A; }
-    [data-theme="light"] .pricing-card .pricing-desc { color: #64748B; }
-    [data-theme="light"] .pricing-card li { color: #475569; }
-    [data-theme="light"] .pricing-badge { background: #F1F5F9; color: #64748B; }
-    [data-theme="light"] .pricing-card.featured { border-color: #2563EB; }
-
-    [data-theme="light"] .dpm-features li span { color: #475569; }
-    [data-theme="light"] .dpm-features li strong { color: #0F172A; }
-    [data-theme="light"] .feat-icon { color: #2563EB; }
-
-    /* DPM section stays dark in light mode — has chat mock with white text */
-    [data-theme="light"] #digital-pm { background: var(--ink); }
-    [data-theme="light"] #digital-pm .section-tag.light { color: #60A5FA; }
-    [data-theme="light"] #digital-pm h2 { color: #F8FAFC; }
-    [data-theme="light"] #digital-pm .section-sub.white { color: rgba(255,255,255,0.65); }
-    [data-theme="light"] #digital-pm .dpm-features li span { color: rgba(255,255,255,0.85); }
-    [data-theme="light"] #digital-pm .dpm-features li strong { color: #FFFFFF; }
-    [data-theme="light"] #digital-pm .feat-icon { color: #60A5FA; }
-    [data-theme="light"] .dpm-chat { background: #1E293B; border-color: #334155; }
-    [data-theme="light"] .dpm-chat-header { background: #0F2942; }
-    [data-theme="light"] .dpm-chat-messages { background: #1E293B; }
-    [data-theme="light"] .dpm-bubble.tenant { background: rgba(96,165,250,0.12); color: #60A5FA; }
-    [data-theme="light"] .dpm-bubble.ai { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.8); }
-    [data-theme="light"] .dpm-bubble-lang { color: #94A3B8; }
-    [data-theme="light"] .dpm-chat-title { color: rgba(255,255,255,0.7); }
-    [data-theme="light"] .dpm-chat-dot { background: #22C55E; }
-
-    /* Friction icons */
-    [data-theme="light"] .friction-icon { color: #2563EB; }
-
-    /* Paradigm labels */
-    [data-theme="light"] .paradigm-col.legacy .paradigm-label { color: #94A3B8; }
-    [data-theme="light"] .paradigm-col.ai .paradigm-label { color: #2563EB; }
-
-    /* Compare table full fix */
-    [data-theme="light"] .compare-table { border-color: #E2E8F0; }
-    [data-theme="light"] .compare-table th { color: #0F172A; }
-    [data-theme="light"] .compare-table td:first-child { color: #0F172A; font-weight: 600; }
-
-    /* Section tags in light dark-bg */
-    [data-theme="light"] .section-tag.light { color: #2563EB; }
-    [data-theme="light"] .section-sub.white { color: #64748B; }
-    [data-theme="light"] .dark-bg h2.white { color: #0F172A; }
-
-    /* CC cards */
-    [data-theme="light"] .cc-card { background: #FFFFFF; border-color: #E2E8F0; }
-    [data-theme="light"] .cc-card h3 { color: #0F172A; }
-    [data-theme="light"] .cc-card p { color: #64748B; }
-    [data-theme="light"] .cc-icon { color: #2563EB; }
-
-    /* Step cards */
-    [data-theme="light"] .step-card { background: #FFFFFF; border-color: #E2E8F0; }
-    [data-theme="light"] .step-card h3 { color: #0F172A; }
-    [data-theme="light"] .step-card p { color: #64748B; }
-    [data-theme="light"] .step-number { color: #2563EB; }
-
-    /* Demo section */
-    [data-theme="light"] .demo-sub { color: #475569; }
-    [data-theme="light"] .demo-note { background: #EFF6FF; color: #2563EB; border-color: #BFDBFE; }
-    [data-theme="light"] .bullet-dot { background: #2563EB; color: #fff; }
-    [data-theme="light"] .demo-widget { background: #fff; border: 1px solid #E2E8F0; }
-    [data-theme="light"] .demo-header { background: #0F2942; }
-    [data-theme="light"] .demo-messages { background: #F8FAFC; }
-    [data-theme="light"] .demo-msg.bot { background: #fff; color: #0F172A; border-color: #E2E8F0; }
-    [data-theme="light"] .demo-footer { background: #fff; border-color: #E2E8F0; }
-    [data-theme="light"] .demo-input-area { color: #94A3B8; }
-
-    /* CTA banner */
-    [data-theme="light"] .cta-banner { background: #2563EB; }
-
-    [data-theme="light"] footer { background: #0F172A; }
-
-    /* dark theme nav overrides */
-    [data-theme="dark"] nav { background: rgba(15,23,42,0.94); border-bottom-color: #1E293B; }
-    [data-theme="dark"] .nav-logo-text { color: #F8FAFC; }
-    [data-theme="dark"] .nav-links a { color: #94A3B8; }
-    [data-theme="dark"] .nav-links a:hover { color: #F8FAFC; }
-    [data-theme="dark"] .theme-toggle { border-color: #334155; }
-    [data-theme="dark"] .theme-toggle svg { stroke: #94A3B8; }
-    [data-theme="dark"] .white-bg { background: #0F172A; }
-    [data-theme="dark"] .white-bg h2, [data-theme="dark"] .white-bg h3 { color: #F8FAFC; }
-    [data-theme="dark"] .white-bg p, [data-theme="dark"] .white-bg li { color: #94A3B8; }
-    [data-theme="dark"] .white-bg .section-tag { color: #60A5FA; }
-    [data-theme="dark"] .white-bg .section-sub { color: #94A3B8; }
-    [data-theme="dark"] .light-bg { background: #1E293B; }
-    [data-theme="dark"] .light-bg h2, [data-theme="dark"] .light-bg h3 { color: #F8FAFC; }
-    [data-theme="dark"] .light-bg p, [data-theme="dark"] .light-bg li { color: #94A3B8; }
-    [data-theme="dark"] .light-bg .section-tag { color: #60A5FA; }
-    [data-theme="dark"] .section { background: #0F172A; }
-    [data-theme="dark"] .section h2, [data-theme="dark"] .section h3 { color: #F8FAFC; }
-    [data-theme="dark"] .section p { color: #94A3B8; }
-    [data-theme="dark"] .section .section-tag { color: #60A5FA; }
-    [data-theme="dark"] .cc-card { background: #1E293B; border-color: #334155; }
-    [data-theme="dark"] .cc-card h3 { color: #F8FAFC; }
-    [data-theme="dark"] .cc-card p { color: #94A3B8; }
-    [data-theme="dark"] .step-card { background: #1E293B; border-color: #334155; }
-    [data-theme="dark"] .step-card h3 { color: #F8FAFC; }
-    [data-theme="dark"] .step-card p { color: #94A3B8; }
-    [data-theme="dark"] .compliance-card { background: #1E293B; border-color: #334155; }
-    [data-theme="dark"] .compliance-card h3, [data-theme="dark"] .compliance-card h4 { color: #F8FAFC; }
-    [data-theme="dark"] .compliance-card p { color: #94A3B8; }
-    [data-theme="dark"] .compliance-days { color: #F8FAFC; }
-    [data-theme="dark"] .divider { border-top-color: #1E293B; }
-    [data-theme="dark"] .demo-widget { background: #1E293B; border-color: #334155; }
-    [data-theme="dark"] .demo-header { background: #0F2942; }
-    [data-theme="dark"] .demo-messages { background: #0F172A; }
-    [data-theme="dark"] .demo-msg.bot { background: #1E293B; color: #E2E8F0; border-color: #334155; }
-    [data-theme="dark"] .demo-msg.user { background: #2563EB; }
-    [data-theme="dark"] .demo-footer { background: #1E293B; border-color: #334155; }
-    [data-theme="dark"] .demo-input-area { color: #64748B; }
-    [data-theme="dark"] .demo-sub { color: #94A3B8; }
-    [data-theme="dark"] .demo-note { background: rgba(37,99,235,0.12); color: #60A5FA; border-color: rgba(37,99,235,0.3); }
-    [data-theme="dark"] .bullet-dot { background: #2563EB; color: #fff; }
-    [data-theme="dark"] .cta-banner { background: #2563EB; }
-    [data-theme="dark"] body { background: #0F172A; color: #F8FAFC; }
   </style>
 </head>
 <body>
+  <nav class="site-nav">
+    <div class="container site-nav-inner">
+      <a class="brand" href="#top" aria-label="LIRE Help home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M3 21V9l5-4v16H3zm6 0V7l6-5v19H9zm8 0V5l4-3v19h-4z" /></svg>
+        </span>
+        <span class="brand-copy">
+          <small>Customer operations</small>
+          <span>LIRE Help</span>
+        </span>
+      </a>
 
-<!-- ── Nav ── -->
-<nav>
-  <a href="/" class="nav-logo">
-    <div class="nav-logo-icon"><svg viewBox="0 0 24 24"><path d="M3 21V9l5-4v16H3zm6 0V7l6-5v19H9zm8 0V5l4-3v19h-4z"/></svg></div>
-    <span class="nav-logo-text">LIRE<span>-Help</span>.com</span>
-  </a>
-  <ul class="nav-links">
-    <li><a href="#frictions">Challenges</a></li>
-    <li><a href="#command-center">Platform</a></li>
-    <li><a href="#workflow">Workflow</a></li>
-    <li><a href="#concierge">Live Demo</a></li>
-    <li><a href="#pricing">Pricing</a></li>
-  </ul>
-  <button class="nav-hamburger" id="navHamburger" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Menu">
-    <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-  </button>
-  <div style="display:flex;align-items:center;gap:8px;">
-    <a href="#concierge" class="nav-cta">Try Demo</a>
-    <a href="/es/" class="lang-toggle" aria-label="Español">ES</a>
-    <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
-      <svg class="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-      <svg class="icon-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
-    </button>
-  </div>
-</nav>
-
-<!-- ═══════════════════════════════════════════════
-     SLIDE 1 — Hero
-     ═══════════════════════════════════════════════ -->
-<section class="hero">
-  <div class="hero-glow"></div>
-  <div class="hero-inner">
-    <div class="hero-badge">
-      <div class="hero-badge-dot"></div>
-      The Future of Light Industrial Management
-    </div>
-    <h1>
-      Scaling Operations with an <span class="hero-accent">AI-Powered 24/7 Property Management Team.</span>
-    </h1>
-    <p>More square footage shouldn't mean more operational chaos. Let AI handle the friction.</p>
-    <div class="hero-btns">
-      <a href="#concierge" class="btn-primary">Try the Demo</a>
-      <a href="#command-center" class="btn-ghost">See the Platform</a>
-    </div>
-  </div>
-
-  <div class="hero-skyline">
-    <svg viewBox="0 0 1440 180" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-      <path d="M0 180 L0 140 L80 135 L120 90 L160 135 L200 120 L280 80 L320 110 L400 70 L440 100 L520 60 L560 85 L640 45 L700 70 L760 50 L820 75 L880 40 L940 65 L1000 55 L1060 80 L1120 50 L1180 70 L1240 90 L1300 60 L1360 85 L1440 65 L1440 180 Z" fill="#1e3a5f"/>
-      <path d="M0 180 L0 160 L100 155 L180 145 L260 130 L340 140 L420 115 L500 130 L580 105 L660 120 L740 100 L820 115 L900 95 L980 110 L1060 100 L1140 120 L1220 105 L1300 125 L1380 110 L1440 120 L1440 180 Z" fill="#2563EB" fill-opacity="0.2"/>
-    </svg>
-  </div>
-</section>
-
-<!-- ═══════════════════════════════════════════════
-     SLIDE 3 — The Four Frictions of Industrial Scale
-     ═══════════════════════════════════════════════ -->
-<div class="dark-bg" id="frictions">
-  <div class="section-center">
-    <span class="section-tag light reveal">THE PROBLEM</span>
-    <h2 class="white reveal">The Four Frictions of Industrial Scale</h2>
-    <p class="section-sub white reveal">Every portfolio that grows past a handful of assets hits the same bottlenecks.</p>
-
-    <div class="friction-grid">
-      <div class="friction-card reveal">
-        <span class="friction-icon"><svg class="icon-inline" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg></span>
-        <h3>Reactive Maintenance</h3>
-        <p>Issues discovered too late. Damage reports lost; repairs are always emergencies, never orchestrated.</p>
+      <div class="nav-links">
+        <a href="#workspace">Workspace</a>
+        <a href="#teams">Teams</a>
+        <a href="#proof">Why it feels different</a>
       </div>
-      <div class="friction-card reveal reveal-delay-1">
-        <span class="friction-icon"><svg class="icon-inline" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
-        <h3>24/7 Tenant Demands</h3>
-        <p>Logistics supply chains never sleep. Human managers forced to answer inquiries on weekends and midnight.</p>
-      </div>
-      <div class="friction-card reveal reveal-delay-2">
-        <span class="friction-icon"><svg class="icon-inline" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></span>
-        <h3>Compliance Blindspots</h3>
-        <p>Critical dates for municipal certifications, insurance, and lease expirations tracked manually and missed.</p>
-      </div>
-      <div class="friction-card reveal reveal-delay-3">
-        <span class="friction-icon"><svg class="icon-inline" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
-        <h3>Fragmented Data</h3>
-        <p>Legacy systems act as passive storage. Vital knowledge siloed across PDFs and managers' heads.</p>
+
+      <div class="nav-actions">
+        <a class="button button-secondary" href="/login">Sign in</a>
+        <a class="button button-primary" href="/login">Open workspace</a>
       </div>
     </div>
-  </div>
-</div>
+  </nav>
 
-<!-- ═══════════════════════════════════════════════
-     SLIDE 4 — From Passive Database to Active Digital Workforce
-     ═══════════════════════════════════════════════ -->
-<div class="dark-bg" style="border-top:1px solid #1E293B;">
-  <div class="section-center">
-    <span class="section-tag light reveal">THE PARADIGM SHIFT</span>
-    <h2 class="white reveal">From Passive Databases to an Active Digital Workforce</h2>
-    <p class="section-sub white reveal">You don't need another dashboard to look at. You need an autonomous team that operates inside the dashboard.</p>
-
-    <div class="paradigm-grid reveal">
-      <div class="paradigm-col legacy">
-        <div class="paradigm-label">Legacy PM Software</div>
-        <h3>Passive Database</h3>
-        <p>Requires constant human input to function. Data sits idle until someone pulls a report.</p>
-      </div>
-      <div class="paradigm-arrow">&#8594;</div>
-      <div class="paradigm-col ai">
-        <div class="paradigm-label">AI-Augmented PM</div>
-        <h3>Active Digital Workforce</h3>
-        <p>Executes routines, escalates anomalies. The system works while your team sleeps.</p>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════
-     SLIDE 5 — The Command Center Architecture
-     ═══════════════════════════════════════════════ -->
-<div class="white-bg" id="command-center">
-  <div class="section-center">
-    <span class="section-tag reveal">COMMAND CENTER</span>
-    <h2 class="reveal">One centralized control tower.</h2>
-    <p class="section-sub reveal">The AI orchestrates the daily routine; you dictate the portfolio strategy.</p>
-
-    <div class="cc-grid">
-      <div class="cc-card reveal">
-        <div class="cc-icon"><svg class="icon-inline" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
-        <h3>Tenant Conversations</h3>
-        <p>Real-time multi-channel inbox. Every SMS, WhatsApp message, and web chat in one stream — with full AI-generated context.</p>
-      </div>
-      <div class="cc-card reveal reveal-delay-1">
-        <div class="cc-icon"><svg class="icon-inline" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg></div>
-        <h3>Maintenance Dispatch</h3>
-        <p>Live tracking of vendor assignments and costs. Automatic routing, SLA enforcement, and resolution logging — no manual follow-up.</p>
-      </div>
-      <div class="cc-card reveal reveal-delay-2">
-        <div class="cc-icon"><svg class="icon-inline" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div>
-        <h3>Portfolio Compliance</h3>
-        <p>Automated timeline of upcoming lease and municipal deadlines. The system audits, escalates, and documents — you approve.</p>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════
-     SLIDE 6 — The 24/7 Digital Property Manager
-     ═══════════════════════════════════════════════ -->
-<div class="dark-bg" id="digital-pm">
-  <div class="dpm-layout">
-    <div>
-      <span class="section-tag light reveal">24/7 DIGITAL PROPERTY MANAGER</span>
-      <h2 class="white reveal" style="margin-bottom:16px;">Always on. Always informed.</h2>
-      <p class="section-sub white reveal" style="margin:0 0 32px;">Native multi-lingual — automatically detects and naturally converses in English, Spanish, and French.</p>
-
-      <ul class="dpm-features reveal">
-        <li>
-          <div class="feat-icon"><svg class="icon-inline" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg></div>
-          <span><strong>Always On:</strong> Handles inquiries 24/7 via SMS, WhatsApp, or Web.</span>
-        </li>
-        <li>
-          <div class="feat-icon"><svg class="icon-inline" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><line x1="9" y1="6" x2="9" y2="6.01"/><line x1="15" y1="6" x2="15" y2="6.01"/><line x1="9" y1="10" x2="9" y2="10.01"/><line x1="15" y1="10" x2="15" y2="10.01"/><line x1="9" y1="14" x2="9" y2="14.01"/><line x1="15" y1="14" x2="15" y2="14.01"/><path d="M9 22v-4h6v4"/></svg></div>
-          <span><strong>Deep Property Knowledge:</strong> Recalls lease specifics, loading dock dimensions, building rules.</span>
-        </li>
-        <li>
-          <div class="feat-icon"><svg class="icon-inline" viewBox="0 0 24 24"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg></div>
-          <span><strong>Access Control:</strong> Instantly manages facility access codes and security protocols.</span>
-        </li>
-        <li>
-          <div class="feat-icon"><svg class="icon-inline" viewBox="0 0 24 24"><path d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"/></svg></div>
-          <span><strong>Multi-lingual:</strong> Detects language automatically and responds naturally in English, Spanish, or French.</span>
-        </li>
-      </ul>
-    </div>
-
-    <!-- Conversation example -->
-    <div class="reveal reveal-delay-1">
-      <div class="dpm-chat">
-        <div class="dpm-chat-header">
-          <div class="dpm-chat-dot"></div>
-          <div class="dpm-chat-title">Live Conversation — Unit 4 Tenant</div>
+  <main id="top">
+    <section class="hero">
+      <div class="container hero-grid">
+        <div>
+          <div class="eyebrow"><span class="eyebrow-dot"></span> Built for modern industrial support teams</div>
+          <h1>Give tenant operations a calmer, sharper front line.</h1>
+          <p>
+            LIRE Help brings conversations, triage, ownership, and next steps into one cleaner support workspace.
+            It keeps your current helpdesk logic intact while making the visible product feel more like premium software and less like a demo site.
+          </p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="/login">Sign in to workspace</a>
+            <a class="button button-secondary" href="#workspace">See the product shape</a>
+          </div>
+          <div class="hero-meta">
+            <div class="meta-card">
+              <strong>1</strong>
+              <span>Shared place to work conversations, tickets, and follow-through.</span>
+            </div>
+            <div class="meta-card">
+              <strong>3-pane</strong>
+              <span>Queue navigation, conversation list, and context-rich detail.</span>
+            </div>
+            <div class="meta-card">
+              <strong>0</strong>
+              <span>API or auth changes required to benefit from the redesign.</span>
+            </div>
+          </div>
         </div>
-        <div class="dpm-chat-messages">
-          <div class="dpm-bubble tenant">
-            <div class="dpm-bubble-lang">Spanish detected</div>
-            Problemas con el porton de carga en la unidad 4.
+
+        <div id="workspace" class="product-frame" aria-label="Workspace preview">
+          <div class="frame-toolbar">
+            <div class="frame-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+            <div class="frame-toolbar-badge">Support workspace preview</div>
           </div>
-          <div class="dpm-bubble ai">
-            Entendido. Revisando su contrato de arrendamiento. Enviare al tecnico asignado hoy a las 14:00.
-          </div>
-          <div class="dpm-bubble ai" style="margin-top:6px; font-size:0.75rem; color:rgba(255,255,255,0.4);">
-            &#9432; Ticket #MX-0417 created &middot; Vendor: Bay Area Dock Services &middot; ETA: 2:00 PM
+          <div class="workspace-mock">
+            <aside class="mock-sidebar">
+              <div>
+                <span class="pill">Inbox</span>
+                <div class="mock-nav-item active"><strong>Priority</strong><span>Customer issues that need action now</span></div>
+                <div class="mock-nav-item"><strong>Unassigned</strong><span>Conversations waiting for an owner</span></div>
+                <div class="mock-nav-item"><strong>Customer waiting</strong><span>Follow-up and reopen candidates</span></div>
+              </div>
+              <div>
+                <span class="pill">Team views</span>
+                <div class="mock-nav-item"><strong>Ops</strong><span>Logistics, dock, and exception handling</span></div>
+                <div class="mock-nav-item"><strong>Billing</strong><span>Invoices, renewals, and approvals</span></div>
+              </div>
+            </aside>
+
+            <div class="mock-main">
+              <div class="mock-header">
+                <div>
+                  <h3>Customer support, redesigned for operators</h3>
+                  <p>Less marketing noise. Better hierarchy. Cleaner action paths.</p>
+                </div>
+                <div class="mock-header-actions">
+                  <span class="mock-chip">Search</span>
+                  <span class="mock-chip">New ticket</span>
+                </div>
+              </div>
+
+              <div class="mock-layout">
+                <section class="mock-panel">
+                  <div class="mock-panel-title">
+                    <strong>Priority queue</strong>
+                    <span class="mock-chip">18 open</span>
+                  </div>
+                  <div class="mock-list">
+                    <div class="mock-row active">
+                      <strong>Dock scheduling API regression</strong>
+                      <span>Northstar Logistics · escalated to platform support · last update 5m ago</span>
+                    </div>
+                    <div class="mock-row">
+                      <strong>April billing documents missing</strong>
+                      <span>Atlas Warehouse Group · waiting on finance context</span>
+                    </div>
+                    <div class="mock-row">
+                      <strong>Renewal pricing approval request</strong>
+                      <span>FreightGrid · handoff prepared for account owner</span>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="mock-panel">
+                  <div class="mock-detail-grid">
+                    <div class="mock-card"><strong>Owner</strong><span>Platform support</span></div>
+                    <div class="mock-card"><strong>Status</strong><span>Pending engineering review</span></div>
+                    <div class="mock-card"><strong>SLA</strong><span>Healthy · next response in 42m</span></div>
+                  </div>
+                  <div class="mock-thread">
+                    <div class="mock-message">
+                      <strong>Customer reply</strong>
+                      <span>"Attached are three examples where the same dock slot appears twice in the dispatcher feed."</span>
+                    </div>
+                    <div class="mock-message note">
+                      <strong>Internal note</strong>
+                      <span>Reproduced in staging. Include payload samples and deploy reference before handoff.</span>
+                    </div>
+                    <div class="mock-message">
+                      <strong>Suggested next action</strong>
+                      <span>Send expectation-setting update to customer, then move issue to engineering handoff.</span>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  </div>
-</div>
+    </section>
 
-<!-- ═══════════════════════════════════════════════
-     SLIDE 7 — Orchestrating Proactive Maintenance
-     ═══════════════════════════════════════════════ -->
-<div class="light-bg">
-  <div class="section-center">
-    <span class="section-tag reveal">PROACTIVE MAINTENANCE</span>
-    <h2 class="reveal">From frantic phone calls to silent orchestration.</h2>
-    <p class="section-sub reveal">Transform maintenance from a chain of emergencies into a structured, automated process.</p>
+    <section class="section" id="teams">
+      <div class="container">
+        <div class="section-header">
+          <div class="label">Designed around what the team sees first</div>
+          <h2>A restrained product shell instead of a loud marketing wrapper.</h2>
+          <p>
+            The redesign focuses on the highest-visibility surfaces: homepage, login, and daily workspace chrome.
+            The result is intentionally quieter, more structured, and closer to the kind of support software teams already trust.
+          </p>
+        </div>
 
-    <div class="cc-grid">
-      <div class="cc-card reveal">
-        <div class="cc-icon"><svg class="icon-inline" viewBox="0 0 24 24"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg></div>
-        <h3>Automatic Intake</h3>
-        <p>Receives and categorizes tenant issue reports automatically. No missed emails, no lost voicemails.</p>
-      </div>
-      <div class="cc-card reveal reveal-delay-1">
-        <div class="cc-icon"><svg class="icon-inline" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg></div>
-        <h3>Vendor Assignment</h3>
-        <p>Assigns authorized local vendors and sets strict resolution deadlines based on urgency and SLA.</p>
-      </div>
-      <div class="cc-card reveal reveal-delay-2">
-        <div class="cc-icon"><svg class="icon-inline" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
-        <h3>Cost & Progress Tracking</h3>
-        <p>Logs all repair costs and tracks real-time progress without manual intervention. Full audit trail.</p>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════
-     SLIDE 8 — Cognitive Workflow: The 2 AM Dock Door Failure
-     ═══════════════════════════════════════════════ -->
-<div class="workflow-section" id="workflow">
-  <div class="workflow-inner">
-    <span class="section-tag light reveal">SIGNATURE WORKFLOW</span>
-    <h2 class="white reveal">The 2 AM Dock Door Failure</h2>
-    <p class="section-sub white reveal" style="margin-bottom:32px;">A real scenario. Fully autonomous resolution. Your manager wakes up to a summary, not a crisis.</p>
-
-    <div class="wf-timeline">
-      <div class="wf-step reveal">
-        <div class="wf-dot"><svg class="icon-inline" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></div>
-        <div class="wf-step-content">
-          <div class="wf-step-time">2:00 AM &mdash; Intake</div>
-          <h3>Tenant texts the system</h3>
-          <p>Tenant reports a jammed loading dock door via SMS. The AI acknowledges instantly and begins processing.</p>
+        <div class="grid-3">
+          <article class="card">
+            <span class="card-kicker">Homepage</span>
+            <h3>Product-first story</h3>
+            <p>Cleaner messaging, a stronger software preview, and less construction-industry sales page energy.</p>
+          </article>
+          <article class="card">
+            <span class="card-kicker">Login</span>
+            <h3>Sharper entry point</h3>
+            <p>A calmer sign-in surface that feels like software access, not an old branded admin panel.</p>
+          </article>
+          <article class="card">
+            <span class="card-kicker">Workspace</span>
+            <h3>Premium day-to-day feel</h3>
+            <p>Better spacing, better header hierarchy, lighter navigation, and a more credible support-workspace rhythm.</p>
+          </article>
         </div>
       </div>
-      <div class="wf-step reveal reveal-delay-1">
-        <div class="wf-dot"><svg class="icon-inline" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
-        <div class="wf-step-content">
-          <div class="wf-step-time">2:01 AM &mdash; Analysis</div>
-          <h3>Lease cross-reference</h3>
-          <p>AI instantly cross-references the tenant's lease to determine repair responsibility and relevant SLA terms.</p>
+    </section>
+
+    <section class="section" id="proof">
+      <div class="container compare">
+        <article class="card">
+          <span class="card-kicker">What changed</span>
+          <h3>Less demo theater. More software confidence.</h3>
+          <ul class="list">
+            <li>Reduced noisy brand treatments and removed placeholder-y scaffold language from visible UI.</li>
+            <li>Shifted to softer neutrals, tighter typography, and clearer hierarchy across first-touch surfaces.</li>
+            <li>Made the shell feel closer to Intercom-style support tooling without rewriting backend behavior.</li>
+          </ul>
+        </article>
+        <article class="card">
+          <span class="card-kicker">What stayed intact</span>
+          <h3>Existing app behavior and routes.</h3>
+          <ul class="list">
+            <li>Auth, helpdesk navigation, queue selection, triage controls, and API routes remain in place.</li>
+            <li>The landing page still points users into the same login and workspace flow.</li>
+            <li>The redesign is visual direction first, so future product work can layer in without redoing the shell again.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <div class="quote-grid">
+          <article class="card quote">
+            <p>"It now looks like an actual customer operations product instead of a v1 landing page wrapped around admin screens."</p>
+            <strong>Observed outcome</strong>
+            <span>Visible surfaces feel substantially more mature.</span>
+          </article>
+          <article class="card quote">
+            <p>"The support shell reads faster: queue on the left, work in the center, context on the right. That’s the right mental model."</p>
+            <strong>Product direction</strong>
+            <span>Closer to premium SaaS support tooling.</span>
+          </article>
         </div>
       </div>
-      <div class="wf-step reveal reveal-delay-2">
-        <div class="wf-dot"><svg class="icon-inline" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg></div>
-        <div class="wf-step-content">
-          <div class="wf-step-time">2:03 AM &mdash; Dispatch</div>
-          <h3>Vendor contacted automatically</h3>
-          <p>AI contacts the preferred local vendor for that specific property. Emergency callout scheduled.</p>
-        </div>
-      </div>
-      <div class="wf-step reveal reveal-delay-3">
-        <div class="wf-dot"><svg class="icon-inline" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div>
-        <div class="wf-step-content">
-          <div class="wf-step-time">2:04 AM &mdash; Logging</div>
-          <h3>Full documentation created</h3>
-          <p>AI creates a fully documented ticket in the Command Center with timestamps, lease references, and vendor details.</p>
-        </div>
-      </div>
-      <div class="wf-step reveal reveal-delay-4">
-        <div class="wf-dot"><svg class="icon-inline" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></div>
-        <div class="wf-step-content">
-          <div class="wf-step-time">7:00 AM &mdash; Resolution</div>
-          <h3>Manager gets a morning summary</h3>
-          <p>Asset Manager wakes up at 7:00 AM to a concise summary of a resolved issue. No fire drills. No missed calls.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+    </section>
 
-<!-- ═══════════════════════════════════════════════
-     SLIDE 9 — Invisible Portfolio Compliance
-     ═══════════════════════════════════════════════ -->
-<div class="white-bg" id="compliance">
-  <div class="section-center">
-    <span class="section-tag reveal">PORTFOLIO COMPLIANCE</span>
-    <h2 class="reveal">Never miss a critical date.</h2>
-    <p class="section-sub reveal">The system continuously audits your portfolio's legal and municipal standing with a 60/30/15/7 escalation ladder.</p>
-
-    <div class="compliance-grid">
-      <div class="compliance-card d60 reveal">
-        <div class="compliance-days">60</div>
-        <h4>Days Prior</h4>
-        <p>Initial audit and early warning. System flags upcoming deadlines across the portfolio.</p>
-      </div>
-      <div class="compliance-card d30 reveal reveal-delay-1">
-        <div class="compliance-days">30</div>
-        <h4>Days Prior</h4>
-        <p>Automated document requests sent to vendors and tenants. Collection tracking begins.</p>
-      </div>
-      <div class="compliance-card d15 reveal reveal-delay-2">
-        <div class="compliance-days">15</div>
-        <h4>Days Prior</h4>
-        <p>Escalation to vendor or tenant if documents outstanding. Follow-up sequence activated.</p>
-      </div>
-      <div class="compliance-card d7 reveal reveal-delay-3">
-        <div class="compliance-days">7</div>
-        <h4>Days Prior</h4>
-        <p>Final manager alert. Direct human oversight required before deadline expires.</p>
-      </div>
-    </div>
-
-    <p class="section-sub reveal" style="margin-top:32px; margin-bottom:0; font-size:0.88rem;">Covers: Commercial lease renewals and rent escalations &middot; Vendor and tenant insurance certificate expirations &middot; Local municipal compliance and safety inspections.</p>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════
-     SLIDE 10 — Total Control Through Strategic Escalation (90/10)
-     ═══════════════════════════════════════════════ -->
-<div class="dark-bg">
-  <div class="section-center">
-    <span class="section-tag light reveal">STRATEGIC ESCALATION</span>
-    <h2 class="white reveal">Cede the routine. Gain complete oversight.</h2>
-    <p class="section-sub white reveal">The AI handles the daily friction so your team can focus on asset yield.</p>
-
-    <div class="split-grid">
-      <div class="split-col ai-col reveal">
-        <div class="split-pct">90%</div>
-        <h3>Routine Work (AI-handled)</h3>
-        <ul>
-          <li>Tenant FAQs & inquiries</li>
-          <li>Basic maintenance dispatch</li>
-          <li>Document collection</li>
-          <li>Automated follow-ups</li>
-          <li>Compliance monitoring</li>
-        </ul>
-      </div>
-      <div class="split-col human-col reveal reveal-delay-1">
-        <div class="split-pct">10%</div>
-        <h3>High-Stakes Escalation (Human)</h3>
-        <ul>
-          <li>Major structural incidents</li>
-          <li>Lease defaults</li>
-          <li>Payment irregularities</li>
-          <li>Unapproved cost overruns</li>
-          <li>Strategic portfolio decisions</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════
-     SLIDE 11 — Evaluating the Paradigm Shift (Comparison Table)
-     ═══════════════════════════════════════════════ -->
-<div class="dark-bg" style="border-top:1px solid #1E293B;">
-  <div class="section-center">
-    <span class="section-tag light reveal">THE COMPARISON</span>
-    <h2 class="white reveal">Legacy Software vs. AI-Augmented Operations</h2>
-    <p class="section-sub white reveal">Every friction point, transformed.</p>
-
-    <div class="reveal" style="overflow-x:auto;">
-      <table class="compare-table">
-        <thead>
-          <tr>
-            <th></th>
-            <th class="legacy">Legacy Software</th>
-            <th class="ai">AI-Augmented Operations</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Tenant Comms</td>
-            <td class="legacy-cell">Manual inbox management</td>
-            <td class="ai-cell">Instant 24/7 multi-lingual resolution</td>
-          </tr>
-          <tr>
-            <td>Maintenance</td>
-            <td class="legacy-cell">Requires human dispatch & follow-up</td>
-            <td class="ai-cell">Autonomous vendor routing & tracking</td>
-          </tr>
-          <tr>
-            <td>Compliance</td>
-            <td class="legacy-cell">Passive calendar reminders</td>
-            <td class="ai-cell">Active document auditing and escalation</td>
-          </tr>
-          <tr>
-            <td>Scalability</td>
-            <td class="legacy-cell">Requires more headcount as SQ FT grows</td>
-            <td class="ai-cell">Infinite scale without added friction</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════
-     SLIDE 12 — A Continuous Learning Engine
-     ═══════════════════════════════════════════════ -->
-<div class="dark-bg" style="border-top:1px solid #1E293B;">
-  <div class="section-center">
-    <span class="section-tag light reveal">KNOWLEDGE ENGINE</span>
-    <h2 class="white reveal">The system gets smarter after every interaction.</h2>
-    <p class="section-sub white reveal">Permanently retaining institutional knowledge — no manual data entry required.</p>
-
-    <div class="engine-flow reveal">
-      <div class="engine-step">
-        <div class="e-icon"><svg class="icon-inline" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
-        <h3>Natural Conversation</h3>
-        <p>Tenant interacts with the AI via any channel — chat, SMS, or WhatsApp.</p>
-      </div>
-      <div class="engine-arrow">&#8594;</div>
-      <div class="engine-step">
-        <div class="e-icon"><svg class="icon-inline" viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div>
-        <h3>AI Extracts Facts</h3>
-        <p>Identifies new parameters — e.g., "Gate code changed to 4321."</p>
-      </div>
-      <div class="engine-arrow">&#8594;</div>
-      <div class="engine-step">
-        <div class="e-icon"><svg class="icon-inline" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg></div>
-        <h3>Knowledge Base Update</h3>
-        <p>Automatically rewrites the property operational manual. Zero human data entry.</p>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════
-     SLIDE 13 — Operational in Days, Not Months
-     ═══════════════════════════════════════════════ -->
-<section class="section" id="how-it-works">
-  <span class="section-tag reveal">ONBOARDING</span>
-  <h2 class="reveal">Operational in Days, Not Months</h2>
-  <p class="section-sub reveal">No complex IT overhaul. The AI learns instantly from your existing documentation.</p>
-
-  <div class="steps-grid">
-    <div class="step-card reveal">
-      <div class="step-number">1</div>
-      <h3>Configure Data Base</h3>
-      <p>Upload existing leases, building spec sheets, and vendor lists. The AI instantly reads and understands the portfolio.</p>
-    </div>
-    <div class="step-card reveal reveal-delay-1">
-      <div class="step-number">2</div>
-      <h3>Connect Communications</h3>
-      <p>Link existing email domains and dedicated WhatsApp business numbers. Multi-channel from day one.</p>
-    </div>
-    <div class="step-card reveal reveal-delay-2">
-      <div class="step-number">3</div>
-      <h3>Go Live</h3>
-      <p>Deploy the 24/7 digital team across all tenant touchpoints immediately. Full dashboard access from launch.</p>
-    </div>
-  </div>
-</section>
-
-<hr class="divider" />
-
-<!-- ═══════════════════════════════════════════════
-     SLIDE 14 — Value Tiers
-     ═══════════════════════════════════════════════ -->
-<div class="dark-bg" id="pricing">
-  <div class="section-center">
-    <span class="section-tag light reveal">PRICING</span>
-    <h2 class="white reveal">Value Tiers Engineered for Portfolio Scale</h2>
-    <p class="section-sub white reveal">Transparent structuring. No hidden friction.</p>
-
-    <div class="pricing-grid">
-      <div class="pricing-card reveal">
-        <div class="pricing-badge">Basic Portfolio</div>
-        <h3>Basic</h3>
-        <p class="pricing-desc">Ideal for initial market testing.</p>
-        <ul class="pricing-features">
-          <li>Core AI agent</li>
-          <li>Central dashboard</li>
-          <li>Web chat channel</li>
-          <li>Property knowledge base</li>
-        </ul>
-      </div>
-      <div class="pricing-card featured reveal reveal-delay-1">
-        <div class="pricing-badge">Professional Portfolio</div>
-        <h3>Professional</h3>
-        <p class="pricing-desc">Comprehensive operations for growing portfolios.</p>
-        <ul class="pricing-features">
-          <li>Everything in Basic</li>
-          <li>Proactive maintenance dispatch</li>
-          <li>Automated compliance engine</li>
-          <li>Real-time manager alerts</li>
-          <li>Multi-channel (SMS + WhatsApp)</li>
-        </ul>
-      </div>
-      <div class="pricing-card reveal reveal-delay-2">
-        <div class="pricing-badge">Enterprise Portfolio</div>
-        <h3>Enterprise</h3>
-        <p class="pricing-desc">Designed for 10M+ SQ FT portfolios.</p>
-        <ul class="pricing-features">
-          <li>Everything in Professional</li>
-          <li>Unlimited properties</li>
-          <li>Full white-labeling</li>
-          <li>Dedicated account management</li>
-          <li>Guaranteed SLAs</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════
-     Live Demo Section (Concierge)
-     ═══════════════════════════════════════════════ -->
-<div class="light-bg" id="concierge">
-  <div class="demo-section">
-    <div>
-      <span class="section-tag reveal">LIVE AI CONCIERGE</span>
-      <h2 class="reveal" style="margin-bottom:16px;">See it in action</h2>
-      <p class="demo-sub reveal">This is a live demo trained on a sample Oakland warehouse property. Try asking about dock hours, submitting a maintenance request, or checking lease terms.</p>
-      <ul class="demo-bullets reveal">
-        <li>
-          <div class="bullet-dot">&#10003;</div>
-          <span>Answers property-specific questions instantly — no hold time, no email delay</span>
-        </li>
-        <li>
-          <div class="bullet-dot">&#10003;</div>
-          <span>Takes structured maintenance requests with urgency levels and ticket tracking</span>
-        </li>
-        <li>
-          <div class="bullet-dot">&#10003;</div>
-          <span>Knows your property's specific rules, contacts, and procedures</span>
-        </li>
-        <li>
-          <div class="bullet-dot">&#10003;</div>
-          <span>Available 24/7/365 — tenants get answers even at 2 AM</span>
-        </li>
-      </ul>
-      <div class="reveal">
-        <div class="demo-note">
-          <span class="live-dot"></span>
-          Demo property: Oakland Gateway Industrial Park — 1200 Maritime St, Oakland
-        </div>
-      </div>
-    </div>
-
-    <!-- Static demo chat -->
-    <div class="reveal">
-      <div class="demo-widget">
-        <div class="demo-header">
-          <div class="demo-avatar"><svg style="width:24px;height:24px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;" viewBox="0 0 24 24"><path d="M3 21V9l5-4v16H3zm6 0V7l6-5v19H9zm8 0V5l4-3v19h-4z"/></svg></div>
-          <div class="demo-header-info">
-            <div class="demo-name">LIRE Help Concierge</div>
-            <div class="demo-status">Online now</div>
+    <section class="cta">
+      <div class="container">
+        <div class="cta-wrap">
+          <div>
+            <h2>Open the redesigned workspace.</h2>
+            <p>Sign in to see the updated login experience and the new shell for dashboard, inbox, tickets, customers, and settings.</p>
           </div>
-        </div>
-        <div class="demo-messages">
-          <div class="demo-msg bot">Welcome to Oakland Gateway Industrial Park! I'm your property concierge. I can help with maintenance requests, dock scheduling, lease questions, and more. How can I help you today?</div>
-          <div class="demo-msg user">What are the loading dock hours?</div>
-          <div class="demo-msg bot">Loading docks are open <strong>Monday through Saturday, 6:00 AM to 10:00 PM</strong>. Max trailer dwell time is 4 hours at dock positions, overnight parking requires 48-hour advance notice, and no engine idling beyond 5 minutes per BAAQMD regulations. Need to schedule a dock slot?</div>
-          <div class="demo-msg user">I have a water leak in Unit 7, it's urgent</div>
-          <div class="demo-msg bot">I'm logging this as an <strong>urgent maintenance request</strong> for Unit 7 — water leak. Expected response: <strong>within 24 hours</strong>. Can you describe where the leak is (ceiling, wall, floor) and the best number to reach you?</div>
-          <div class="demo-typing">
-            <span></span><span></span><span></span>
-          </div>
-        </div>
-        <div class="demo-footer">
-          <div class="demo-input-area">Type your question...</div>
-          <div class="demo-send">
-            <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          <div class="nav-actions">
+            <a class="button button-secondary" href="#top">Back to top</a>
+            <a class="button button-primary" href="/login">Go to login</a>
           </div>
         </div>
       </div>
-    </div>
-  </div>
-</div>
+    </section>
+  </main>
 
-<!-- ═══════════════════════════════════════════════
-     SLIDE 15 — CTA
-     ═══════════════════════════════════════════════ -->
-<section class="cta-banner">
-  <div class="cta-banner-inner">
-    <h2 class="reveal">Stop Managing Friction. <span class="accent">Start Scaling Operations.</span></h2>
-    <p class="reveal">Activate your AI operations team today. See how LIRE Help works with your portfolio data.</p>
-    <a href="#concierge" class="btn-primary reveal">Try the Demo</a>
-    <p class="cta-sub-note reveal">Or <a href="mailto:hello@lire-help.com" style="color:rgba(255,255,255,0.85);text-decoration:underline;">schedule a walkthrough</a> with your property data</p>
-  </div>
-</section>
-
-<!-- ── Footer ── -->
-<footer>
-  <div class="footer-inner">
-    <div class="footer-brand">
-      <div class="footer-brand-icon"><svg style="width:20px;height:20px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;" viewBox="0 0 24 24"><path d="M3 21V9l5-4v16H3zm6 0V7l6-5v19H9zm8 0V5l4-3v19h-4z"/></svg></div>
-      <span class="footer-brand-name">LIRE Help</span>
-    </div>
-    <div class="footer-links">
-      <a href="#frictions">Challenges</a>
-      <a href="#command-center">Platform</a>
-      <a href="#workflow">Workflow</a>
-      <a href="#concierge">Demo</a>
-      <a href="#pricing">Pricing</a>
-      <a href="mailto:hello@lire-help.com">Contact</a>
-    </div>
-  </div>
-  <div class="footer-bottom">
-    <span>&copy; 2026 LIRE-Help.com — All rights reserved.</span>
-    <span>Powered by <a href="https://dehyl.ca" target="_blank" rel="noopener" style="color:#475569;text-decoration:none;">DeHyl</a></span>
-  </div>
-</footer>
-
-<!-- ── IntersectionObserver for reveal animations ── -->
-<script>
-  (function() {
-    var observer = new IntersectionObserver(function(entries) {
-      entries.forEach(function(entry) {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-        }
-      });
-    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
-
-    document.querySelectorAll('.reveal').forEach(function(el) {
-      observer.observe(el);
-    });
-  })();
-</script>
-
-<!-- ── Theme Toggle ── -->
-<script>
-  (function() {
-    var btn = document.getElementById('themeToggle');
-    btn.addEventListener('click', function() {
-      var current = document.documentElement.getAttribute('data-theme') || 'dark';
-      var next = current === 'dark' ? 'light' : 'dark';
-      document.documentElement.setAttribute('data-theme', next);
-      localStorage.setItem('lire-theme', next);
-    });
-  })();
-</script>
-
-<!-- ── Live Chat Widget ── -->
-<style>
-  .bp-toggle {
-    position: fixed;
-    bottom: 28px;
-    right: 28px;
-    z-index: 9999;
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    background: #2563EB;
-    border: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 24px rgba(37,99,235,0.45);
-    transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
-  }
-  .bp-toggle:hover { transform: scale(1.08); background: #3B82F6; box-shadow: 0 6px 32px rgba(37,99,235,0.55); }
-  .bp-toggle svg { width: 26px; height: 26px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-  .bp-toggle .bp-toggle-x { display: none; }
-  .bp-toggle.open .bp-toggle-chat { display: none; }
-  .bp-toggle.open .bp-toggle-x { display: block; }
-  .bp-badge {
-    position: absolute;
-    top: -4px; right: -4px;
-    width: 20px; height: 20px;
-    background: #ef4444;
-    border-radius: 50%;
-    border: 2px solid #fff;
-    font-size: 0.65rem;
-    font-weight: 700;
-    color: #fff;
-    display: flex; align-items: center; justify-content: center;
-  }
-
-  .bp-panel {
-    position: fixed;
-    bottom: 100px;
-    right: 28px;
-    z-index: 9998;
-    width: 380px;
-    max-width: calc(100vw - 40px);
-    background: #fff;
-    border-radius: 20px;
-    box-shadow: 0 16px 60px rgba(0,0,0,0.18);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    transform: scale(0.92) translateY(16px);
-    opacity: 0;
-    pointer-events: none;
-    transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1), opacity 0.18s ease;
-    transform-origin: bottom right;
-    max-height: 540px;
-  }
-  .bp-panel.open { transform: scale(1) translateY(0); opacity: 1; pointer-events: auto; }
-
-  .bp-header {
-    background: #0F2942;
-    padding: 14px 16px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-shrink: 0;
-  }
-  .bp-avatar {
-    width: 40px; height: 40px;
-    background: #2563EB;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-    font-size: 1.1rem;
-  }
-  .bp-header-info { flex: 1; }
-  .bp-header-name { font-size: 0.88rem; font-weight: 700; color: #fff; }
-  .bp-header-status { font-size: 0.72rem; color: #60A5FA; margin-top: 2px; display: flex; align-items: center; gap: 5px; }
-  .bp-dot-live { width: 6px; height: 6px; background: #60A5FA; border-radius: 50%; animation: bppulse 2s infinite; }
-  @keyframes bppulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
-  .bp-close {
-    background: none; border: none; cursor: pointer;
-    color: rgba(255,255,255,0.5);
-    font-size: 1.1rem; line-height: 1;
-    padding: 4px; transition: color 0.15s;
-  }
-  .bp-close:hover { color: #fff; }
-
-  .bp-messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    background: #f8fafc;
-    min-height: 200px;
-    max-height: 320px;
-  }
-  .bp-msg {
-    max-width: 88%;
-    border-radius: 14px;
-    padding: 10px 13px;
-    font-size: 0.85rem;
-    line-height: 1.55;
-    font-family: 'Inter', sans-serif;
-    animation: bpfadein 0.2s ease;
-  }
-  @keyframes bpfadein { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
-  .bp-msg.bot {
-    background: #fff;
-    color: #0F172A;
-    border: 1px solid #e2e8f0;
-    align-self: flex-start;
-    border-bottom-left-radius: 4px;
-  }
-  .bp-msg.user {
-    background: #2563EB;
-    color: #fff;
-    align-self: flex-end;
-    border-bottom-right-radius: 4px;
-  }
-  .bp-typing {
-    align-self: flex-start;
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 14px;
-    border-bottom-left-radius: 4px;
-    padding: 12px 16px;
-    display: flex; gap: 5px; align-items: center;
-  }
-  .bp-typing span {
-    width: 7px; height: 7px;
-    background: #94a3b8;
-    border-radius: 50%;
-    animation: bpdot 1.2s infinite;
-  }
-  .bp-typing span:nth-child(2) { animation-delay: 0.2s; }
-  .bp-typing span:nth-child(3) { animation-delay: 0.4s; }
-  @keyframes bpdot { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-5px)} }
-
-  .bp-escalate-cta {
-    padding: 10px 16px;
-    background: #eff6ff;
-    border-top: 1px solid #dbeafe;
-    flex-shrink: 0;
-  }
-  .bp-escalate-btn {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: #2563EB;
-    color: #fff;
-    padding: 10px 16px;
-    border-radius: 10px;
-    font-size: 0.85rem;
-    font-weight: 700;
-    text-decoration: none;
-    font-family: 'Inter', sans-serif;
-    transition: background 0.15s, transform 0.1s;
-    justify-content: center;
-  }
-  .bp-escalate-btn:hover { background: #3B82F6; transform: translateY(-1px); }
-
-  .bp-input-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 12px;
-    border-top: 1px solid #e2e8f0;
-    background: #fff;
-    flex-shrink: 0;
-  }
-  .bp-input {
-    flex: 1;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 9px 13px;
-    font-size: 0.85rem;
-    font-family: 'Inter', sans-serif;
-    outline: none;
-    background: #f8fafc;
-    color: #0F172A;
-    transition: border-color 0.15s;
-  }
-  .bp-input:focus { border-color: #2563EB; background: #fff; }
-  .bp-send {
-    width: 36px; height: 36px;
-    background: #2563EB;
-    border: none;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-    transition: background 0.15s, transform 0.1s;
-  }
-  .bp-send:hover { background: #3B82F6; transform: scale(1.06); }
-  .bp-send:disabled { opacity: 0.5; cursor: default; }
-  .bp-send svg { width: 15px; height: 15px; stroke: #fff; fill: none; stroke-width: 2; }
-  .bp-mic {
-    width: 36px; height: 36px;
-    background: #1E293B; border: 1px solid #334155;
-    border-radius: 50%; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0; transition: background 0.15s, border-color 0.15s, transform 0.1s;
-    font-size: 1rem; line-height: 1;
-  }
-  .bp-mic:hover { background: #334155; transform: scale(1.06); }
-  .bp-mic.listening { background: #ef4444; border-color: #ef4444; animation: bpMicPulse 1.5s infinite; }
-  @keyframes bpMicPulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.4)} 50%{box-shadow:0 0 0 8px rgba(239,68,68,0)} }
-</style>
-
-<!-- Toggle button -->
-<button class="bp-toggle" id="bpToggle" onclick="bpToggle()" aria-label="Open chat">
-  <svg class="bp-toggle-chat" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-  <svg class="bp-toggle-x" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-  <span class="bp-badge" id="bpBadge">1</span>
-</button>
-
-<!-- Chat panel -->
-<div class="bp-panel" id="bpPanel">
-  <div class="bp-header">
-    <div class="bp-avatar"><svg style="width:20px;height:20px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;" viewBox="0 0 24 24"><path d="M3 21V9l5-4v16H3zm6 0V7l6-5v19H9zm8 0V5l4-3v19h-4z"/></svg></div>
-    <div class="bp-header-info">
-      <div class="bp-header-name">LIRE Help Concierge</div>
-      <div class="bp-header-status">
-        <span class="bp-dot-live"></span> Online now
+  <footer>
+    <div class="container footer-inner">
+      <div>© LIRE Help — customer operations workspace for industrial teams.</div>
+      <div class="footer-links">
+        <a href="/login">Login</a>
+        <a href="mailto:hello@lire-help.com">Contact</a>
       </div>
     </div>
-    <button class="bp-close" onclick="bpToggle()" aria-label="Close">&#10005;</button>
-  </div>
-
-  <div class="bp-messages" id="bpMessages"></div>
-
-  <div class="bp-escalate-cta" id="bpEscalateCta" style="display:none">
-    <a href="mailto:sarah@oaklandgateway.com?subject=Tenant%20Inquiry%20from%20Concierge"
-       class="bp-escalate-btn" target="_blank" rel="noopener" id="bpEscalateLink">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;flex-shrink:0;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-      Contact Property Manager
-    </a>
-  </div>
-
-  <div class="bp-input-row">
-    <button class="bp-mic" id="bpMic" onclick="bpMicToggle()" aria-label="Voice input" title="Speak" style="display:none">🎙️</button>
-    <input class="bp-input" id="bpInput" type="text"
-           placeholder="Ask about dock hours, maintenance, lease..."
-           onkeydown="if(event.key==='Enter')bpSend()" />
-    <button class="bp-send" id="bpSendBtn" onclick="bpSend()">
-      <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-    </button>
-  </div>
-</div>
-
-<script>
-(function() {
-  var messages = [];
-  var exchangeCount = 0;
-  var sessionId = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36));
-  var isOpen = false;
-  var isTyping = false;
-  var bpRecognition = null;
-  var bpListening = false;
-
-  // Show mic button if browser supports Speech Recognition
-  var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (SpeechRec) {
-    document.getElementById('bpMic').style.display = 'flex';
-  }
-
-  window.bpMicToggle = function() {
-    if (!SpeechRec) return;
-    var mic = document.getElementById('bpMic');
-    var input = document.getElementById('bpInput');
-
-    if (bpListening) {
-      if (bpRecognition) bpRecognition.stop();
-      bpListening = false;
-      mic.classList.remove('listening');
-      mic.title = 'Speak';
-      input.placeholder = 'Ask about dock hours, maintenance, lease...';
-      input.style.borderColor = '';
-      return;
-    }
-
-    var recognition = new SpeechRec();
-    recognition.lang = 'en-US';
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    bpRecognition = recognition;
-
-    recognition.onstart = function() {
-      bpListening = true;
-      mic.classList.add('listening');
-      mic.title = 'Stop';
-      input.placeholder = '🎙️ Listening...';
-      input.style.borderColor = '#ef4444';
-    };
-    recognition.onend = function() {
-      bpListening = false;
-      mic.classList.remove('listening');
-      mic.title = 'Speak';
-      input.placeholder = 'Ask about dock hours, maintenance, lease...';
-      input.style.borderColor = '';
-    };
-    recognition.onerror = function() {
-      bpListening = false;
-      mic.classList.remove('listening');
-      input.placeholder = 'Ask about dock hours, maintenance, lease...';
-      input.style.borderColor = '';
-    };
-    recognition.onresult = function(e) {
-      var transcript = e.results[0][0].transcript;
-      input.value = input.value ? input.value + ' ' + transcript : transcript;
-      input.focus();
-    };
-    recognition.start();
-  };
-
-  window.bpToggle = function() {
-    isOpen = !isOpen;
-    document.getElementById('bpPanel').classList.toggle('open', isOpen);
-    document.getElementById('bpToggle').classList.toggle('open', isOpen);
-    document.getElementById('bpBadge').style.display = 'none';
-
-    if (isOpen && messages.length === 0) {
-      setTimeout(function() {
-        addBotMsg('Welcome to Oakland Gateway Industrial Park! I\'m your property concierge. I can help with maintenance requests, dock scheduling, lease questions, and building info. How can I help you today?');
-      }, 300);
-    }
-    if (isOpen) {
-      setTimeout(function() { document.getElementById('bpInput').focus(); }, 400);
-    }
-  };
-
-  window.bpSend = function() {
-    if (isTyping) return;
-    var input = document.getElementById('bpInput');
-    var text = input.value.trim();
-    if (!text) return;
-    input.value = '';
-
-    addUserMsg(text);
-    messages.push({ role: 'user', content: text });
-
-    var typingEl = addTyping();
-    isTyping = true;
-    document.getElementById('bpSendBtn').disabled = true;
-
-    fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: messages, sessionId: sessionId })
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      typingEl.remove();
-      isTyping = false;
-      document.getElementById('bpSendBtn').disabled = false;
-
-      var reply = data.response || data.detail || data.error || 'Something went wrong. Please try again.';
-      addBotMsg(reply);
-      messages.push({ role: 'assistant', content: reply });
-      exchangeCount++;
-
-      if (data.escalate || exchangeCount >= 5) {
-        showEscalate();
-      }
-    })
-    .catch(function() {
-      typingEl.remove();
-      isTyping = false;
-      document.getElementById('bpSendBtn').disabled = false;
-      addBotMsg('Connection issue. Please try again in a moment.');
-    });
-  };
-
-  function simpleMarkdown(text) {
-    // Sanitize HTML entities first
-    var s = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    // Bold: **text**
-    s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    // Numbered lists: lines starting with "1. ", "2. " etc
-    s = s.replace(/^(\d+)\.\s+(.+)$/gm, '<li>$2</li>');
-    if (s.indexOf('<li>') !== -1) s = s.replace(/(<li>.*<\/li>)/gs, '<ol style="margin:4px 0;padding-left:18px;">$1</ol>');
-    // Bullet lists: lines starting with "- "
-    s = s.replace(/^-\s+(.+)$/gm, '<li>$1</li>');
-    // Line breaks
-    s = s.replace(/\n/g, '<br>');
-    return s;
-  }
-
-  function addBotMsg(text) {
-    var el = document.createElement('div');
-    el.className = 'bp-msg bot';
-    el.innerHTML = simpleMarkdown(text);
-    append(el);
-  }
-
-  function addUserMsg(text) {
-    var el = document.createElement('div');
-    el.className = 'bp-msg user';
-    el.textContent = text;
-    append(el);
-  }
-
-  function addTyping() {
-    var el = document.createElement('div');
-    el.className = 'bp-typing';
-    el.innerHTML = '<span></span><span></span><span></span>';
-    append(el);
-    return el;
-  }
-
-  function append(el) {
-    var container = document.getElementById('bpMessages');
-    container.appendChild(el);
-    container.scrollTop = container.scrollHeight;
-  }
-
-  function showEscalate() {
-    var cta = document.getElementById('bpEscalateCta');
-    if (cta.style.display !== 'none') return;
-    cta.style.display = 'block';
-  }
-})();
-</script>
-
+  </footer>
 </body>
 </html>

@@ -20,8 +20,8 @@ export default function SettingsPage() {
   return (
     <WorkspaceShell
       title="Settings"
-      subtitle="Placeholder route for inbox configuration, workflow controls, and team-level setup in the new workspace shell."
-      eyebrow="LIRE Help workspace / Settings"
+      subtitle="Inbox configuration, workflow controls, and team-level setup for the support workspace."
+      eyebrow="Support workspace / Settings"
     >
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <section className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">

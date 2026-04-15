@@ -20,22 +20,22 @@ export function InboxSidebar({ views, selectedView, onSelectView }: InboxSidebar
   }));
 
   return (
-    <aside className="flex h-full min-h-0 w-full max-w-xs flex-col border-r border-slate-200 bg-white">
-      <div className="border-b border-slate-200 px-4 py-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Inbox IA</p>
-        <h2 className="mt-1 text-sm font-semibold text-slate-900">Queues and saved views</h2>
-        <p className="mt-1 text-xs leading-relaxed text-slate-500">
-          Route-driven inbox navigation backed by the helpdesk API. Counts reflect the current queue snapshot.
+    <aside className="flex h-full min-h-0 w-full max-w-xs flex-col border-r border-slate-200 bg-[#f8fafb]">
+      <div className="border-b border-slate-200 px-5 py-5">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Inbox navigation</p>
+        <h2 className="mt-2 text-sm font-semibold tracking-tight text-slate-950">Queues and saved views</h2>
+        <p className="mt-2 text-xs leading-6 text-slate-500">
+          Counts reflect the current helpdesk snapshot while the visible shell stays calmer and more product-like.
         </p>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-3 py-4">
+      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 py-5">
         {sections.map(({ section, label, views: sectionViews }) => (
           <section key={section}>
             <div className="px-2 pb-2">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{label}</p>
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               {sectionViews.map((view) => {
                 const active = view.key === selectedView;
 
@@ -45,26 +45,30 @@ export function InboxSidebar({ views, selectedView, onSelectView }: InboxSidebar
                     type="button"
                     onClick={() => onSelectView(view.key)}
                     className={[
-                      "flex w-full items-start gap-3 rounded-2xl px-3 py-3 text-left transition-colors",
-                      active ? "bg-slate-900 text-white" : "hover:bg-slate-100 text-slate-700",
+                      "flex w-full items-start gap-3 rounded-[22px] border px-3 py-3 text-left transition-all",
+                      active
+                        ? "border-slate-900 bg-slate-900 text-white shadow-sm"
+                        : "border-transparent bg-transparent text-slate-700 hover:border-slate-200 hover:bg-white hover:shadow-sm",
                     ].join(" ")}
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-3">
-                        <span className="text-sm font-medium">{view.label}</span>
+                        <span className="text-sm font-semibold tracking-tight">{view.label}</span>
                         <span
                           className={[
                             "rounded-full px-2 py-0.5 text-[11px] font-semibold",
-                            active ? "bg-white/15 text-white" : "bg-slate-100 text-slate-600",
+                            active ? "bg-white/10 text-white" : "bg-slate-100 text-slate-600",
                           ].join(" ")}
                         >
                           {view.count}
                         </span>
                       </div>
-                      <p className={[
-                        "mt-1 text-xs leading-relaxed",
-                        active ? "text-slate-300" : "text-slate-500",
-                      ].join(" ")}>
+                      <p
+                        className={[
+                          "mt-1 text-xs leading-5",
+                          active ? "text-slate-300" : "text-slate-500",
+                        ].join(" ")}
+                      >
                         {view.description}
                       </p>
                     </div>

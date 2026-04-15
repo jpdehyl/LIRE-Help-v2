@@ -45,11 +45,11 @@ export default function InboxPage({ viewId }: InboxPageProps) {
   return (
     <WorkspaceShell
       title="Inbox"
-      subtitle="Three-pane operator workspace scaffold with queue navigation, triage list, and active conversation detail."
-      eyebrow="LIRE Help workspace / Inbox"
+      subtitle="Three-pane support workspace with queue navigation, triage list, and active conversation detail."
+      eyebrow="Support workspace / Inbox"
     >
       <div className="mb-4 rounded-[24px] border border-slate-200 bg-white px-5 py-4 shadow-sm xl:hidden">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Queue selection</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Queue selection</p>
         <div className="mt-3 flex flex-wrap gap-2">
           {(navigationQuery.data?.views ?? []).map((view) => (
             <button

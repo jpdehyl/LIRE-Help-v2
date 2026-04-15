@@ -11,8 +11,8 @@ export default function CustomersPage() {
   return (
     <WorkspaceShell
       title="Customers"
-      subtitle="Placeholder route for people, companies, context, and account health tied to conversations and tickets."
-      eyebrow="LIRE Help workspace / Customers"
+      subtitle="People, companies, and account context tied to conversations and tickets."
+      eyebrow="Support workspace / Customers"
     >
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <section className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">

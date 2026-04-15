@@ -21,8 +21,8 @@ export default function DashboardPage() {
   return (
     <WorkspaceShell
       title="Dashboard"
-      subtitle="Operator-first overview of queue pressure, ownership gaps, and recent helpdesk movement."
-      eyebrow="LIRE Help workspace / Dashboard"
+      subtitle="A calmer overview of queue pressure, ownership gaps, and recent customer support movement."
+      eyebrow="Support workspace / Dashboard"
     >
       {metricsQuery.isLoading ? (
         <div className="flex min-h-[360px] items-center justify-center rounded-[24px] border border-slate-200 bg-white text-sm text-slate-500 shadow-sm">

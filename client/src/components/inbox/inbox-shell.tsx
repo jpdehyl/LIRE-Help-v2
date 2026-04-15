@@ -62,7 +62,7 @@ export function InboxShell({
     ?? (detailQuery.error instanceof Error ? detailQuery.error.message : null);
 
   return (
-    <div className="flex h-[calc(100vh-11rem)] min-h-[720px] min-w-0 overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+    <div className="flex h-[calc(100vh-11.5rem)] min-h-[720px] min-w-0 overflow-hidden rounded-[32px] border border-slate-200/90 bg-white/90 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm">
       <div className="hidden xl:block">
         <InboxSidebar views={views} selectedView={fallbackView?.key ?? selectedView} onSelectView={onSelectView} />
       </div>
@@ -71,10 +71,10 @@ export function InboxShell({
         {loading ? (
           <div className="grid min-w-0 flex-1 grid-cols-1 xl:col-span-2 xl:grid-cols-[420px_minmax(0,1fr)]">
             <div className="flex items-center justify-center border-r border-slate-200 bg-white p-6 text-sm text-slate-500">Loading conversations…</div>
-            <div className="flex items-center justify-center bg-slate-50 p-6 text-sm text-slate-500">Preparing workspace…</div>
+            <div className="flex items-center justify-center bg-[#f6f8fa] p-6 text-sm text-slate-500">Preparing workspace…</div>
           </div>
         ) : error ? (
-          <div className="flex items-center justify-center bg-slate-50 p-8 text-center xl:col-span-2">
+          <div className="flex items-center justify-center bg-[#f6f8fa] p-8 text-center xl:col-span-2">
             <div className="max-w-md">
               <p className="text-sm font-semibold text-slate-900">Unable to load inbox</p>
               <p className="mt-1 text-sm text-slate-500">{error}</p>

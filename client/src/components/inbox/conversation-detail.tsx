@@ -81,7 +81,7 @@ export function ConversationDetailPane({ conversation, detail, detailLoading = f
 
   if (detailLoading && conversation) {
     return (
-      <div className="flex h-full items-center justify-center bg-slate-50 p-8 text-center">
+      <div className="flex h-full items-center justify-center bg-[#f6f8fa] p-8 text-center">
         <div className="max-w-sm">
           <p className="text-sm font-semibold text-slate-900">Loading conversation</p>
           <p className="mt-1 text-sm leading-relaxed text-slate-500">
@@ -94,7 +94,7 @@ export function ConversationDetailPane({ conversation, detail, detailLoading = f
 
   if (!conversation || !detail) {
     return (
-      <div className="flex h-full items-center justify-center bg-slate-50 p-8 text-center">
+      <div className="flex h-full items-center justify-center bg-[#f6f8fa] p-8 text-center">
         <div className="max-w-sm">
           <p className="text-sm font-semibold text-slate-900">Select a conversation</p>
           <p className="mt-1 text-sm leading-relaxed text-slate-500">
@@ -109,12 +109,12 @@ export function ConversationDetailPane({ conversation, detail, detailLoading = f
   const isBusy = assigneeMutation.isPending || statusMutation.isPending || priorityMutation.isPending || noteMutation.isPending;
 
   return (
-    <section className="grid h-full min-h-0 grid-cols-1 bg-slate-50 2xl:grid-cols-[minmax(0,1fr)_300px]">
+    <section className="grid h-full min-h-0 grid-cols-1 bg-[#f6f8fa] 2xl:grid-cols-[minmax(0,1fr)_300px]">
       <div className="flex min-h-0 flex-col border-r border-slate-200 bg-white">
         <div className="border-b border-slate-200 px-5 py-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Active conversation</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Active conversation</p>
               <h2 className="mt-1 text-lg font-semibold text-slate-950">{detail.title}</h2>
               <p className="mt-1 text-sm leading-relaxed text-slate-500">{detail.summary}</p>
             </div>
@@ -174,7 +174,7 @@ export function ConversationDetailPane({ conversation, detail, detailLoading = f
           )}
         </div>
 
-        <div className="border-t border-slate-200 bg-slate-50 px-5 py-4">
+        <div className="border-t border-slate-200 bg-[#f8fafb] px-5 py-4">
           <div className="flex items-center gap-2">
             {(["reply", "note"] as const).map((mode) => (
               <button
@@ -219,7 +219,7 @@ export function ConversationDetailPane({ conversation, detail, detailLoading = f
         </div>
       </div>
 
-      <aside className="min-h-0 overflow-y-auto bg-slate-50 px-4 py-4">
+      <aside className="min-h-0 overflow-y-auto bg-[#f6f8fa] px-4 py-4">
         <div className="space-y-4">
           <section className="rounded-2xl border border-slate-200 bg-white p-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Triage controls</p>
