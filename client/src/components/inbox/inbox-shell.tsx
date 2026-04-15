@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { InboxViewDefinition, InboxViewKey } from "./types";
 import { InboxSidebar } from "./inbox-sidebar";
 import { ConversationList } from "./conversation-list";
@@ -24,6 +25,7 @@ export function InboxShell({
   onSelectView,
   onSelectConversation,
 }: InboxShellProps) {
+  const queryClient = useQueryClient();
   const fallbackView = views.find((view) => view.key === selectedView) ?? views[0];
 
   const conversationsQuery = useQuery({
@@ -33,13 +35,26 @@ export function InboxShell({
   });
 
   const conversations = conversationsQuery.data?.conversations ?? [];
-  const activeConversation = conversations.find((conversation) => conversation.id === selectedConversationId) ?? conversations[0];
+  const activeConversation = useMemo(
+    () => conversations.find((conversation) => conversation.id === selectedConversationId) ?? conversations[0],
+    [conversations, selectedConversationId],
+  );
+
+  useEffect(() => {
+    if (activeConversation && activeConversation.id !== selectedConversationId) {
+      onSelectConversation(activeConversation.id);
+    }
+  }, [activeConversation, onSelectConversation, selectedConversationId]);
 
   const detailQuery = useQuery({
     queryKey: ["helpdesk", "inbox", "conversation", activeConversation?.id],
     queryFn: () => helpdeskApi.getConversationDetail(activeConversation!.id),
     enabled: Boolean(activeConversation?.id),
   });
+
+  const invalidateHelpdesk = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["helpdesk"] });
+  };
 
   const loading = navigationLoading || conversationsQuery.isLoading;
   const error = navigationError
@@ -54,25 +69,42 @@ export function InboxShell({
 
       <div className="grid min-w-0 flex-1 grid-cols-1 xl:grid-cols-[420px_minmax(0,1fr)]">
         {loading ? (
-          <div className="grid min-w-0 flex-1 grid-cols-1 xl:grid-cols-[420px_minmax(0,1fr)]">
-            <div className="flex items-center justify-center border-r border-slate-200 bg-white p-6 text-sm text-slate-500">Loading inbox…</div>
-            <div className="flex items-center justify-center bg-slate-50 p-6 text-sm text-slate-500">Loading conversation…</div>
+          <div className="grid min-w-0 flex-1 grid-cols-1 xl:col-span-2 xl:grid-cols-[420px_minmax(0,1fr)]">
+            <div className="flex items-center justify-center border-r border-slate-200 bg-white p-6 text-sm text-slate-500">Loading conversations…</div>
+            <div className="flex items-center justify-center bg-slate-50 p-6 text-sm text-slate-500">Preparing workspace…</div>
           </div>
         ) : error ? (
           <div className="flex items-center justify-center bg-slate-50 p-8 text-center xl:col-span-2">
-            <div>
+            <div className="max-w-md">
               <p className="text-sm font-semibold text-slate-900">Unable to load inbox</p>
               <p className="mt-1 text-sm text-slate-500">{error}</p>
+              <button
+                type="button"
+                onClick={() => {
+                  void conversationsQuery.refetch();
+                  void detailQuery.refetch();
+                }}
+                className="mt-4 rounded-full bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-700"
+              >
+                Retry
+              </button>
             </div>
           </div>
         ) : (
           <>
             <ConversationList
+              title={fallbackView?.label ?? "Conversation list"}
+              description={fallbackView?.description ?? "Pick the next conversation to work."}
               conversations={conversations}
               selectedConversationId={activeConversation?.id ?? null}
               onSelectConversation={onSelectConversation}
             />
-            <ConversationDetailPane conversation={activeConversation} detail={detailQuery.data} detailLoading={detailQuery.isLoading} />
+            <ConversationDetailPane
+              conversation={activeConversation}
+              detail={detailQuery.data}
+              detailLoading={detailQuery.isLoading}
+              onMutated={invalidateHelpdesk}
+            />
           </>
         )}
       </div>

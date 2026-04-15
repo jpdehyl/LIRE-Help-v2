@@ -1,6 +1,8 @@
 import type { ConversationRow } from "./types";
 
 interface ConversationListProps {
+  title: string;
+  description: string;
   conversations: ConversationRow[];
   selectedConversationId: string | null;
   onSelectConversation: (conversationId: string) => void;
@@ -26,25 +28,25 @@ const slaClasses = {
   breached: "bg-red-50 text-red-700",
 } as const;
 
-export function ConversationList({ conversations, selectedConversationId, onSelectConversation }: ConversationListProps) {
+export function ConversationList({ title, description, conversations, selectedConversationId, onSelectConversation }: ConversationListProps) {
   if (conversations.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center bg-white p-6 text-center">
-        <div>
-          <p className="text-sm font-medium text-slate-900">No conversations in this queue</p>
-          <p className="mt-1 text-sm text-slate-500">This queue is currently empty for the selected inbox view.</p>
+      <div className="flex h-full items-center justify-center border-r border-slate-200 bg-white p-6 text-center">
+        <div className="max-w-sm">
+          <p className="text-sm font-medium text-slate-900">Queue is clear</p>
+          <p className="mt-1 text-sm text-slate-500">{description}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <section className="flex h-full min-h-0 flex-col bg-white">
+    <section className="flex h-full min-h-0 flex-col border-r border-slate-200 bg-white">
       <div className="border-b border-slate-200 px-5 py-4">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Conversation list</p>
-            <h2 className="mt-1 text-sm font-semibold text-slate-900">Scan, triage, and pick the next item</h2>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{title}</p>
+            <h2 className="mt-1 text-sm font-semibold text-slate-900">{description}</h2>
           </div>
           <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
             {conversations.length} in view
@@ -68,7 +70,7 @@ export function ConversationList({ conversations, selectedConversationId, onSele
               onClick={() => onSelectConversation(conversation.id)}
               className={[
                 "grid w-full grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-slate-200 px-5 py-4 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
-                active ? "bg-blue-50" : "bg-white hover:bg-slate-50",
+                active ? "bg-blue-50 shadow-[inset_3px_0_0_0_rgb(37_99_235)]" : "bg-white hover:bg-slate-50",
               ].join(" ")}
             >
               <div className="min-w-0">

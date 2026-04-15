@@ -1,5 +1,13 @@
 import { api } from "./api";
-import type { ConversationDetail, ConversationRow, InboxViewDefinition, InboxViewKey } from "../components/inbox/types";
+import type {
+  ConversationDetail,
+  ConversationRow,
+  HelpdeskDashboardMetrics,
+  InboxViewDefinition,
+  InboxViewKey,
+  PriorityLevel,
+  ConversationStatus,
+} from "../components/inbox/types";
 
 export interface InboxNavigationResponse {
   views: InboxViewDefinition[];
@@ -15,4 +23,13 @@ export const helpdeskApi = {
   getNavigation: () => api.get<InboxNavigationResponse>("/api/helpdesk/inbox/navigation"),
   getConversations: (view: InboxViewKey) => api.get<InboxConversationListResponse>(`/api/helpdesk/inbox/conversations?view=${view}`),
   getConversationDetail: (conversationId: string) => api.get<ConversationDetail>(`/api/helpdesk/inbox/conversations/${conversationId}`),
+  updateAssignee: (conversationId: string, assigneeStaffId: string | null) =>
+    api.patch<ConversationDetail>(`/api/helpdesk/inbox/conversations/${conversationId}/assignee`, { assigneeStaffId }),
+  updateStatus: (conversationId: string, status: ConversationStatus) =>
+    api.patch<ConversationDetail>(`/api/helpdesk/inbox/conversations/${conversationId}/status`, { status }),
+  updatePriority: (conversationId: string, priority: PriorityLevel) =>
+    api.patch<ConversationDetail>(`/api/helpdesk/inbox/conversations/${conversationId}/priority`, { priority }),
+  addInternalNote: (conversationId: string, body: string) =>
+    api.post<ConversationDetail>(`/api/helpdesk/inbox/conversations/${conversationId}/notes`, { body }),
+  getDashboardMetrics: () => api.get<HelpdeskDashboardMetrics>("/api/helpdesk/dashboard/metrics"),
 };

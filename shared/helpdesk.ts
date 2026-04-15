@@ -97,6 +97,12 @@ export interface SuggestionItem {
   detail: string;
 }
 
+export interface HelpdeskAssigneeOption {
+  id: string;
+  name: string;
+  role: string;
+}
+
 export interface ConversationDetail {
   conversationId: string;
   title: string;
@@ -106,6 +112,41 @@ export interface ConversationDetail {
   customer: CustomerSummary;
   suggestedActions: SuggestionItem[];
   timeline: ConversationTimelineItem[];
+  availableAssignees?: HelpdeskAssigneeOption[];
+}
+
+export interface HelpdeskStatusCount {
+  status: ConversationStatus;
+  count: number;
+}
+
+export interface HelpdeskInboxMetric {
+  inboxLabel: string;
+  count: number;
+  unassignedCount: number;
+  atRiskCount: number;
+}
+
+export interface HelpdeskRecentActivityItem {
+  id: string;
+  type: TimelineItemType;
+  conversationId: string;
+  title: string;
+  author: string;
+  createdAtLabel: string;
+}
+
+export interface HelpdeskDashboardMetrics {
+  summary: {
+    openConversations: number;
+    unassigned: number;
+    slaAtRisk: number;
+    waitingOnCustomer: number;
+  };
+  byStatus: HelpdeskStatusCount[];
+  byInbox: HelpdeskInboxMetric[];
+  recentActivity: HelpdeskRecentActivityItem[];
+  openTickets: ConversationRow[];
 }
 
 export interface InboxScaffoldData {
