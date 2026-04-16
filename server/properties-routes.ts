@@ -16,7 +16,7 @@ router.get("/", requireAdmin, async (req, res) => {
   }
 });
 
-router.get("/tenants", requireAdmin, async (_req, res) => {
+router.get("/tenants", requireStaffRole("superadmin"), async (_req, res) => {
   try {
     res.json(await getTenants());
   } catch {
@@ -24,7 +24,7 @@ router.get("/tenants", requireAdmin, async (_req, res) => {
   }
 });
 
-router.post("/tenants", requireAdmin, async (req, res) => {
+router.post("/tenants", requireStaffRole("superadmin"), async (req, res) => {
   try {
     const data = insertTenantSchema.parse(req.body);
     const tenant = await createTenant(data);
@@ -35,7 +35,7 @@ router.post("/tenants", requireAdmin, async (req, res) => {
   }
 });
 
-router.post("/", requireAdmin, async (req, res) => {
+router.post("/", requireStaffRole("superadmin", "owner"), async (req, res) => {
   try {
     const data = insertPropertySchema.parse(req.body);
     const prop = await createProperty(data);

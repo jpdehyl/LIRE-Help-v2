@@ -50,15 +50,17 @@ Expected: Array containing all 6 table names + staff_sessions (auto-created by c
 - [ ] **Step 1: Run seed script from Railway shell**
 
 ```bash
+BOOTSTRAP_ADMIN_EMAIL=<admin-email> \
+BOOTSTRAP_ADMIN_PASSWORD=<strong-password> \
 npx tsx scripts/seed-superadmin.ts
 ```
 
-Expected: `Superadmin created: { id: '...', email: 'mune100g@gmail.com', role: 'superadmin' }`
+Expected: `Bootstrap admin ready: { id: '...', email: '<admin-email>', role: 'superadmin' }`
 
 - [ ] **Step 2: Verify login works**
 
 Open `lire-help-production.up.railway.app/login` in browser.
-Login with: `mune100g@gmail.com` / `LIREhelp2026`
+Login with the credentials supplied via `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD`
 Expected: Redirects to `/dashboard`
 
 ---
@@ -176,7 +178,7 @@ async function main() {
     { email: "demo@berkeleypartners.com", name: "Berkeley Demo", role: "owner", title: "Portfolio Director" },
   ];
 
-  const defaultHash = await bcrypt.hash("demo2026", 12);
+  const defaultHash = await bcrypt.hash(process.env.DEMO_TEAM_PASSWORD!, 12);
 
   for (const member of teamMembers) {
     const [user] = await sql`
@@ -423,9 +425,9 @@ async function main() {
   console.log(`KB: ${kbEntries.length} entries`);
   console.log(`Sessions: ${sessions.length} demo conversations`);
   console.log("\nDemo logins:");
-  console.log("  Platform admin:  mune100g@gmail.com / LIREhelp2026");
-  console.log("  Berkeley demo:   demo@berkeleypartners.com / demo2026");
-  console.log("  Property mgr:    sarah.chen@oaklandgateway.com / demo2026");
+  console.log("  Platform admin:  from BOOTSTRAP_ADMIN_EMAIL / BOOTSTRAP_ADMIN_PASSWORD");
+  console.log("  Berkeley demo:   seeded with DEMO_TEAM_PASSWORD");
+  console.log("  Property mgr:    seeded with DEMO_TEAM_PASSWORD");
 
   await sql.end();
 }
@@ -443,7 +445,7 @@ Expected: All records created with confirmation messages.
 
 - [ ] **Step 3: Verify in dashboard**
 
-Login as `mune100g@gmail.com`. Dashboard should show:
+Login as the bootstrap admin account. Dashboard should show:
 - 1 tenant (Berkeley Partners)
 - 1 property (Oakland Gateway)
 - 1 active agent

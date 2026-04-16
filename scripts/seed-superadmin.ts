@@ -1,23 +1,45 @@
-// Run: DATABASE_URL=<your-url> npx tsx scripts/seed-superadmin.ts
+// Run:
+//   DATABASE_URL=<your-url> \
+//   BOOTSTRAP_ADMIN_EMAIL=<email> \
+//   BOOTSTRAP_ADMIN_PASSWORD=<strong-password> \
+//   BOOTSTRAP_ADMIN_NAME="Demo Admin" \
+//   npx tsx scripts/seed-superadmin.ts
 
 import postgres from "postgres";
 import bcrypt from "bcrypt";
 
-const DATABASE_URL = process.env.DATABASE_URL;
-if (!DATABASE_URL) {
-  console.error("DATABASE_URL is required");
-  process.exit(1);
+const ALLOWED_ROLES = new Set(["superadmin", "owner", "manager"]);
+
+function requireEnv(name: string): string {
+  const value = process.env[name]?.trim();
+  if (!value) {
+    console.error(`${name} is required`);
+    process.exit(1);
+  }
+  return value;
 }
+
+const DATABASE_URL = requireEnv("DATABASE_URL");
 
 const sql = postgres(DATABASE_URL, {
   ssl: { rejectUnauthorized: false },
 });
 
 async function main() {
-  const email = "mune100g@gmail.com";
-  const password = "LIREhelp2026";
-  const name = "Alejandro Dominguez";
-  const role = "superadmin";
+  const email = requireEnv("BOOTSTRAP_ADMIN_EMAIL").toLowerCase();
+  const password = requireEnv("BOOTSTRAP_ADMIN_PASSWORD");
+  const name = process.env.BOOTSTRAP_ADMIN_NAME?.trim() || "Demo Admin";
+  const role = process.env.BOOTSTRAP_ADMIN_ROLE?.trim() || "superadmin";
+
+  if (!ALLOWED_ROLES.has(role)) {
+    console.error(`BOOTSTRAP_ADMIN_ROLE must be one of: ${Array.from(ALLOWED_ROLES).join(", ")}`);
+    process.exit(1);
+  }
+
+  if (password.length < 12) {
+    console.error("BOOTSTRAP_ADMIN_PASSWORD must be at least 12 characters");
+    process.exit(1);
+  }
 
   const passwordHash = await bcrypt.hash(password, 12);
 
@@ -39,7 +61,7 @@ async function main() {
     )
   `;
 
-  // Upsert superadmin
+  // Upsert bootstrap admin
   const [user] = await sql`
     INSERT INTO staff_users (email, password_hash, name, role)
     VALUES (${email}, ${passwordHash}, ${name}, ${role})
@@ -51,7 +73,7 @@ async function main() {
     RETURNING id, email, role
   `;
 
-  console.log("Superadmin created:", user);
+  console.log("Bootstrap admin ready:", user);
   await sql.end();
 }
 

@@ -13,7 +13,12 @@ async function main() {
   const app = express();
   const PORT = process.env.PORT || 3000;
   const isDev = process.env.NODE_ENV !== "production";
+  const sessionSecret = process.env.SESSION_SECRET;
   const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+
+  if (!sessionSecret && !isDev) {
+    throw new Error("SESSION_SECRET is required in production");
+  }
 
   // Trust Railway's reverse proxy (needed for secure cookies)
   app.set("trust proxy", 1);
@@ -73,7 +78,7 @@ async function main() {
         tableName: "staff_sessions",
         createTableIfMissing: false,
       }),
-      secret: process.env.SESSION_SECRET ?? "lire-help-secret-dev",
+      secret: sessionSecret ?? "lire-help-secret-dev",
       resave: false,
       saveUninitialized: false,
       cookie: {
@@ -380,208 +385,13 @@ RESTRICTIONS:
     res.json({ status: "ok", service: "lire-help" });
   });
 
-  // ─── One-time setup (push schema + seed superadmin) ───────────────────────
-  // Hit /api/setup?key=LIRE2026 once, then remove this endpoint.
+  // ─── Setup endpoint hard-disabled ──────────────────────────────────────────
 
-  app.get("/api/setup", async (req: Request, res: Response) => {
-    if (req.query.key !== "LIRE2026") return res.status(403).json({ error: "forbidden" });
-
-    const results: string[] = [];
-    try {
-      const pg = (await import("postgres")).default;
-      const bcrypt = (await import("bcrypt")).default;
-      const sql = pg(process.env.DATABASE_URL!, { ssl: { rejectUnauthorized: false } });
-
-      // 1. Create all tables
-      await sql`CREATE TABLE IF NOT EXISTS tenants (
-        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-        name TEXT NOT NULL, slug TEXT NOT NULL UNIQUE, plan TEXT NOT NULL DEFAULT 'starter',
-        billing_email TEXT, phone TEXT, country TEXT DEFAULT 'US', timezone TEXT DEFAULT 'America/Los_Angeles',
-        is_active BOOLEAN NOT NULL DEFAULT true, trial_ends_at TIMESTAMP,
-        created_at TIMESTAMP NOT NULL DEFAULT now(), updated_at TIMESTAMP NOT NULL DEFAULT now()
-      )`;
-      results.push("tenants table OK");
-
-      await sql`CREATE TABLE IF NOT EXISTS properties (
-        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-        name TEXT NOT NULL, slug TEXT NOT NULL UNIQUE, description TEXT, location TEXT,
-        lat DOUBLE PRECISION, lng DOUBLE PRECISION, tenant_id VARCHAR REFERENCES tenants(id),
-        agent_name TEXT, agent_emoji TEXT, agent_tagline TEXT, agent_greeting TEXT, agent_personality TEXT,
-        branding_json JSONB DEFAULT '{}',
-        created_at TIMESTAMP NOT NULL DEFAULT now(), updated_at TIMESTAMP NOT NULL DEFAULT now()
-      )`;
-      results.push("properties table OK");
-
-      await sql`CREATE TABLE IF NOT EXISTS agents (
-        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-        property_id VARCHAR NOT NULL UNIQUE REFERENCES properties(id), tenant_id VARCHAR REFERENCES tenants(id),
-        name TEXT NOT NULL DEFAULT 'LIRE Agent', emoji TEXT NOT NULL DEFAULT 'LH',
-        tagline TEXT, greeting TEXT, personality TEXT, is_active BOOLEAN NOT NULL DEFAULT true,
-        created_at TIMESTAMP NOT NULL DEFAULT now(), updated_at TIMESTAMP NOT NULL DEFAULT now()
-      )`;
-      results.push("agents table OK");
-
-      await sql`CREATE TABLE IF NOT EXISTS staff_users (
-        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-        email TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, name TEXT NOT NULL,
-        role TEXT NOT NULL DEFAULT 'readonly', tenant_id VARCHAR, property_id VARCHAR,
-        is_active BOOLEAN NOT NULL DEFAULT true, whatsapp_number TEXT, last_login_at TIMESTAMP,
-        created_at TIMESTAMP NOT NULL DEFAULT now(), updated_at TIMESTAMP NOT NULL DEFAULT now()
-      )`;
-      results.push("staff_users table OK");
-
-      await sql`CREATE TABLE IF NOT EXISTS platform_knowledge (
-        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-        section TEXT NOT NULL, title TEXT NOT NULL, content TEXT NOT NULL,
-        sort_order INTEGER NOT NULL DEFAULT 0,
-        created_at TIMESTAMP NOT NULL DEFAULT now(), updated_at TIMESTAMP NOT NULL DEFAULT now()
-      )`;
-      results.push("platform_knowledge table OK");
-
-      await sql`CREATE TABLE IF NOT EXISTS platform_sessions (
-        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-        session_id TEXT NOT NULL UNIQUE, messages JSONB DEFAULT '[]',
-        message_count INTEGER NOT NULL DEFAULT 0, escalated_to_wa BOOLEAN NOT NULL DEFAULT false,
-        is_analyzed BOOLEAN NOT NULL DEFAULT false, summary TEXT,
-        tipo_consulta TEXT, intencion TEXT, tags JSONB DEFAULT '[]',
-        is_lead BOOLEAN NOT NULL DEFAULT false, property_type TEXT,
-        created_at TIMESTAMP NOT NULL DEFAULT now(), last_message_at TIMESTAMP NOT NULL DEFAULT now()
-      )`;
-      results.push("platform_sessions table OK");
-
-      await sql`CREATE TABLE IF NOT EXISTS staff_sessions (
-        sid VARCHAR NOT NULL COLLATE "default",
-        sess JSON NOT NULL,
-        expire TIMESTAMP(6) NOT NULL,
-        PRIMARY KEY (sid)
-      )`;
-      await sql`CREATE INDEX IF NOT EXISTS IDX_session_expire ON staff_sessions (expire)`;
-      results.push("staff_sessions table OK");
-
-      await sql`DROP TABLE IF EXISTS token_usage`;
-      await sql`CREATE TABLE IF NOT EXISTS token_usage (
-        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-        tenant_id VARCHAR, property_id VARCHAR, session_id TEXT,
-        operation TEXT NOT NULL, model TEXT NOT NULL,
-        input_tokens INTEGER NOT NULL DEFAULT 0, output_tokens INTEGER NOT NULL DEFAULT 0,
-        cost_usd TEXT NOT NULL DEFAULT '0',
-        created_at TIMESTAMP NOT NULL DEFAULT now()
-      )`;
-      await sql`CREATE INDEX IF NOT EXISTS idx_token_usage_created ON token_usage (created_at)`;
-      await sql`CREATE INDEX IF NOT EXISTS idx_token_usage_tenant ON token_usage (tenant_id, created_at)`;
-      results.push("token_usage table OK");
-
-      // monthlyBudgetUsd deferred — will add via proper migration later
-
-      // 2. Seed superadmin
-      const hash = await bcrypt.hash("LIREhelp2026", 12);
-      await sql`
-        INSERT INTO staff_users (email, password_hash, name, role)
-        VALUES ('mune100g@gmail.com', ${hash}, 'Alejandro Dominguez', 'superadmin')
-        ON CONFLICT (email) DO UPDATE SET password_hash = ${hash}, role = 'superadmin', updated_at = now()
-      `;
-      results.push("superadmin seeded OK");
-
-      // 3. Seed Oakland Gateway demo data
-      const [tenant] = await sql`
-        INSERT INTO tenants (name, slug, plan, billing_email, phone, country, timezone)
-        VALUES ('Berkeley Partners', 'berkeley', 'enterprise', 'operations@berkeleypartners.com', '+1 (510) 555-0100', 'US', 'America/Los_Angeles')
-        ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name, plan = EXCLUDED.plan, updated_at = now()
-        RETURNING id, name, slug
-      `;
-      results.push(`tenant: ${tenant.name}`);
-
-      const [property] = await sql`
-        INSERT INTO properties (name, slug, description, location, lat, lng, tenant_id, agent_name, agent_emoji, branding_json)
-        VALUES (
-          'Oakland Gateway Industrial Park', 'oakland-gateway',
-          'Multi-tenant light industrial / warehouse complex — 185,000 sq ft across 12 units. Loading docks, 24/7 security, gated entry.',
-          '1200 Maritime Street, Oakland, CA 94607', 37.7955, -122.2822, ${tenant.id},
-          'Gateway Concierge', 'LH',
-          ${sql.json({ primaryColor: "#0F2942", secondaryColor: "#2563EB", fontFamily: "Inter", darkMode: true })}
-        )
-        ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name, tenant_id = EXCLUDED.tenant_id, updated_at = now()
-        RETURNING id, name, slug
-      `;
-      results.push(`property: ${property.name}`);
-
-      const [agent] = await sql`
-        INSERT INTO agents (property_id, tenant_id, name, emoji, tagline, greeting, personality, is_active)
-        VALUES (
-          ${property.id}, ${tenant.id}, 'Gateway Concierge', 'LH',
-          'Your 24/7 industrial property assistant',
-          'Welcome to Oakland Gateway Industrial Park! I''m your property concierge. I can help with maintenance requests, dock scheduling, lease questions, and building info. How can I help?',
-          'You are the Oakland Gateway Concierge — professional, efficient, knowledgeable about all 12 units, loading dock procedures, and building operations. Respond concisely (2-3 sentences) unless detail is needed.',
-          true
-        )
-        ON CONFLICT (property_id) DO UPDATE SET name = EXCLUDED.name, greeting = EXCLUDED.greeting, personality = EXCLUDED.personality, updated_at = now()
-        RETURNING id, name
-      `;
-      results.push(`agent: ${agent.name}`);
-
-      // Staff team
-      const demoHash = await bcrypt.hash("demo2026", 12);
-      const team = [
-        { email: "sarah.chen@oaklandgateway.com", name: "Sarah Chen", role: "manager" },
-        { email: "mike.torres@oaklandgateway.com", name: "Mike Torres", role: "staff" },
-        { email: "james.wilson@oaklandgateway.com", name: "James Wilson", role: "staff" },
-        { email: "lisa.park@oaklandgateway.com", name: "Lisa Park", role: "staff" },
-        { email: "demo@berkeleypartners.com", name: "Berkeley Demo", role: "owner" },
-      ];
-      for (const m of team) {
-        await sql`
-          INSERT INTO staff_users (email, password_hash, name, role, tenant_id, property_id, is_active)
-          VALUES (${m.email}, ${demoHash}, ${m.name}, ${m.role}, ${tenant.id}, ${property.id}, true)
-          ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role, updated_at = now()
-        `;
-      }
-      results.push(`staff: ${team.length} members`);
-
-      // Knowledge base
-      const kb = [
-        { section: "property_overview", title: "Property Overview", content: "**Address:** 1200 Maritime Street, Oakland, CA 94607\n**Type:** Multi-tenant light industrial / warehouse complex\n**Total Area:** 185,000 sq ft across 12 units (8,000-25,000 sq ft each)\n**Loading Docks:** 18 grade-level doors + 6 dock-high positions\n**Clear Height:** 24 ft\n**Power:** 400A 3-phase per unit\n**Parking:** 120 spaces + 8 trailer staging positions\n**Security:** 24/7 camera surveillance, gated entry with key card access" },
-        { section: "team_contacts", title: "Property Management Team", content: "**Property Manager:** Sarah Chen — sarah.chen@oaklandgateway.com — (510) 555-0101\n**Leasing Director:** Mike Torres — mike.torres@oaklandgateway.com — (510) 555-0102\n**Maintenance Supervisor:** James Wilson — james.wilson@oaklandgateway.com — (510) 555-0103\n**Compliance Officer:** Lisa Park — lisa.park@oaklandgateway.com — (510) 555-0104\n**Emergency Maintenance (24/7):** (510) 555-0142\n**Security Dispatch:** (510) 555-0150" },
-        { section: "loading_dock", title: "Loading Dock Rules & Procedures", content: "**Dock Hours:** Monday-Saturday, 6:00 AM - 10:00 PM\n**Overnight Trailer Parking:** Requires 48-hour advance notice\n**Maximum Trailer Dwell Time:** 4 hours at dock positions\n**No Idling:** Engines off beyond 5 minutes (BAAQMD regulation)\n**Dock Assignment:** Units 1-6 share docks D1-D12 (grade-level), Units 7-12 share docks H1-H6 (dock-high)\n**Forklift Traffic:** Designated lanes, max speed 5 mph in shared areas" },
-        { section: "lease_info", title: "Lease & Billing Information", content: "**Lease Type:** NNN (Triple Net) — tenant pays base rent + proportional share of taxes, insurance, and CAM\n**CAM Charges Include:** Landscaping, parking lot maintenance, security, common area utilities, property management fee\n**Rent Due:** 1st of each month, 5-day grace period\n**Payment:** Online portal, ACH, or check\n**Late Fee:** 5% after the 5th\n**Lease Renewal:** Management reaches out 180 days before expiration\n**Insurance Required:** $1M general liability, $2M aggregate, property listed as additional insured" },
-        { section: "maintenance", title: "Maintenance Schedules", content: "**HVAC:** Quarterly (Jan, Apr, Jul, Oct) — 7-day advance notice\n**Roof Inspections:** Semi-annual (March, September)\n**Fire Sprinkler Testing:** Annual (February)\n**Parking Lot Sweeping:** Weekly (Sundays, 6-9 AM)\n**Landscaping:** Bi-weekly (Tuesdays)\n**Pest Control:** Monthly (first Wednesday)\n\n**Urgency Levels:**\n- Routine: 5 business days\n- Urgent: 24 hours\n- Emergency: Immediate" },
-        { section: "emergency", title: "Emergency Contacts & Protocols", content: "**Fire/Police/Medical:** 911\n**Property Emergency Line (24/7):** (510) 555-0142\n**Water Leak:** Call emergency line → dispatched within 30 min\n**Power Outage:** Check PG&E outage map first → if building-specific, call emergency line\n**Security Concern:** Call emergency line + panic button at main entrance\n**Gas Smell:** Evacuate → 911 → property emergency line" },
-        { section: "compliance", title: "Compliance & Safety", content: "**Fire Safety:** Annual sprinkler test (Feb), extinguisher inspection quarterly, clear 18\" below sprinkler heads\n**OSHA:** Tenants responsible for unit-specific compliance; property manages common areas\n**Hazardous Materials:** Must be declared and stored per Oakland Fire code\n**Insurance COI:** Must be on file and current. Auto-tracked with 60/30/15/7 day reminders\n**Environmental:** BAAQMD air quality compliance, stormwater management plan on file" },
-        { section: "vendors", title: "Approved Vendor Directory", content: "**HVAC:** Bay Area Climate Control — (510) 555-0200 — 4-hour emergency SLA\n**Plumbing:** Pacific Plumbing Solutions — (510) 555-0210 — 2-hour emergency SLA\n**Electrical:** Volt Electric Inc. — (510) 555-0220 — 24/7\n**Dock Doors:** Bay Area Dock Services — (510) 555-0230\n**Roofing:** Summit Commercial Roofing — (510) 555-0240\n**Pest Control:** Terminix Commercial — monthly contract\n**Janitorial:** CleanPro Industrial — weekly Tue/Thu\n**Security:** Allied Universal — 24/7 patrol\n**Landscaping:** GreenEdge Landscape — bi-weekly\n**Fire & Safety:** FireWatch Systems — annual inspections" },
-        { section: "tenants_directory", title: "Current Tenant Directory", content: "| Unit | Tenant | Sq Ft | Lease Expires |\n|------|--------|-------|---------------|\n| 1 | West Coast Logistics | 25,000 | 2027-06-30 |\n| 2 | Bay Fulfillment Co. | 20,000 | 2027-03-15 |\n| 3 | Pacific Cold Storage | 18,000 | 2028-01-31 |\n| 4 | QuickShip Distribution | 15,000 | 2026-12-31 |\n| 5 | Harbor Packaging | 12,000 | 2027-09-30 |\n| 6 | Metro Parts Warehouse | 10,000 | 2026-08-15 |\n| 7 | Titan Freight Forwarding | 22,000 | 2028-06-30 |\n| 8 | EcoStore Solutions | 15,000 | 2027-11-30 |\n| 9 | Golden Gate Auto Parts | 12,000 | 2027-04-30 |\n| 10 | NorCal Building Supply | 10,000 | 2026-10-31 |\n| 11 | Apex Industrial Services | 8,000 | 2027-08-31 |\n| 12 | VACANT | 8,000 | — |\n\n**Occupancy:** 92% (11/12 units)" },
-        { section: "permits", title: "Active Permits & Licenses", content: "| Document | Number | Expires | Status |\n|----------|--------|---------|--------|\n| Business License | BL-2024-08421 | 2026-12-31 | Active |\n| Fire Occupancy Permit | FP-2023-1200M | 2026-03-01 | **RENEWAL DUE** |\n| Environmental (BAAQMD) | ENV-2024-3392 | 2027-06-01 | Active |\n| Elevator Permit | ELV-2024-0088 | 2026-09-15 | Active |\n| Stormwater Discharge | SW-2023-1200 | 2028-11-01 | Active |\n| Insurance Policy | POL-CGL-2024-9912 | 2026-12-31 | Active |\n\nFire Occupancy Permit renewal submitted — city inspection scheduled 2026-04-10." },
-        { section: "contracts", title: "Active Service Contracts", content: "| Vendor | Service | Monthly | Expires |\n|--------|---------|---------|----------|\n| Bay Area Climate Control | HVAC Full Service | $4,200 | 2027-01 |\n| Allied Universal | Security | $8,500 | 2026-12 |\n| Terminix Commercial | Pest Control | $850 | 2026-06 |\n| CleanPro Industrial | Janitorial | $2,100 | 2026-12 |\n| GreenEdge Landscape | Landscaping | $1,800 | 2026-12 |\n| Pacific Plumbing | Emergency Retainer | $500 | 2027-03 |\n| FireWatch Systems | Fire Safety | $350 | 2027-02 |\n\n**Total Monthly Service Costs:** ~$18,300" },
-      ];
-      for (let i = 0; i < kb.length; i++) {
-        const e = kb[i]!;
-        await sql`
-          INSERT INTO platform_knowledge (section, title, content, sort_order)
-          VALUES (${e.section}, ${e.title}, ${e.content}, ${i})
-        `;
-      }
-      results.push(`knowledge base: ${kb.length} entries`);
-
-      // Demo conversations
-      const sessions = [
-        { sid: "demo-001", msgs: [{ role: "user", content: "Loading dock 3 door is jammed, can't close it. Unit 4." }, { role: "assistant", content: "I'm logging this as an urgent maintenance request for Unit 4 — jammed loading dock door (Dock 3). Bay Area Dock Services has been contacted, ETA within 4 hours. Ticket #MX-0417 created. Is the door stuck open or closed?" }], intent: "maintenance_request", tipo: "urgent_maintenance", tags: ["dock-door", "unit-4"], isLead: false },
-        { sid: "demo-002", msgs: [{ role: "user", content: "Hi, looking at industrial space in Oakland. Any units available?" }, { role: "assistant", content: "Yes! Unit 12 is available — 8,000 sq ft, 24 ft clear height, grade-level dock door, 400A 3-phase power. Want to schedule a tour with our Leasing Director, Mike Torres? (510) 555-0102" }], intent: "cliente_potencial", tipo: "leasing_inquiry", tags: ["prospective-tenant", "unit-12"], isLead: true },
-        { sid: "demo-003", msgs: [{ role: "user", content: "Our insurance certificate is expiring. Where do I send the renewal?" }, { role: "assistant", content: "Send your updated COI to Lisa Park at lisa.park@oaklandgateway.com. Oakland Gateway must be listed as additional insured with minimum $1M general liability / $2M aggregate." }], intent: "compliance_question", tipo: "insurance", tags: ["insurance", "compliance"], isLead: false },
-      ];
-      for (const s of sessions) {
-        await sql`
-          INSERT INTO platform_sessions (session_id, messages, message_count, intencion, tipo_consulta, tags, is_lead)
-          VALUES (${s.sid}, ${sql.json(s.msgs)}, ${s.msgs.length}, ${s.intent}, ${s.tipo}, ${sql.json(s.tags)}, ${s.isLead})
-          ON CONFLICT (session_id) DO NOTHING
-        `;
-      }
-      results.push(`sessions: ${sessions.length} demo conversations`);
-
-      await sql.end();
-      res.json({ status: "ok", results });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Unknown error";
-      results.push(`ERROR: ${msg}`);
-      res.status(500).json({ status: "error", results });
-    }
+  app.all("/api/setup", (_req: Request, res: Response) => {
+    return res.status(410).json({
+      error: "setup_endpoint_disabled",
+      message: "Bootstrap via migrations and env-driven scripts only.",
+    });
   });
 
   // ─── Static file serving ──────────────────────────────────────────────────

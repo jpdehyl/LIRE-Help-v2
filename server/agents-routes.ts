@@ -1,6 +1,6 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
-import { requireAdmin, requireStaffRole } from "./middleware/auth.js";
+import { requireStaffRole } from "./middleware/auth.js";
 import { getAllAgents, getAgentByPropertyId, createAgent, updateAgent, upsertAgent } from "./storage.js";
 
 const router = Router();
@@ -13,7 +13,7 @@ router.get("/", requireStaffRole("superadmin"), async (_req: Request, res: Respo
   }
 });
 
-router.get("/by-property/:propertyId", requireAdmin, async (req: Request, res: Response) => {
+router.get("/by-property/:propertyId", requireStaffRole("superadmin", "owner", "manager"), async (req: Request, res: Response) => {
   try {
     const agent = await getAgentByPropertyId(req.params["propertyId"] as string);
     if (!agent) return res.status(404).json({ message: "Agent not found" });

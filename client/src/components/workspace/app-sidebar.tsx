@@ -1,17 +1,37 @@
-import { BarChart3, Inbox, LayoutDashboard, Settings, Shield, Ticket, Users } from "lucide-react";
+import {
+  BookOpen,
+  Bot,
+  Building2,
+  ChevronRight,
+  Inbox,
+  Radio,
+  Settings,
+  Shield,
+  Sparkles,
+  UserCircle2,
+  BarChart3,
+  type LucideIcon,
+} from "lucide-react";
 import { Link, useLocation } from "wouter";
 
-const primaryItems = [
-  { href: "/dashboard", label: "Dashboard", description: "Overview and queue pressure", icon: LayoutDashboard },
-  { href: "/inbox", label: "Inbox", description: "Conversations and triage", icon: Inbox },
-  { href: "/tickets", label: "Tickets", description: "Track active work", icon: Ticket },
-  { href: "/customers", label: "Customers", description: "Accounts and context", icon: Users },
-  { href: "/settings", label: "Settings", description: "Team and workflow setup", icon: Settings },
-] as const;
+type NavItem = {
+  href: string;
+  label: string;
+  description?: string;
+  icon: LucideIcon;
+  badge?: string;
+};
 
-const secondaryItems = [
-  { href: "/platform-dashboard", label: "Platform admin", icon: Shield },
-] as const;
+const primaryItems: readonly NavItem[] = [
+  { href: "/inbox", label: "Inbox", description: "Omnichannel comms hub", icon: Inbox, badge: "Live" },
+  { href: "/agent", label: "Agent", description: "Train, test, deploy, automate", icon: Bot },
+  { href: "/knowledge", label: "Knowledge", description: "Property playbooks and answers", icon: BookOpen },
+  { href: "/reports", label: "Reports", description: "Portfolio, team, and AI performance", icon: BarChart3 },
+  { href: "/outbound", label: "Outbound", description: "Campaigns, sequences, and follow-up", icon: Radio },
+  { href: "/contacts", label: "Contacts", description: "Owners, tenants, vendors, prospects", icon: Building2 },
+];
+
+const secondaryItems: readonly NavItem[] = [{ href: "/platform-dashboard", label: "Platform admin", icon: Shield }];
 
 function isItemActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -21,32 +41,32 @@ export function AppSidebar() {
   const [location] = useLocation();
 
   return (
-    <aside className="hidden w-[292px] shrink-0 border-r border-slate-200 bg-[#f7f9fb] lg:flex lg:flex-col">
+    <aside className="hidden w-[304px] shrink-0 border-r border-slate-200 bg-[#f5f7f8] lg:flex lg:flex-col">
       <div className="border-b border-slate-200 px-6 py-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-sm">
-            <svg style={{ width: 22, height: 22, stroke: "currentColor", fill: "none", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round" }} viewBox="0 0 24 24">
-              <path d="M3 21V9l5-4v16H3zm6 0V7l6-5v19H9zm8 0V5l4-3v19h-4z" />
-            </svg>
+          <div className="flex h-12 w-12 items-center justify-center rounded-[1.35rem] bg-slate-950 text-white shadow-sm">
+            <Sparkles className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Support workspace</p>
-            <h1 className="text-base font-semibold tracking-tight text-slate-950">LIRE Help</h1>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">LIRE Help</p>
+            <h1 className="text-base font-semibold tracking-tight text-slate-950">Property ops workspace</h1>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-5">
-        <div className="mb-6 rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Today</p>
-          <p className="mt-2 text-sm font-semibold text-slate-950">Operator workspace</p>
-          <p className="mt-1 text-sm leading-6 text-slate-500">
-            Cleaner shell, calmer navigation, and the same underlying helpdesk behavior.
+      <div className="px-4 py-5">
+        <div className="rounded-[28px] border border-slate-200 bg-[#111827] p-4 text-white shadow-sm">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Mission control</p>
+          <h2 className="mt-2 text-base font-semibold tracking-tight">Inbox runs the floor.</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-300">
+            Agents handle routing, knowledge, follow-up, and reporting around the live conversation stream.
           </p>
         </div>
+      </div>
 
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-5">
         <div className="mb-3 px-2">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Core views</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Workspace</p>
         </div>
         <nav className="space-y-1.5">
           {primaryItems.map((item) => {
@@ -74,7 +94,17 @@ export function AppSidebar() {
                     <Icon className="h-4 w-4" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-semibold tracking-tight">{item.label}</span>
+                    <span className="flex items-center gap-2 text-sm font-semibold tracking-tight">
+                      {item.label}
+                      {item.badge ? (
+                        <span className={[
+                          "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em]",
+                          active ? "bg-white/10 text-slate-200" : "bg-emerald-50 text-emerald-700",
+                        ].join(" ")}>
+                          {item.badge}
+                        </span>
+                      ) : null}
+                    </span>
                     <span className={[
                       "mt-1 block text-xs leading-5",
                       active ? "text-slate-300" : "text-slate-500",
@@ -82,6 +112,7 @@ export function AppSidebar() {
                       {item.description}
                     </span>
                   </span>
+                  <ChevronRight className={["mt-1 h-4 w-4 shrink-0", active ? "text-slate-300" : "text-slate-300 group-hover:text-slate-500"].join(" ")} />
                 </a>
               </Link>
             );
@@ -89,7 +120,7 @@ export function AppSidebar() {
         </nav>
 
         <div className="mt-8 mb-3 px-2">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Administration</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Admin</p>
         </div>
         <nav className="space-y-1.5">
           {secondaryItems.map((item) => {
@@ -115,16 +146,19 @@ export function AppSidebar() {
         </nav>
       </div>
 
-      <div className="border-t border-slate-200 px-6 py-5">
-        <div className="rounded-[24px] border border-slate-200 bg-white p-4 text-xs text-slate-500 shadow-sm">
-          <div className="flex items-center gap-2 text-slate-900">
-            <BarChart3 className="h-4 w-4" />
-            <span className="font-semibold">Ops pulse</span>
-          </div>
-          <p className="mt-2 leading-6">
-            Visible surfaces now bias toward an Intercom-style support shell while preserving current routes and workflows.
-          </p>
-        </div>
+      <div className="border-t border-slate-200 px-4 py-4">
+        <Link href="/settings">
+          <a className="flex items-center gap-3 rounded-[22px] border border-slate-200 bg-white px-4 py-4 shadow-sm transition hover:border-slate-300 hover:bg-slate-50">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
+              <UserCircle2 className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-slate-900">Jordan Parker</p>
+              <p className="mt-1 text-xs text-slate-500">Workspace owner · Settings and profile</p>
+            </div>
+            <Settings className="h-4 w-4 text-slate-400" />
+          </a>
+        </Link>
       </div>
     </aside>
   );
