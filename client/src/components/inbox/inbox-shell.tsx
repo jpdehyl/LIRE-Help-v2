@@ -12,6 +12,7 @@ interface InboxShellProps {
   navigationError: string | null;
   selectedView: InboxViewKey;
   selectedConversationId: string | null;
+  filterPropertyId?: string | null;
   onSelectView: (view: InboxViewKey) => void;
   onSelectConversation: (conversationId: string) => void;
 }
@@ -22,6 +23,7 @@ export function InboxShell({
   navigationError,
   selectedView,
   selectedConversationId,
+  filterPropertyId,
   onSelectView,
   onSelectConversation,
 }: InboxShellProps) {
@@ -29,8 +31,8 @@ export function InboxShell({
   const fallbackView = views.find((view) => view.key === selectedView) ?? views[0];
 
   const conversationsQuery = useQuery({
-    queryKey: ["helpdesk", "inbox", "conversations", fallbackView?.key ?? selectedView],
-    queryFn: () => helpdeskApi.getConversations(fallbackView?.key ?? selectedView),
+    queryKey: ["helpdesk", "inbox", "conversations", fallbackView?.key ?? selectedView, filterPropertyId ?? ""],
+    queryFn: () => helpdeskApi.getConversations(fallbackView?.key ?? selectedView, filterPropertyId),
     enabled: Boolean(fallbackView),
   });
 

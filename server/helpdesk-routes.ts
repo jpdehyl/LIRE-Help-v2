@@ -42,7 +42,8 @@ router.get("/inbox/conversations", async (req, res) => {
   try {
     const sess = req.session as any;
     const view = coerceViewKey(req.query["view"]);
-    const conversations = await getHelpInboxConversations(view, sess?.staffTenantId ?? null, sess?.staffPropertyId ?? null, sess?.staffId ?? null);
+    const filterPropertyId = typeof req.query["propertyId"] === "string" && req.query["propertyId"] ? req.query["propertyId"] : null;
+    const conversations = await getHelpInboxConversations(view, sess?.staffTenantId ?? null, sess?.staffPropertyId ?? null, sess?.staffId ?? null, filterPropertyId);
     res.json({ view, conversations });
   } catch (err) {
     console.error("[helpdesk inbox conversations]", err);

@@ -21,7 +21,11 @@ export interface InboxConversationListResponse {
 
 export const helpdeskApi = {
   getNavigation: () => api.get<InboxNavigationResponse>("/api/helpdesk/inbox/navigation"),
-  getConversations: (view: InboxViewKey) => api.get<InboxConversationListResponse>(`/api/helpdesk/inbox/conversations?view=${view}`),
+  getConversations: (view: InboxViewKey, propertyId?: string | null) => {
+    const params = new URLSearchParams({ view });
+    if (propertyId) params.set("propertyId", propertyId);
+    return api.get<InboxConversationListResponse>(`/api/helpdesk/inbox/conversations?${params.toString()}`);
+  },
   getConversationDetail: (conversationId: string) => api.get<ConversationDetail>(`/api/helpdesk/inbox/conversations/${conversationId}`),
   updateAssignee: (conversationId: string, assigneeStaffId: string | null) =>
     api.patch<ConversationDetail>(`/api/helpdesk/inbox/conversations/${conversationId}/assignee`, { assigneeStaffId }),

@@ -25,6 +25,7 @@ export default function InboxPage({ viewId }: InboxPageProps) {
   const routeView = coerceViewKey(viewId);
   const search = useMemo(() => new URLSearchParams(window.location.search), [location]);
   const selectedConversationId = search.get("conversation");
+  const filterPropertyId = search.get("propertyId") ?? null;
 
   const navigationQuery = useQuery({
     queryKey: ["helpdesk", "inbox", "navigation"],
@@ -38,6 +39,7 @@ export default function InboxPage({ viewId }: InboxPageProps) {
   const updateRoute = (view: InboxViewKey, conversationId?: string | null) => {
     const nextSearch = new URLSearchParams();
     if (conversationId) nextSearch.set("conversation", conversationId);
+    if (filterPropertyId) nextSearch.set("propertyId", filterPropertyId);
     const query = nextSearch.toString();
     navigate(`/inbox/${view}${query ? `?${query}` : ""}`);
   };
@@ -73,6 +75,7 @@ export default function InboxPage({ viewId }: InboxPageProps) {
         navigationError={navigationQuery.error instanceof Error ? navigationQuery.error.message : null}
         selectedView={selectedView}
         selectedConversationId={selectedConversationId}
+        filterPropertyId={filterPropertyId}
         onSelectView={(view) => updateRoute(view, selectedConversationId)}
         onSelectConversation={(conversationId) => updateRoute(selectedView, conversationId)}
       />

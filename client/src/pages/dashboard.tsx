@@ -50,7 +50,7 @@ export default function DashboardPage() {
               </div>
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {propertiesQuery.data.properties.map((property) => (
-                  <Link key={property.id} href="/inbox/all">
+                  <Link key={property.id} href={`/inbox/all?propertyId=${property.id}`}>
                     <a className="block rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300 hover:bg-slate-50">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">

@@ -732,12 +732,17 @@ export async function getHelpInboxConversations(
   tenantId?: string | null,
   propertyId?: string | null,
   staffId?: string | null,
+  filterPropertyId?: string | null,
 ): Promise<ConversationRow[]> {
   const context = await loadHelpdeskContext(tenantId, propertyId, staffId);
   if (!context) return [];
-  const rows = sortConversationRows(buildConversationRows(context));
+  let rows = sortConversationRows(buildConversationRows(context));
   const currentStaffName = context.staff.find((staff) => staff.id === context.scope.staffId)?.name ?? null;
-  return rows.filter((row) => matchesInboxView(row, viewKey, currentStaffName));
+  rows = rows.filter((row) => matchesInboxView(row, viewKey, currentStaffName));
+  if (filterPropertyId) {
+    rows = rows.filter((row) => row.propertyId === filterPropertyId);
+  }
+  return rows;
 }
 
 export async function getHelpConversationDetail(
