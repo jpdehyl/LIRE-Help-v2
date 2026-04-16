@@ -11,7 +11,7 @@ const root = path.resolve(bundleDir, "..");
 
 async function main() {
   const app = express();
-  const PORT = process.env.PORT || 3000;
+  const PORT = process.env.PORT || 5000;
   const isDev = process.env.NODE_ENV !== "production";
   const sessionSecret = process.env.SESSION_SECRET;
   const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
@@ -39,6 +39,8 @@ async function main() {
     const origin = req.headers.origin ?? "";
     const allowed =
       /\.lire-help\.com$/.test(origin) ||
+      /\.replit\.dev$/.test(origin) ||
+      /\.replit\.app$/.test(origin) ||
       origin.startsWith("http://localhost") ||
       origin.startsWith("http://127.0.0.1");
 
@@ -447,7 +449,7 @@ RESTRICTIONS:
 
   // ─── Start ────────────────────────────────────────────────────────────────
 
-  app.listen(PORT, () => {
+  app.listen(Number(PORT), "0.0.0.0", () => {
     console.log(`LIRE Help running on port ${PORT} (${isDev ? "development" : "production"})`);
   });
 }

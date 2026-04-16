@@ -4,7 +4,7 @@
   "type": "module",
   "description": "LIRE Help — AI tenant operations for light industrial real estate",
   "scripts": {
-    "dev": "cross-env NODE_ENV=development tsx --env-file=.env server.ts",
+    "dev": "cross-env NODE_ENV=development tsx server.ts",
     "build": "npm run build:client && npm run build:server",
     "build:client": "vite build --config vite.config.ts",
     "build:server": "esbuild server.ts --bundle --platform=node --target=node20 --outfile=dist/index.cjs --format=cjs --external:vite --external:@vitejs/plugin-react --external:esbuild --external:dotenv --external:bcrypt --external:pg",
