@@ -81,6 +81,7 @@ export interface ConversationRow {
   tags: string[];
   ticket: TicketSummary;
   customer: CustomerSummary;
+  propertyId: string | null;
 }
 
 export interface ConversationTimelineItem {
@@ -216,6 +217,7 @@ export const helpdeskMockData: InboxScaffoldData = {
         health: "watch",
         lastSeenLabel: "Today · 3:12 PM",
       },
+      propertyId: null,
     },
     {
       id: "c-102",
@@ -253,6 +255,7 @@ export const helpdeskMockData: InboxScaffoldData = {
         health: "stable",
         lastSeenLabel: "Today · 2:56 PM",
       },
+      propertyId: null,
     },
     {
       id: "c-103",
@@ -290,6 +293,7 @@ export const helpdeskMockData: InboxScaffoldData = {
         health: "stable",
         lastSeenLabel: "Today · 1:48 PM",
       },
+      propertyId: null,
     },
     {
       id: "c-104",
@@ -327,6 +331,7 @@ export const helpdeskMockData: InboxScaffoldData = {
         health: "stable",
         lastSeenLabel: "Today · 12:37 PM",
       },
+      propertyId: null,
     },
   ],
   details: {

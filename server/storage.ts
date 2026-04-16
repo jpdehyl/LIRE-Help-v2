@@ -697,6 +697,7 @@ function buildConversationRows(context: HelpdeskContext): ConversationRow[] {
         health: (customer?.health as "stable" | "watch" | "at_risk") ?? "stable",
         lastSeenLabel: customer?.lastSeenAt ? formatAbsolute(customer.lastSeenAt) : "Unknown",
       },
+      propertyId: conversation.propertyId ?? null,
     };
   });
 }
