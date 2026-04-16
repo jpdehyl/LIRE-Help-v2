@@ -76,7 +76,7 @@ async function main() {
       store: new PgSession({
         pool: sessionPool,
         tableName: "staff_sessions",
-        createTableIfMissing: false,
+        createTableIfMissing: true,
       }),
       secret: sessionSecret ?? "lire-help-secret-dev",
       resave: false,
