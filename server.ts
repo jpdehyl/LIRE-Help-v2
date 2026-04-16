@@ -71,12 +71,24 @@ async function main() {
     console.error("[session] pg Pool connection FAILED:", err);
   });
 
+  await sessionPool.query(`
+    CREATE TABLE IF NOT EXISTS staff_sessions (
+      sid varchar NOT NULL COLLATE "default",
+      sess json NOT NULL,
+      expire timestamp(6) NOT NULL,
+      CONSTRAINT staff_sessions_pkey PRIMARY KEY (sid)
+    )
+  `);
+  await sessionPool.query(`
+    CREATE INDEX IF NOT EXISTS idx_staff_sessions_expire ON staff_sessions (expire)
+  `);
+
   app.use(
     session({
       store: new PgSession({
         pool: sessionPool,
         tableName: "staff_sessions",
-        createTableIfMissing: true,
+        createTableIfMissing: false,
       }),
       secret: sessionSecret ?? "lire-help-secret-dev",
       resave: false,
