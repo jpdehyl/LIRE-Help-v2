@@ -17,18 +17,17 @@ import { Link, useLocation } from "wouter";
 type NavItem = {
   href: string;
   label: string;
-  description?: string;
   icon: LucideIcon;
   badge?: string;
 };
 
 const primaryItems: readonly NavItem[] = [
-  { href: "/inbox", label: "Inbox", description: "Omnichannel comms hub", icon: Inbox, badge: "Live" },
-  { href: "/agent", label: "Agent", description: "Train, test, deploy, automate", icon: Bot },
-  { href: "/knowledge", label: "Knowledge", description: "Property playbooks and answers", icon: BookOpen },
-  { href: "/reports", label: "Reports", description: "Portfolio, team, and AI performance", icon: BarChart3 },
-  { href: "/outbound", label: "Outbound", description: "Campaigns, sequences, and follow-up", icon: Radio },
-  { href: "/contacts", label: "Contacts", description: "Owners, tenants, vendors, prospects", icon: Building2 },
+  { href: "/inbox", label: "Inbox", icon: Inbox, badge: "Live" },
+  { href: "/agent", label: "Agent", icon: Bot },
+  { href: "/knowledge", label: "Knowledge", icon: BookOpen },
+  { href: "/reports", label: "Reports", icon: BarChart3 },
+  { href: "/outbound", label: "Outbound", icon: Radio },
+  { href: "/contacts", label: "Contacts", icon: Building2 },
 ];
 
 const secondaryItems: readonly NavItem[] = [{ href: "/platform-dashboard", label: "Platform admin", icon: Shield }];
@@ -77,7 +76,7 @@ export function AppSidebar() {
               <Link key={item.href} href={item.href}>
                 <a
                   className={[
-                    "group flex items-start gap-3 rounded-[22px] border px-3 py-3 transition-all",
+                    "group flex items-center gap-3 rounded-[22px] border px-3 py-3 transition-all",
                     active
                       ? "border-slate-900 bg-slate-900 text-white shadow-sm"
                       : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-white hover:text-slate-950 hover:shadow-sm",
@@ -85,7 +84,7 @@ export function AppSidebar() {
                 >
                   <span
                     className={[
-                      "mt-0.5 flex h-10 w-10 items-center justify-center rounded-2xl border transition-colors",
+                      "flex h-10 w-10 items-center justify-center rounded-2xl border transition-colors",
                       active
                         ? "border-white/10 bg-white/10 text-white"
                         : "border-slate-200 bg-slate-100 text-slate-500 group-hover:bg-slate-50 group-hover:text-slate-700",
@@ -93,26 +92,18 @@ export function AppSidebar() {
                   >
                     <Icon className="h-4 w-4" />
                   </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-2 text-sm font-semibold tracking-tight">
-                      {item.label}
-                      {item.badge ? (
-                        <span className={[
-                          "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em]",
-                          active ? "bg-white/10 text-slate-200" : "bg-emerald-50 text-emerald-700",
-                        ].join(" ")}>
-                          {item.badge}
-                        </span>
-                      ) : null}
-                    </span>
-                    <span className={[
-                      "mt-1 block text-xs leading-5",
-                      active ? "text-slate-300" : "text-slate-500",
-                    ].join(" ")}>
-                      {item.description}
-                    </span>
+                  <span className="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold tracking-tight">
+                    {item.label}
+                    {item.badge ? (
+                      <span className={[
+                        "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em]",
+                        active ? "bg-white/10 text-slate-200" : "bg-emerald-50 text-emerald-700",
+                      ].join(" ")}>
+                        {item.badge}
+                      </span>
+                    ) : null}
                   </span>
-                  <ChevronRight className={["mt-1 h-4 w-4 shrink-0", active ? "text-slate-300" : "text-slate-300 group-hover:text-slate-500"].join(" ")} />
+                  <ChevronRight className={["h-4 w-4 shrink-0", active ? "text-slate-300" : "text-slate-300 group-hover:text-slate-500"].join(" ")} />
                 </a>
               </Link>
             );

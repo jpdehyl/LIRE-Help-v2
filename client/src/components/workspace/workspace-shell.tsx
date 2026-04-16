@@ -5,13 +5,12 @@ import { AppSidebar } from "./app-sidebar";
 
 interface WorkspaceShellProps {
   title: string;
-  subtitle: string;
   children: ReactNode;
   eyebrow?: string;
   actions?: ReactNode;
 }
 
-export function WorkspaceShell({ title, subtitle, children, eyebrow = "Support workspace", actions }: WorkspaceShellProps) {
+export function WorkspaceShell({ title, children, eyebrow = "Support workspace", actions }: WorkspaceShellProps) {
   const { user, logout } = useAuth();
 
   return (
@@ -33,7 +32,6 @@ export function WorkspaceShell({ title, subtitle, children, eyebrow = "Support w
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{eyebrow}</p>
                 <h1 className="mt-2 text-[clamp(1.8rem,3vw,2.4rem)] font-semibold tracking-[-0.045em] text-slate-950">{title}</h1>
-                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">{subtitle}</p>
               </div>
             </div>
 

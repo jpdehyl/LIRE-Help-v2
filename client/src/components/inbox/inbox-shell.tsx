@@ -94,7 +94,6 @@ export function InboxShell({
           <>
             <ConversationList
               title={fallbackView?.label ?? "Conversation list"}
-              description={fallbackView?.description ?? "Pick the next conversation to work."}
               conversations={conversations}
               selectedConversationId={activeConversation?.id ?? null}
               onSelectConversation={onSelectConversation}

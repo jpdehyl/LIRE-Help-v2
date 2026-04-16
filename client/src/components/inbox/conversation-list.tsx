@@ -2,7 +2,6 @@ import type { ConversationRow } from "./types";
 
 interface ConversationListProps {
   title: string;
-  description: string;
   conversations: ConversationRow[];
   selectedConversationId: string | null;
   onSelectConversation: (conversationId: string) => void;
@@ -28,13 +27,13 @@ const slaClasses = {
   breached: "bg-red-50 text-red-700",
 } as const;
 
-export function ConversationList({ title, description, conversations, selectedConversationId, onSelectConversation }: ConversationListProps) {
+export function ConversationList({ title, conversations, selectedConversationId, onSelectConversation }: ConversationListProps) {
   if (conversations.length === 0) {
     return (
       <div className="flex h-full items-center justify-center border-r border-slate-200 bg-white p-6 text-center">
         <div className="max-w-sm">
           <p className="text-sm font-medium text-slate-900">Queue is clear</p>
-          <p className="mt-1 text-sm text-slate-500">{description}</p>
+          <p className="mt-1 text-sm text-slate-500">Nothing here right now.</p>
         </div>
       </div>
     );
@@ -44,10 +43,7 @@ export function ConversationList({ title, description, conversations, selectedCo
     <section className="flex h-full min-h-0 flex-col border-r border-slate-200 bg-white">
       <div className="border-b border-slate-200 px-5 py-4">
         <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{title}</p>
-            <h2 className="mt-2 text-sm font-semibold tracking-tight text-slate-950">{description}</h2>
-          </div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{title}</p>
           <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600">
             {conversations.length} in view
           </span>

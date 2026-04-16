@@ -20,7 +20,6 @@ export default function SettingsPage() {
   return (
     <WorkspaceShell
       title="Settings"
-      subtitle="Inbox configuration, workflow controls, and team-level setup for the support workspace."
       eyebrow="Support workspace / Settings"
     >
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">

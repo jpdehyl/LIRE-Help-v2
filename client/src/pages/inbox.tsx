@@ -45,7 +45,6 @@ export default function InboxPage({ viewId }: InboxPageProps) {
   return (
     <WorkspaceShell
       title="Inbox"
-      subtitle="Three-pane support workspace with queue navigation, triage list, and active conversation detail."
       eyebrow="Support workspace / Inbox"
     >
       <div className="mb-4 rounded-[24px] border border-slate-200 bg-white px-5 py-4 shadow-sm xl:hidden">

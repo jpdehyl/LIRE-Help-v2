@@ -11,7 +11,6 @@ export default function TicketsPage() {
   return (
     <WorkspaceShell
       title="Tickets"
-      subtitle="Placeholder route for the work-tracking layer linked to conversations, ownership, and SLA state."
       eyebrow="LIRE Help workspace / Tickets"
     >
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
