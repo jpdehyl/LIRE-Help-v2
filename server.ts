@@ -124,6 +124,8 @@ async function main() {
   const { default: helpdeskRoutes } = await import("./server/helpdesk-routes.js");
   const { logTokenUsage } = await import("./server/token-logger.js");
   const { default: metricsRoutes } = await import("./server/metrics-routes.js");
+  const { default: leasingRoutes } = await import("./server/pilots/leasing/routes.js");
+  const { default: creditRoutes } = await import("./server/pilots/credit/routes.js");
 
   app.use("/api/auth", authRoutes);
   app.use("/api/properties", propertiesRoutes);
@@ -133,6 +135,8 @@ async function main() {
   app.use("/api/platform-sessions", platformSessionsRoutes);
   app.use("/api/helpdesk", helpdeskRoutes);
   app.use("/api/admin/metrics", metricsRoutes);
+  app.use("/api/pilots/leasing", leasingRoutes);
+  app.use("/api/pilots/credit", creditRoutes);
 
   // ─── /api/public/brand ────────────────────────────────────────────────────
 

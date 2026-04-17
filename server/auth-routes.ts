@@ -4,8 +4,30 @@ import { staffUsers } from "../shared/schema.js";
 import { eq } from "drizzle-orm";
 import { verifyPassword, setStaffSession, safeUser } from "./helpers/authHelpers.js";
 import { requireStaff } from "./middleware/auth.js";
+import { buildAuthorizationUrl, handleAzureAdCallback, readAzureAdConfig } from "./platform/azure-ad.js";
 
 const router = Router();
+
+router.get("/azure/status", (_req, res) => {
+  const cfg = readAzureAdConfig();
+  res.json({ enabled: cfg !== null });
+});
+
+router.get("/azure/login", (req, res) => {
+  const cfg = readAzureAdConfig();
+  if (!cfg) return res.status(404).json({ message: "Azure AD SSO not configured" });
+  const url = buildAuthorizationUrl(cfg, req);
+  req.session.save((err) => {
+    if (err) return res.status(500).json({ message: "Session error" });
+    return res.redirect(url);
+  });
+});
+
+router.get("/azure/callback", async (req, res) => {
+  const cfg = readAzureAdConfig();
+  if (!cfg) return res.status(404).send("Azure AD SSO not configured");
+  await handleAzureAdCallback(req, res, cfg);
+});
 
 router.post("/login", async (req, res) => {
   try {
@@ -28,7 +50,7 @@ router.post("/login", async (req, res) => {
       .set({ lastLoginAt: new Date(), updatedAt: new Date() })
       .where(eq(staffUsers.id, user.id));
 
-    setStaffSession(req, user);
+    await setStaffSession(req, user);
     req.session.save((err) => {
       if (err) {
         console.error("[auth] session save error:", err);

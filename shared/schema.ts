@@ -267,6 +267,232 @@ export type HelpTicket = typeof helpTickets.$inferSelect;
 export type HelpMessage = typeof helpMessages.$inferSelect;
 export type HelpConversationTag = typeof helpConversationTags.$inferSelect;
 
+// ─── Leasing Pilot (Pilot A) ────────────────────────────────────────────────
+//
+// Units, deals, tours, unit sheets — the VTS-lite leasing workspace layered on
+// top of Yardi as system of record. Every entity is tenant-scoped.
+
+export const units = pgTable("units", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id).notNull(),
+  propertyId: varchar("property_id").references(() => properties.id).notNull(),
+  yardiUnitId: text("yardi_unit_id"),
+  label: text("label").notNull(),
+  sqFt: integer("sq_ft"),
+  clearHeightFt: doublePrecision("clear_height_ft"),
+  dockDoors: integer("dock_doors"),
+  power: text("power"),
+  availability: text("availability").notNull().default("occupied"),
+  askingRateUsd: text("asking_rate_usd"),
+  floorPlanUrl: text("floor_plan_url"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const deals = pgTable("deals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id).notNull(),
+  propertyId: varchar("property_id").references(() => properties.id),
+  unitId: varchar("unit_id").references(() => units.id),
+  prospectCompany: text("prospect_company").notNull(),
+  prospectContactName: text("prospect_contact_name"),
+  prospectContactEmail: text("prospect_contact_email"),
+  prospectContactPhone: text("prospect_contact_phone"),
+  brokerStaffId: varchar("broker_staff_id").references(() => staffUsers.id),
+  stage: text("stage").notNull().default("prospect"),
+  sizeNeededSqFt: integer("size_needed_sq_ft"),
+  targetMoveInAt: timestamp("target_move_in_at"),
+  expectedRentUsd: text("expected_rent_usd"),
+  stageEnteredAt: timestamp("stage_entered_at").defaultNow().notNull(),
+  lastActivityAt: timestamp("last_activity_at").defaultNow().notNull(),
+  lostReason: text("lost_reason"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const dealEvents = pgTable("deal_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id).notNull(),
+  dealId: varchar("deal_id").references(() => deals.id).notNull(),
+  authorStaffId: varchar("author_staff_id").references(() => staffUsers.id),
+  eventType: text("event_type").notNull(),
+  summary: text("summary").notNull(),
+  metadataJson: jsonb("metadata_json").default({}),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const tours = pgTable("tours", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id).notNull(),
+  dealId: varchar("deal_id").references(() => deals.id).notNull(),
+  unitId: varchar("unit_id").references(() => units.id),
+  scheduledAt: timestamp("scheduled_at"),
+  completedAt: timestamp("completed_at"),
+  brokerStaffId: varchar("broker_staff_id").references(() => staffUsers.id),
+  brokerNotesRaw: text("broker_notes_raw"),
+  aiRecap: text("ai_recap"),
+  aiRecapModel: text("ai_recap_model"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const unitSheets = pgTable("unit_sheets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id).notNull(),
+  unitId: varchar("unit_id").references(() => units.id).notNull(),
+  generatedByStaffId: varchar("generated_by_staff_id").references(() => staffUsers.id),
+  shareToken: text("share_token").notNull().unique(),
+  pdfUrl: text("pdf_url"),
+  snapshotJson: jsonb("snapshot_json").default({}),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertUnitSchema = createInsertSchema(units).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertDealSchema = createInsertSchema(deals).omit({ id: true, createdAt: true, updatedAt: true, stageEnteredAt: true, lastActivityAt: true });
+export const insertDealEventSchema = createInsertSchema(dealEvents).omit({ id: true, createdAt: true });
+export const insertTourSchema = createInsertSchema(tours).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertUnitSheetSchema = createInsertSchema(unitSheets).omit({ id: true, createdAt: true });
+
+export type Unit = typeof units.$inferSelect;
+export type Deal = typeof deals.$inferSelect;
+export type DealEvent = typeof dealEvents.$inferSelect;
+export type Tour = typeof tours.$inferSelect;
+export type UnitSheet = typeof unitSheets.$inferSelect;
+export type InsertUnit = z.infer<typeof insertUnitSchema>;
+export type InsertDeal = z.infer<typeof insertDealSchema>;
+export type InsertDealEvent = z.infer<typeof insertDealEventSchema>;
+export type InsertTour = z.infer<typeof insertTourSchema>;
+export type InsertUnitSheet = z.infer<typeof insertUnitSheetSchema>;
+
+// ─── Credit Review Pilot (Pilot B) ──────────────────────────────────────────
+//
+// Lessees, financial documents, extractions, checklist runs, memos, approvals,
+// and the SEC-archivable log. Every entity is tenant-scoped. Extractions carry
+// citations back to their source document.
+
+export const lessees = pgTable("lessees", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id).notNull(),
+  yardiTenantId: text("yardi_tenant_id"),
+  legalName: text("legal_name").notNull(),
+  dba: text("dba"),
+  primaryPropertyId: varchar("primary_property_id").references(() => properties.id),
+  primaryUnitId: varchar("primary_unit_id").references(() => units.id),
+  riskTier: text("risk_tier").notNull().default("green"),
+  watchlist: boolean("watchlist").default(false).notNull(),
+  contactEmail: text("contact_email"),
+  contactPhone: text("contact_phone"),
+  metadataJson: jsonb("metadata_json").default({}),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const creditDocuments = pgTable("credit_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id).notNull(),
+  lesseeId: varchar("lessee_id").references(() => lessees.id).notNull(),
+  uploadedByStaffId: varchar("uploaded_by_staff_id").references(() => staffUsers.id),
+  blobUrl: text("blob_url").notNull(),
+  sha256: text("sha256").notNull(),
+  mimeType: text("mime_type"),
+  pageCount: integer("page_count"),
+  classification: text("classification"),
+  classificationConfidence: doublePrecision("classification_confidence"),
+  periodStart: timestamp("period_start"),
+  periodEnd: timestamp("period_end"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const creditExtractions = pgTable("credit_extractions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id).notNull(),
+  documentId: varchar("document_id").references(() => creditDocuments.id).notNull(),
+  lineItem: text("line_item").notNull(),
+  value: text("value"),
+  unit: text("unit"),
+  page: integer("page"),
+  bboxJson: jsonb("bbox_json").$type<{ x: number; y: number; w: number; h: number } | null>(),
+  rawText: text("raw_text"),
+  confidence: doublePrecision("confidence"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const creditChecklistRuns = pgTable("credit_checklist_runs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id).notNull(),
+  lesseeId: varchar("lessee_id").references(() => lessees.id).notNull(),
+  rubricVersion: text("rubric_version").notNull(),
+  status: text("status").notNull().default("in_progress"),
+  resultsJson: jsonb("results_json").default({}),
+  redFlagCount: integer("red_flag_count").default(0).notNull(),
+  yellowFlagCount: integer("yellow_flag_count").default(0).notNull(),
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+});
+
+export const creditMemos = pgTable("credit_memos", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id).notNull(),
+  lesseeId: varchar("lessee_id").references(() => lessees.id).notNull(),
+  checklistRunId: varchar("checklist_run_id").references(() => creditChecklistRuns.id),
+  templateVersion: text("template_version").notNull(),
+  draftMarkdown: text("draft_markdown").notNull(),
+  finalMarkdown: text("final_markdown"),
+  analystEditsJson: jsonb("analyst_edits_json").default([]),
+  aiModel: text("ai_model"),
+  status: text("status").notNull().default("draft"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const creditApprovals = pgTable("credit_approvals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id).notNull(),
+  memoId: varchar("memo_id").references(() => creditMemos.id).notNull(),
+  analystStaffId: varchar("analyst_staff_id").references(() => staffUsers.id).notNull(),
+  decision: text("decision").notNull(),
+  reason: text("reason"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const archiveLog = pgTable("archive_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id).notNull(),
+  subjectType: text("subject_type").notNull(),
+  subjectId: text("subject_id").notNull(),
+  actorStaffId: varchar("actor_staff_id").references(() => staffUsers.id),
+  eventType: text("event_type").notNull(),
+  payloadJson: jsonb("payload_json").default({}),
+  payloadSha256: text("payload_sha256").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertLesseeSchema = createInsertSchema(lessees).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertCreditDocumentSchema = createInsertSchema(creditDocuments).omit({ id: true, createdAt: true });
+export const insertCreditExtractionSchema = createInsertSchema(creditExtractions).omit({ id: true, createdAt: true });
+export const insertCreditChecklistRunSchema = createInsertSchema(creditChecklistRuns).omit({ id: true, startedAt: true });
+export const insertCreditMemoSchema = createInsertSchema(creditMemos).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertCreditApprovalSchema = createInsertSchema(creditApprovals).omit({ id: true, createdAt: true });
+export const insertArchiveLogSchema = createInsertSchema(archiveLog).omit({ id: true, createdAt: true });
+
+export type Lessee = typeof lessees.$inferSelect;
+export type CreditDocument = typeof creditDocuments.$inferSelect;
+export type CreditExtraction = typeof creditExtractions.$inferSelect;
+export type CreditChecklistRun = typeof creditChecklistRuns.$inferSelect;
+export type CreditMemo = typeof creditMemos.$inferSelect;
+export type CreditApproval = typeof creditApprovals.$inferSelect;
+export type ArchiveLogEntry = typeof archiveLog.$inferSelect;
+export type InsertLessee = z.infer<typeof insertLesseeSchema>;
+export type InsertCreditDocument = z.infer<typeof insertCreditDocumentSchema>;
+export type InsertCreditExtraction = z.infer<typeof insertCreditExtractionSchema>;
+export type InsertCreditChecklistRun = z.infer<typeof insertCreditChecklistRunSchema>;
+export type InsertCreditMemo = z.infer<typeof insertCreditMemoSchema>;
+export type InsertCreditApproval = z.infer<typeof insertCreditApprovalSchema>;
+export type InsertArchiveLogEntry = z.infer<typeof insertArchiveLogSchema>;
+
 // ─── Token Usage ────────────────────────────────────────────────────────────
 
 export const tokenUsage = pgTable("token_usage", {

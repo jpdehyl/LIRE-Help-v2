@@ -17,6 +17,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [brand, setBrand] = useState<PropertyBrand | null>(null);
+  const [ssoEnabled, setSsoEnabled] = useState(false);
 
   useEffect(() => {
     fetch(`/api/public/brand?host=${encodeURIComponent(window.location.hostname)}`)
@@ -24,6 +25,11 @@ export default function LoginPage() {
       .then((data: PropertyBrand | null) => {
         if (data) setBrand(data);
       })
+      .catch(() => {});
+
+    fetch("/api/auth/azure/status", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : { enabled: false }))
+      .then((data: { enabled: boolean }) => setSsoEnabled(Boolean(data.enabled)))
       .catch(() => {});
   }, []);
 
@@ -147,6 +153,28 @@ export default function LoginPage() {
                   Access your inbox, customer records, and operator workflows.
                 </p>
               </div>
+
+              {ssoEnabled ? (
+                <div className="mb-6 space-y-3">
+                  <a
+                    href="/api/auth/azure/login"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
+                  >
+                    <svg className="h-4 w-4" viewBox="0 0 23 23" aria-hidden="true">
+                      <rect x="1" y="1" width="10" height="10" fill="#f25022" />
+                      <rect x="12" y="1" width="10" height="10" fill="#7fba00" />
+                      <rect x="1" y="12" width="10" height="10" fill="#00a4ef" />
+                      <rect x="12" y="12" width="10" height="10" fill="#ffb900" />
+                    </svg>
+                    Sign in with Microsoft
+                  </a>
+                  <div className="flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                    <span className="h-px flex-1 bg-slate-200" />
+                    or
+                    <span className="h-px flex-1 bg-slate-200" />
+                  </div>
+                </div>
+              ) : null}
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>

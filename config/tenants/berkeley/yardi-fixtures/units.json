@@ -1,0 +1,62 @@
+[
+  {
+    "yardiUnitId": "OG-001",
+    "propertyExternalId": "oakland-gateway",
+    "label": "Unit 1",
+    "sqFt": 25000,
+    "clearHeightFt": 24,
+    "dockDoors": 3,
+    "power": "400A 3-phase",
+    "availability": "occupied",
+    "askingRateUsd": null,
+    "notes": "West Coast Logistics — lease through 2027-06-30"
+  },
+  {
+    "yardiUnitId": "OG-002",
+    "propertyExternalId": "oakland-gateway",
+    "label": "Unit 2",
+    "sqFt": 20000,
+    "clearHeightFt": 24,
+    "dockDoors": 2,
+    "power": "400A 3-phase",
+    "availability": "occupied",
+    "askingRateUsd": null,
+    "notes": "Bay Fulfillment Co. — lease through 2027-03-15"
+  },
+  {
+    "yardiUnitId": "OG-004",
+    "propertyExternalId": "oakland-gateway",
+    "label": "Unit 4",
+    "sqFt": 15000,
+    "clearHeightFt": 24,
+    "dockDoors": 2,
+    "power": "400A 3-phase",
+    "availability": "occupied",
+    "askingRateUsd": null,
+    "notes": "QuickShip Distribution — lease expires 2026-12-31 (renewal watch)"
+  },
+  {
+    "yardiUnitId": "OG-010",
+    "propertyExternalId": "oakland-gateway",
+    "label": "Unit 10",
+    "sqFt": 10000,
+    "clearHeightFt": 24,
+    "dockDoors": 1,
+    "power": "400A 3-phase",
+    "availability": "pending",
+    "askingRateUsd": "1.15/sqft/mo NNN",
+    "notes": "NorCal Building Supply lease expires 2026-10-31 — renewal in negotiation"
+  },
+  {
+    "yardiUnitId": "OG-012",
+    "propertyExternalId": "oakland-gateway",
+    "label": "Unit 12",
+    "sqFt": 8000,
+    "clearHeightFt": 24,
+    "dockDoors": 1,
+    "power": "400A 3-phase",
+    "availability": "vacant",
+    "askingRateUsd": "1.25/sqft/mo NNN",
+    "notes": "Market-ready. Contact leasing for tours."
+  }
+]

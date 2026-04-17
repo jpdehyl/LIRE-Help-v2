@@ -8,6 +8,8 @@ import PlatformDashboard from "./pages/platform-dashboard";
 import TicketsPage from "./pages/tickets";
 import CustomersPage from "./pages/customers";
 import SettingsPage from "./pages/settings";
+import LeasingPage from "./pages/leasing";
+import CreditReviewPage from "./pages/credit-review";
 
 function LoadingScreen() {
   return <div className="flex min-h-screen items-center justify-center text-gray-400">Loading...</div>;
@@ -64,6 +66,18 @@ function AppRoutes() {
       <Route path="/settings">
         <RequireAuth>
           <SettingsPage />
+        </RequireAuth>
+      </Route>
+
+      {/* Berkeley pilots */}
+      <Route path="/leasing">
+        <RequireAuth>
+          <LeasingPage />
+        </RequireAuth>
+      </Route>
+      <Route path="/credit-review">
+        <RequireAuth>
+          <CreditReviewPage />
         </RequireAuth>
       </Route>
 

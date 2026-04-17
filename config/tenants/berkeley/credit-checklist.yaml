@@ -1,0 +1,100 @@
+# Berkeley Partners — Tenant Financial Review Checklist
+#
+# This rubric drives Pilot B (credit_checklist_runs). Each item is evaluated
+# against the data extracted from a lessee's financial documents. Each rule
+# produces a pass / flag_yellow / flag_red result with reasoning, cited back
+# to source documents.
+#
+# Version this file with semver. Any change to thresholds or rules is a
+# new version — runs record the version they used so historical memos remain
+# auditable.
+#
+# STATUS: placeholder. To be replaced with Berkeley's actual checklist once
+# Bahaar sends the process doc.
+
+version: "0.1.0-placeholder"
+last_reviewed: "2026-04-17"
+owner: "Berkeley Partners credit team (TBD)"
+notes: |
+  This is a placeholder rubric. Do NOT run Pilot B evaluations against real
+  Berkeley lessees using this file. Replace with Berkeley's actual checklist
+  before the week-3 shadow mode.
+
+rules:
+  - id: revenue_trend
+    category: profitability
+    description: Revenue year-over-year direction.
+    required_inputs: [revenue_current_year, revenue_prior_year]
+    thresholds:
+      red: "<= -0.20"   # >=20% decline
+      yellow: "<= -0.05"
+      green: "> -0.05"
+
+  - id: ebitda_margin
+    category: profitability
+    description: EBITDA as % of revenue, current period.
+    required_inputs: [ebitda_current, revenue_current_year]
+    thresholds:
+      red: "< 0.03"
+      yellow: "< 0.08"
+      green: ">= 0.08"
+
+  - id: current_ratio
+    category: liquidity
+    description: Current assets divided by current liabilities.
+    required_inputs: [current_assets, current_liabilities]
+    thresholds:
+      red: "< 1.0"
+      yellow: "< 1.25"
+      green: ">= 1.25"
+
+  - id: dscr
+    category: debt_service
+    description: Debt service coverage ratio.
+    required_inputs: [ebitda_current, annual_debt_service]
+    thresholds:
+      red: "< 1.1"
+      yellow: "< 1.25"
+      green: ">= 1.25"
+
+  - id: cash_on_hand_months
+    category: liquidity
+    description: Months of operating expenses covered by cash.
+    required_inputs: [cash_equivalents, monthly_opex]
+    thresholds:
+      red: "< 1"
+      yellow: "< 3"
+      green: ">= 3"
+
+  - id: concentration_risk
+    category: qualitative
+    description: Single customer > 30% of revenue triggers review.
+    required_inputs: [top_customer_revenue_pct]
+    thresholds:
+      red: ">= 0.50"
+      yellow: ">= 0.30"
+      green: "< 0.30"
+
+  - id: insurance_coi_current
+    category: compliance
+    description: Certificate of Insurance on file and current.
+    required_inputs: [coi_expiry_date]
+    thresholds:
+      red: "expired"
+      yellow: "expires_within_30_days"
+      green: "valid"
+
+  # Add Berkeley-specific rules here once checklist is ratified.
+
+required_documents:
+  - p_and_l
+  - balance_sheet
+  - tax_return
+  - bank_statements_last_3_months
+
+optional_documents:
+  - rent_roll
+  - aged_receivables
+  - management_letter
+
+memo_template: "berkeley-standard-v1"

@@ -1,0 +1,68 @@
+# Berkeley Partners — Leasing Workspace Config (Pilot A)
+#
+# Consumed by server/pilots/leasing/ modules. Everything here is editable by
+# Berkeley's regional leasing leadership without touching application code.
+
+version: "0.1.0"
+last_reviewed: "2026-04-17"
+
+pipeline:
+  stages:
+    - key: prospect
+      label: "Prospect"
+      stuck_after_days: 7
+    - key: tour_scheduled
+      label: "Tour Scheduled"
+      stuck_after_days: 5
+    - key: tour_complete
+      label: "Tour Complete"
+      stuck_after_days: 7
+    - key: loi
+      label: "LOI"
+      stuck_after_days: 14
+    - key: negotiation
+      label: "Lease Negotiation"
+      stuck_after_days: 21
+    - key: signed
+      label: "Lease Signed"
+      stuck_after_days: null
+    - key: lost
+      label: "Lost"
+      stuck_after_days: null
+
+digest:
+  cadence: "weekly"
+  day_of_week: "monday"
+  time_local: "07:00"
+  include_sections:
+    - advanced_deals
+    - stuck_deals
+    - new_prospects
+    - lost_deals
+
+unit_sheet:
+  brand_primary: "#0F2942"
+  brand_secondary: "#2563EB"
+  fields:
+    - name
+    - sq_ft
+    - clear_height_ft
+    - dock_doors
+    - power
+    - asking_rate_usd
+    - amenities
+    - floor_plan
+    - broker_contact
+  expiry_days: 30
+
+integrations:
+  yardi:
+    sync_interval_minutes: 15
+    entities:
+      - properties
+      - units
+      - leases
+      - lessees
+  vts:
+    mode: "read_only_embed"
+    site_plan_viewer_enabled: true

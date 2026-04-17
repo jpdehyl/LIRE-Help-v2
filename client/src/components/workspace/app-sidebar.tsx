@@ -1,12 +1,14 @@
 import {
   BookOpen,
   Bot,
+  Briefcase,
   Building2,
   ChevronRight,
   Inbox,
   Radio,
   Settings,
   Shield,
+  ShieldAlert,
   Sparkles,
   UserCircle2,
   BarChart3,
@@ -28,6 +30,11 @@ const primaryItems: readonly NavItem[] = [
   { href: "/reports", label: "Reports", icon: BarChart3 },
   { href: "/outbound", label: "Outbound", icon: Radio },
   { href: "/contacts", label: "Contacts", icon: Building2 },
+];
+
+const pilotItems: readonly NavItem[] = [
+  { href: "/leasing", label: "Leasing", icon: Briefcase, badge: "Pilot A" },
+  { href: "/credit-review", label: "Credit review", icon: ShieldAlert, badge: "Pilot B" },
 ];
 
 const secondaryItems: readonly NavItem[] = [{ href: "/platform-dashboard", label: "Platform admin", icon: Shield }];
@@ -104,6 +111,41 @@ export function AppSidebar() {
                     ) : null}
                   </span>
                   <ChevronRight className={["h-4 w-4 shrink-0", active ? "text-slate-300" : "text-slate-300 group-hover:text-slate-500"].join(" ")} />
+                </a>
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="mt-8 mb-3 px-2">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Pilots</p>
+        </div>
+        <nav className="space-y-1.5">
+          {pilotItems.map((item) => {
+            const active = isItemActive(location, item.href);
+            const Icon = item.icon;
+            return (
+              <Link key={item.href} href={item.href}>
+                <a
+                  className={[
+                    "flex items-center gap-3 rounded-2xl border px-3 py-3 text-sm font-medium transition-all",
+                    active
+                      ? "border-slate-900 bg-slate-900 text-white shadow-sm"
+                      : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-white hover:text-slate-900 hover:shadow-sm",
+                  ].join(" ")}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span className="flex-1">{item.label}</span>
+                  {item.badge ? (
+                    <span
+                      className={[
+                        "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em]",
+                        active ? "bg-white/10 text-slate-200" : "bg-indigo-50 text-indigo-700",
+                      ].join(" ")}
+                    >
+                      {item.badge}
+                    </span>
+                  ) : null}
                 </a>
               </Link>
             );
