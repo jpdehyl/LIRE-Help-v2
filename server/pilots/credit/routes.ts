@@ -17,6 +17,7 @@ import {
   lessees,
 } from "../../../shared/schema.js";
 import { requireStaff, requireStaffRole } from "../../middleware/auth.js";
+import { getBlobStore } from "../../platform/blob-store.js";
 import { loadTenantConfigRaw, loadTenantYaml } from "../tenant-config.js";
 import { classifyDocument, draftMemo, extractLineItems } from "./claude-pipeline.js";
 import {
@@ -82,6 +83,39 @@ router.get("/lessees", async (req: Request, res: Response) => {
   return res.json({ lessees: rows });
 });
 
+router.get("/lessees/:lesseeId", async (req: Request, res: Response) => {
+  const { tenantId } = getTenantContext(req);
+  if (!tenantId) return res.status(400).json({ message: "Missing tenant context" });
+  const lesseeId = req.params["lesseeId"] as string;
+
+  const [lessee] = await db
+    .select()
+    .from(lessees)
+    .where(and(eq(lessees.id, lesseeId), eq(lessees.tenantId, tenantId)))
+    .limit(1);
+  if (!lessee) return res.status(404).json({ message: "Lessee not found" });
+
+  const docs = await db
+    .select()
+    .from(creditDocuments)
+    .where(eq(creditDocuments.lesseeId, lesseeId))
+    .orderBy(desc(creditDocuments.createdAt));
+
+  const runs = await db
+    .select()
+    .from(creditChecklistRuns)
+    .where(eq(creditChecklistRuns.lesseeId, lesseeId))
+    .orderBy(desc(creditChecklistRuns.startedAt));
+
+  const memos = await db
+    .select()
+    .from(creditMemos)
+    .where(eq(creditMemos.lesseeId, lesseeId))
+    .orderBy(desc(creditMemos.createdAt));
+
+  return res.json({ lessee, documents: docs, runs, memos });
+});
+
 router.post("/lessees", async (req: Request, res: Response) => {
   const { tenantId, staffId } = getTenantContext(req);
   if (!tenantId) return res.status(400).json({ message: "Missing tenant context" });
@@ -113,6 +147,70 @@ router.post("/documents", async (req: Request, res: Response) => {
     eventType: "document.uploaded",
     payload: { id: row.id, sha256: row.sha256, classification: row.classification },
   });
+  return res.status(201).json({ document: row });
+});
+
+// Upload a file: body is JSON with { lesseeId, filename, mimeType, base64 }.
+// Small-file path — acceptable for pilot. Large files should upload directly
+// to Azure via SAS URL and then POST metadata to /documents above.
+router.post("/documents/upload", async (req: Request, res: Response) => {
+  const { tenantId, tenantSlug, staffId } = getTenantContext(req);
+  if (!tenantId || !tenantSlug) return res.status(400).json({ message: "Missing tenant context" });
+
+  const { lesseeId, filename, mimeType, base64 } = req.body ?? {};
+  if (typeof lesseeId !== "string" || typeof filename !== "string" || typeof base64 !== "string") {
+    return res.status(400).json({ message: "lesseeId, filename, and base64 required" });
+  }
+
+  const [lessee] = await db
+    .select()
+    .from(lessees)
+    .where(and(eq(lessees.id, lesseeId), eq(lessees.tenantId, tenantId)))
+    .limit(1);
+  if (!lessee) return res.status(404).json({ message: "Lessee not found" });
+
+  let buffer: Buffer;
+  try {
+    buffer = Buffer.from(base64, "base64");
+  } catch {
+    return res.status(400).json({ message: "Invalid base64 payload" });
+  }
+
+  const store = getBlobStore();
+  const blob = await store.put({
+    tenantSlug,
+    kind: "credit-documents",
+    filename,
+    mimeType: typeof mimeType === "string" ? mimeType : undefined,
+    data: buffer,
+  });
+
+  const [row] = await db
+    .insert(creditDocuments)
+    .values({
+      tenantId,
+      lesseeId,
+      uploadedByStaffId: staffId ?? null,
+      blobUrl: blob.blobUrl,
+      sha256: blob.sha256,
+      mimeType: blob.mimeType,
+      pageCount: null,
+      classification: null,
+      classificationConfidence: null,
+      periodStart: null,
+      periodEnd: null,
+    })
+    .returning();
+
+  await appendArchive({
+    tenantId,
+    subjectType: "credit_document",
+    subjectId: row.id,
+    actorStaffId: staffId ?? null,
+    eventType: "document.uploaded",
+    payload: { id: row.id, sha256: blob.sha256, size: blob.size, mimeType: blob.mimeType },
+  });
+
   return res.status(201).json({ document: row });
 });
 

@@ -233,6 +233,27 @@ export default function CreditReviewPage() {
     })();
   }, []);
 
+  useEffect(() => {
+    if (!selectedId) {
+      setRun(null);
+      setMemo(null);
+      return;
+    }
+    (async () => {
+      try {
+        const res = await api.get<{
+          runs: ChecklistRun[];
+          memos: Memo[];
+        }>(`/api/pilots/credit/lessees/${selectedId}`);
+        setRun(res.runs[0] ?? null);
+        setMemo(res.memos[0] ?? null);
+      } catch (err) {
+        console.error("[credit lessee detail]", err);
+        setStatus("Unable to load lessee detail");
+      }
+    })();
+  }, [selectedId]);
+
   const selectedLessee = useMemo(
     () => lessees.find((l) => l.id === selectedId) ?? null,
     [lessees, selectedId],
