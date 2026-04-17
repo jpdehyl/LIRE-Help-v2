@@ -17,7 +17,13 @@ import {
   lessees,
 } from "../../../shared/schema.js";
 import { requireStaff, requireStaffRole } from "../../middleware/auth.js";
-import { loadTenantYaml } from "../tenant-config.js";
+import { loadTenantConfigRaw, loadTenantYaml } from "../tenant-config.js";
+import { classifyDocument, draftMemo, extractLineItems } from "./claude-pipeline.js";
+import {
+  evaluateChecklist,
+  type ExtractedValue,
+  type Rubric,
+} from "./checklist-evaluator.js";
 
 type ChecklistRubric = {
   version: string;
@@ -199,6 +205,208 @@ router.post(
     return res.status(201).json({ approval: row });
   },
 );
+
+// ─── Claude-backed pipeline endpoints ───────────────────────────────────────
+
+router.post("/documents/:documentId/classify", async (req: Request, res: Response) => {
+  const { tenantId, staffId } = getTenantContext(req);
+  if (!tenantId) return res.status(400).json({ message: "Missing tenant context" });
+  const documentId = req.params["documentId"] as string;
+  const documentText = typeof req.body?.documentText === "string" ? req.body.documentText : "";
+  if (!documentText) return res.status(400).json({ message: "documentText required" });
+
+  try {
+    const result = await classifyDocument({ tenantId, documentText });
+    const [row] = await db
+      .update(creditDocuments)
+      .set({ classification: result.classification, classificationConfidence: result.confidence })
+      .where(and(eq(creditDocuments.id, documentId), eq(creditDocuments.tenantId, tenantId)))
+      .returning();
+    await appendArchive({
+      tenantId,
+      subjectType: "credit_document",
+      subjectId: documentId,
+      actorStaffId: staffId ?? null,
+      eventType: "document.classified",
+      payload: result,
+    });
+    return res.json({ document: row, classification: result });
+  } catch (err) {
+    console.error("[credit classify]", err);
+    return res.status(502).json({ message: "Classification failed" });
+  }
+});
+
+router.post("/documents/:documentId/extract", async (req: Request, res: Response) => {
+  const { tenantId, staffId, tenantSlug } = getTenantContext(req);
+  if (!tenantId || !tenantSlug) return res.status(400).json({ message: "Missing tenant context" });
+  const documentId = req.params["documentId"] as string;
+  const documentText = typeof req.body?.documentText === "string" ? req.body.documentText : "";
+  if (!documentText) return res.status(400).json({ message: "documentText required" });
+
+  const rubric = await loadTenantYaml<Rubric>(tenantSlug, "credit-checklist.yaml");
+  const requested = Array.from(new Set(rubric.rules.flatMap((r) => r.required_inputs)));
+
+  try {
+    const result = await extractLineItems({ tenantId, documentText, requestedItems: requested });
+    for (const e of result.extractions) {
+      await db.insert(creditExtractions).values({
+        tenantId,
+        documentId,
+        lineItem: e.line_item,
+        value: e.value,
+        unit: e.unit,
+        page: e.page,
+        bboxJson: null,
+        rawText: e.raw_text,
+        confidence: e.confidence,
+      });
+    }
+    await appendArchive({
+      tenantId,
+      subjectType: "credit_document",
+      subjectId: documentId,
+      actorStaffId: staffId ?? null,
+      eventType: "document.extracted",
+      payload: { count: result.extractions.length, rubric_version: rubric.version },
+    });
+    return res.json({ extractions: result.extractions });
+  } catch (err) {
+    console.error("[credit extract]", err);
+    return res.status(502).json({ message: "Extraction failed" });
+  }
+});
+
+router.post("/checklist-runs/:runId/evaluate", async (req: Request, res: Response) => {
+  const { tenantId, staffId, tenantSlug } = getTenantContext(req);
+  if (!tenantId || !tenantSlug) return res.status(400).json({ message: "Missing tenant context" });
+  const runId = req.params["runId"] as string;
+
+  const [run] = await db
+    .select()
+    .from(creditChecklistRuns)
+    .where(and(eq(creditChecklistRuns.id, runId), eq(creditChecklistRuns.tenantId, tenantId)))
+    .limit(1);
+  if (!run) return res.status(404).json({ message: "Checklist run not found" });
+
+  const rubric = await loadTenantYaml<Rubric>(tenantSlug, "credit-checklist.yaml");
+  const docs = await db.select().from(creditDocuments).where(eq(creditDocuments.lesseeId, run.lesseeId));
+  const docIds = docs.map((d: { id: string }) => d.id);
+
+  const rawExtractions = docIds.length === 0
+    ? []
+    : await db.select().from(creditExtractions).where(eq(creditExtractions.tenantId, tenantId));
+
+  const relevant: ExtractedValue[] = rawExtractions
+    .filter((e: { documentId: string }) => docIds.includes(e.documentId))
+    .map((e: { lineItem: string; value: string | null; unit: string | null; page: number | null; rawText: string | null; confidence: number | null; documentId: string }) => ({
+      line_item: e.lineItem,
+      value: e.value,
+      unit: e.unit,
+      page: e.page,
+      raw_text: e.rawText ?? "",
+      confidence: e.confidence ?? 0,
+      document_id: e.documentId,
+    }));
+
+  const evaluation = evaluateChecklist(rubric, relevant);
+
+  const [updated] = await db
+    .update(creditChecklistRuns)
+    .set({
+      rubricVersion: rubric.version,
+      status: "complete",
+      resultsJson: evaluation as any,
+      redFlagCount: evaluation.red_flag_count,
+      yellowFlagCount: evaluation.yellow_flag_count,
+      completedAt: new Date(),
+    })
+    .where(eq(creditChecklistRuns.id, runId))
+    .returning();
+
+  await appendArchive({
+    tenantId,
+    subjectType: "credit_checklist_run",
+    subjectId: runId,
+    actorStaffId: staffId ?? null,
+    eventType: "checklist_run.evaluated",
+    payload: {
+      rubric_version: rubric.version,
+      red: evaluation.red_flag_count,
+      yellow: evaluation.yellow_flag_count,
+    },
+  });
+
+  return res.json({ run: updated, evaluation });
+});
+
+router.post("/memos/:memoId/draft", async (req: Request, res: Response) => {
+  const { tenantId, staffId, tenantSlug } = getTenantContext(req);
+  if (!tenantId || !tenantSlug) return res.status(400).json({ message: "Missing tenant context" });
+  const memoId = req.params["memoId"] as string;
+
+  const [memo] = await db
+    .select()
+    .from(creditMemos)
+    .where(and(eq(creditMemos.id, memoId), eq(creditMemos.tenantId, tenantId)))
+    .limit(1);
+  if (!memo) return res.status(404).json({ message: "Memo not found" });
+  if (!memo.checklistRunId) return res.status(400).json({ message: "Memo not linked to a checklist run" });
+
+  const [run] = await db
+    .select()
+    .from(creditChecklistRuns)
+    .where(eq(creditChecklistRuns.id, memo.checklistRunId))
+    .limit(1);
+  if (!run) return res.status(404).json({ message: "Checklist run not found" });
+
+  const [lessee] = await db.select().from(lessees).where(eq(lessees.id, memo.lesseeId)).limit(1);
+  const docs = await db.select().from(creditDocuments).where(eq(creditDocuments.lesseeId, memo.lesseeId));
+  const docIds = docs.map((d: { id: string }) => d.id);
+  const extractions = docIds.length === 0
+    ? []
+    : (await db.select().from(creditExtractions).where(eq(creditExtractions.tenantId, tenantId)))
+        .filter((e: { documentId: string }) => docIds.includes(e.documentId));
+
+  const template = await loadTenantConfigRaw(tenantSlug, "memo-template.md");
+
+  try {
+    const result = await draftMemo({
+      tenantId,
+      lesseeName: lessee?.legalName ?? "Unknown lessee",
+      rubricVersion: run.rubricVersion,
+      templateMarkdown: template,
+      checklistResults: run.resultsJson,
+      extractions,
+      documentRefs: docs.map((d: { id: string; classification: string | null; sha256: string; pageCount: number | null }) => ({
+        id: d.id,
+        classification: d.classification,
+        sha256: d.sha256,
+        page_count: d.pageCount,
+      })),
+    });
+
+    const [updated] = await db
+      .update(creditMemos)
+      .set({ draftMarkdown: result.markdown, aiModel: result.model, status: "draft" })
+      .where(eq(creditMemos.id, memoId))
+      .returning();
+
+    await appendArchive({
+      tenantId,
+      subjectType: "credit_memo",
+      subjectId: memoId,
+      actorStaffId: staffId ?? null,
+      eventType: "memo.redrafted",
+      payload: { model: result.model, length: result.markdown.length },
+    });
+
+    return res.json({ memo: updated });
+  } catch (err) {
+    console.error("[credit memo draft]", err);
+    return res.status(502).json({ message: "Memo draft failed" });
+  }
+});
 
 router.get("/archive", requireStaffRole("compliance", "superadmin"), async (req: Request, res: Response) => {
   const { tenantId } = getTenantContext(req);
