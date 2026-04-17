@@ -49,8 +49,8 @@ export default function InboxPage({ viewId }: InboxPageProps) {
       title="Inbox"
       eyebrow="Support workspace / Inbox"
     >
-      <div className="mb-4 rounded-[24px] border border-slate-200 bg-white px-5 py-4 shadow-sm xl:hidden">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Queue selection</p>
+      <div className="mb-4 rounded-[24px] border border-slate-200 bg-white px-5 py-4 shadow-sm xl:hidden dark:border-slate-800 dark:bg-slate-900">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">Queue selection</p>
         <div className="mt-3 flex flex-wrap gap-2">
           {(navigationQuery.data?.views ?? []).map((view) => (
             <button
@@ -59,7 +59,9 @@ export default function InboxPage({ viewId }: InboxPageProps) {
               onClick={() => updateRoute(view.key, selectedConversationId)}
               className={[
                 "rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
-                view.key === selectedView ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200",
+                view.key === selectedView
+                  ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700",
               ].join(" ")}
               disabled={navigationQuery.isLoading}
             >

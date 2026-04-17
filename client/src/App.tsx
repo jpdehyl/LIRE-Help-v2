@@ -12,7 +12,7 @@ import LeasingPage from "./pages/leasing";
 import CreditReviewPage from "./pages/credit-review";
 
 function LoadingScreen() {
-  return <div className="flex min-h-screen items-center justify-center text-gray-400">Loading...</div>;
+  return <div className="flex min-h-screen items-center justify-center text-slate-400 dark:text-slate-500">Loading...</div>;
 }
 
 function RequireAuth({ children }: { children: ReactNode }) {
