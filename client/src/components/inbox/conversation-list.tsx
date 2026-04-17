@@ -1,6 +1,15 @@
+import { useEffect, useRef } from "react";
 import { Inbox } from "lucide-react";
 import type { ConversationRow } from "./types";
-import { Badge, EmptyState, PriorityBadge, SlaBadge, StatusBadge } from "../ui";
+import { Badge, EmptyState, Eyebrow, PriorityBadge, SlaBadge, StatusBadge } from "../ui";
+
+function Kbd({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-md border border-slate-200 bg-white px-1 font-mono text-[10px] font-semibold text-slate-500 shadow-sm">
+      {children}
+    </span>
+  );
+}
 
 interface ConversationListProps {
   title: string;
@@ -10,6 +19,12 @@ interface ConversationListProps {
 }
 
 export function ConversationList({ title, conversations, selectedConversationId, onSelectConversation }: ConversationListProps) {
+  const activeRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({ block: "nearest" });
+  }, [selectedConversationId]);
+
   if (conversations.length === 0) {
     return (
       <div className="h-full border-r border-slate-200 bg-white">
@@ -26,8 +41,15 @@ export function ConversationList({ title, conversations, selectedConversationId,
     <section className="flex h-full min-h-0 flex-col border-r border-slate-200 bg-white">
       <div className="border-b border-slate-200 px-5 py-4">
         <div className="flex items-center justify-between gap-3">
-          <p className="eyebrow">{title}</p>
-          <Badge tone="slate" size="md">{conversations.length} in view</Badge>
+          <Eyebrow>{title}</Eyebrow>
+          <div className="flex items-center gap-2">
+            <span className="hidden items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-slate-400 xl:inline-flex" aria-hidden>
+              <Kbd>J</Kbd>
+              <Kbd>K</Kbd>
+              <span>to navigate</span>
+            </span>
+            <Badge tone="slate" size="md">{conversations.length} in view</Badge>
+          </div>
         </div>
       </div>
 
@@ -43,8 +65,10 @@ export function ConversationList({ title, conversations, selectedConversationId,
           return (
             <button
               key={conversation.id}
+              ref={active ? activeRef : undefined}
               type="button"
               onClick={() => onSelectConversation(conversation.id)}
+              aria-current={active ? "true" : undefined}
               className={[
                 "grid w-full grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-slate-200 px-5 py-4 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400",
                 active ? "bg-[#eef3f6] shadow-[inset_3px_0_0_0_rgb(15_23_42)]" : "bg-white hover:bg-[#f8fafb]",

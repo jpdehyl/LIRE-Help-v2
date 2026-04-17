@@ -13,6 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
+import { Eyebrow, Heading } from "../ui";
 
 type NavItem = {
   href: string;
@@ -47,16 +48,16 @@ export function AppSidebar() {
             <Sparkles className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">LIRE Help</p>
-            <h1 className="text-base font-semibold tracking-tight text-slate-950">Property ops workspace</h1>
+            <Eyebrow>LIRE Help</Eyebrow>
+            <Heading level={1} size="h3">Property ops workspace</Heading>
           </div>
         </div>
       </div>
 
       <div className="px-4 py-5">
         <div className="rounded-[28px] border border-slate-200 bg-[#111827] p-4 text-white shadow-sm">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Mission control</p>
-          <h2 className="mt-2 text-base font-semibold tracking-tight">Inbox runs the floor.</h2>
+          <Eyebrow>Mission control</Eyebrow>
+          <h2 className="mt-2 text-base font-semibold tracking-tight text-white">Inbox runs the floor.</h2>
           <p className="mt-2 text-sm leading-6 text-slate-300">
             Agents handle routing, knowledge, follow-up, and reporting around the live conversation stream.
           </p>
@@ -65,7 +66,7 @@ export function AppSidebar() {
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-5">
         <div className="mb-3 px-2">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Workspace</p>
+          <Eyebrow>Workspace</Eyebrow>
         </div>
         <nav className="space-y-1.5">
           {primaryItems.map((item) => {
@@ -111,7 +112,7 @@ export function AppSidebar() {
         </nav>
 
         <div className="mt-8 mb-3 px-2">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Admin</p>
+          <Eyebrow>Admin</Eyebrow>
         </div>
         <nav className="space-y-1.5">
           {secondaryItems.map((item) => {

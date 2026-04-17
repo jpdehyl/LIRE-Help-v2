@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { WorkspaceShell } from "../components/workspace/workspace-shell";
 import { helpdeskApi } from "../lib/helpdesk";
-import { Badge, Card, ErrorState, Skeleton, SkeletonCard } from "../components/ui";
+import { Badge, Card, ErrorState, Eyebrow, Heading, Skeleton, SkeletonCard } from "../components/ui";
 
 const summaryMeta = [
   { key: "openConversations", label: "Open conversations", icon: Inbox, href: "/inbox/all" },
@@ -84,8 +84,8 @@ export default function DashboardPage() {
             <section>
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
-                  <p className="eyebrow">Portfolio</p>
-                  <h2 className="section-title mt-1">Properties at a glance</h2>
+                  <Eyebrow>Portfolio</Eyebrow>
+                  <Heading level={2} size="h3" className="mt-1">Properties at a glance</Heading>
                 </div>
                 <Link href="/customers"><a className="text-sm font-medium text-blue-600">View all</a></Link>
               </div>
@@ -151,8 +151,8 @@ export default function DashboardPage() {
             <article className="rounded-card border border-slate-200 bg-white p-6 shadow-card">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="eyebrow">Status mix</p>
-                  <h2 className="mt-1 text-lg font-semibold text-slate-950">Current ticket distribution</h2>
+                  <Eyebrow>Status mix</Eyebrow>
+                  <Heading level={2} className="mt-1">Current ticket distribution</Heading>
                 </div>
                 <Link href="/inbox/all"><a className="text-sm font-medium text-blue-600">Open inbox</a></Link>
               </div>

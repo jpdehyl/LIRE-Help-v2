@@ -49,6 +49,48 @@ export function InboxShell({
     }
   }, [activeConversation, onSelectConversation, selectedConversationId]);
 
+  useEffect(() => {
+    if (conversations.length === 0) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable) {
+          return;
+        }
+      }
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+
+      const key = event.key;
+      const navigate = (delta: number) => {
+        const currentIndex = conversations.findIndex((c) => c.id === activeConversation?.id);
+        const base = currentIndex === -1 ? 0 : currentIndex;
+        const next = Math.min(Math.max(base + delta, 0), conversations.length - 1);
+        if (next !== currentIndex) {
+          onSelectConversation(conversations[next].id);
+        }
+      };
+
+      if (key === "j" || key === "ArrowDown") {
+        event.preventDefault();
+        navigate(1);
+      } else if (key === "k" || key === "ArrowUp") {
+        event.preventDefault();
+        navigate(-1);
+      } else if (key === "g") {
+        event.preventDefault();
+        onSelectConversation(conversations[0].id);
+      } else if (key === "G") {
+        event.preventDefault();
+        onSelectConversation(conversations[conversations.length - 1].id);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [conversations, activeConversation?.id, onSelectConversation]);
+
   const detailQuery = useQuery({
     queryKey: ["helpdesk", "inbox", "conversation", activeConversation?.id],
     queryFn: () => helpdeskApi.getConversationDetail(activeConversation!.id),
@@ -70,9 +112,9 @@ export function InboxShell({
         <InboxSidebar views={views} selectedView={fallbackView?.key ?? selectedView} onSelectView={onSelectView} />
       </div>
 
-      <div className="grid min-w-0 flex-1 grid-cols-1 xl:grid-cols-[420px_minmax(0,1fr)]">
+      <div className="grid min-w-0 flex-1 grid-cols-1 lg:grid-cols-[340px_minmax(0,1fr)] xl:grid-cols-[420px_minmax(0,1fr)]">
         {loading ? (
-          <div className="grid min-w-0 flex-1 grid-cols-1 xl:col-span-2 xl:grid-cols-[420px_minmax(0,1fr)]">
+          <div className="grid min-w-0 flex-1 grid-cols-1 lg:col-span-2 lg:grid-cols-[340px_minmax(0,1fr)] xl:grid-cols-[420px_minmax(0,1fr)]">
             <div className="flex min-h-0 flex-col border-r border-slate-200 bg-white">
               <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
                 <Skeleton className="h-3 w-32" />
@@ -114,7 +156,7 @@ export function InboxShell({
             </div>
           </div>
         ) : error ? (
-          <div className="xl:col-span-2">
+          <div className="lg:col-span-2">
             <ErrorState
               title="Unable to load inbox"
               description={error}

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Bell, Command, LogOut, Menu, Plus, Search } from "lucide-react";
 import { useAuth } from "../../lib/auth";
 import { AppSidebar } from "./app-sidebar";
+import { Eyebrow, Heading } from "../ui";
 
 interface WorkspaceShellProps {
   title: string;
@@ -30,8 +31,8 @@ export function WorkspaceShell({ title, children, eyebrow = "Support workspace",
               </button>
 
               <div>
-                <p className="eyebrow">{eyebrow}</p>
-                <h1 className="mt-2 text-[clamp(1.8rem,3vw,2.4rem)] font-semibold tracking-[-0.045em] text-slate-950">{title}</h1>
+                <Eyebrow>{eyebrow}</Eyebrow>
+                <Heading level={1} size="display" className="mt-2">{title}</Heading>
               </div>
             </div>
 

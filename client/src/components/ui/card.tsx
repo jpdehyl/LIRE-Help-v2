@@ -1,5 +1,6 @@
 import { forwardRef, type HTMLAttributes, type ReactNode } from "react";
 import { cn } from "./cn";
+import { Eyebrow, Heading } from "./heading";
 
 type CardVariant = "solid" | "soft" | "dashed" | "inverted";
 type CardPadding = "none" | "sm" | "md" | "lg";
@@ -60,8 +61,8 @@ export function CardHeader({ eyebrow, title, children, className }: {
   return (
     <div className={cn("flex items-start justify-between gap-3", className)}>
       <div>
-        {eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}
-        {title ? <h2 className="mt-1 text-lg font-semibold text-slate-950">{title}</h2> : null}
+        {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
+        {title ? <Heading level={2} className="mt-1">{title}</Heading> : null}
       </div>
       {children}
     </div>

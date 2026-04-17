@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ArrowUpRight, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { useAuth } from "../lib/auth";
-import { Button, FieldLabel, Input } from "../components/ui";
+import { Button, Eyebrow, FieldLabel, Heading, Input } from "../components/ui";
 
 interface PropertyBrand {
   name: string;
@@ -142,8 +142,8 @@ export default function LoginPage() {
 
             <div className="mt-10 rounded-[28px] border border-slate-200 bg-white p-7 shadow-[0_18px_48px_rgba(15,23,42,0.06)] sm:p-8">
               <div className="mb-8">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Sign in</p>
-                <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">Welcome back</h2>
+                <Eyebrow>Sign in</Eyebrow>
+                <Heading level={2} size="h1" className="mt-2 text-3xl">Welcome back</Heading>
                 <p className="mt-2 text-sm leading-6 text-slate-500">
                   Access your inbox, customer records, and operator workflows.
                 </p>

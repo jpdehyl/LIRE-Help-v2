@@ -7,6 +7,8 @@ import {
   Badge,
   Button,
   EmptyState,
+  Eyebrow,
+  Heading,
   PriorityBadge,
   Select,
   SlaBadge,
@@ -100,8 +102,8 @@ export function ConversationDetailPane({ conversation, detail, detailLoading = f
         <div className="border-b border-slate-200 px-5 py-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="eyebrow">Active conversation</p>
-              <h2 className="mt-1 text-lg font-semibold text-slate-950">{detail.title}</h2>
+              <Eyebrow>Active conversation</Eyebrow>
+              <Heading level={2} className="mt-1">{detail.title}</Heading>
               <p className="mt-1 text-sm leading-relaxed text-slate-500">{detail.summary}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
