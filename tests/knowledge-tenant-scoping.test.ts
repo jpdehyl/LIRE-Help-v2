@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import supertest from "supertest";
-import { buildApp } from "../server/app-factory.js";
+import { getApp } from "./helpers/request.js";
 import { db } from "../server/db.js";
 import { platformKnowledge } from "../shared/schema.js";
 import { seedStaff, seedTenant } from "./helpers/seed.js";
@@ -21,7 +21,7 @@ describe("platform_knowledge tenant scoping (B10)", () => {
   let tenantB: Awaited<ReturnType<typeof seedTenant>>;
   let kbAId: string;
   let kbBId: string;
-  let app: Awaited<ReturnType<typeof buildApp>>;
+  let app: Awaited<ReturnType<typeof getApp>>;
 
   beforeEach(async () => {
     tenantA = await seedTenant("tenant-a", "Tenant A");
@@ -32,7 +32,7 @@ describe("platform_knowledge tenant scoping (B10)", () => {
     const kbB = await seedKbEntry(tenantB.id, "B-only policy");
     kbAId = kbA.id;
     kbBId = kbB.id;
-    app = await buildApp();
+    app = await getApp();
   });
 
   async function loginAs(email: string) {

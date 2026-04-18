@@ -1,9 +1,18 @@
 import supertest, { type SuperTest, type Test } from "supertest";
+import type express from "express";
 import { buildApp } from "../../server/app-factory.js";
 
+let cachedApp: express.Express | null = null;
+
+export async function getApp(): Promise<express.Express> {
+  if (!cachedApp) {
+    cachedApp = await buildApp();
+  }
+  return cachedApp;
+}
+
 export async function createClient(): Promise<SuperTest<Test>> {
-  const app = await buildApp();
-  return supertest(app);
+  return supertest(await getApp());
 }
 
 export async function login(agent: ReturnType<typeof supertest.agent>, email: string, password = "Password1234") {

@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { DEFAULT_INBOX_VIEW_KEY, inboxViewKeys } from "../shared/helpdesk.js";
-import { requireStaff } from "./middleware/auth.js";
+import { requireStaff, requireStaffRole } from "./middleware/auth.js";
+
+const HELPDESK_AGENT_ROLES = ["superadmin", "owner", "manager", "staff"] as const;
 import {
   addHelpConversationInternalNote,
   getHelpConversationDetail,
@@ -66,7 +68,7 @@ router.get("/inbox/conversations/:conversationId", async (req, res) => {
   }
 });
 
-router.patch("/inbox/conversations/:conversationId/assignee", async (req, res) => {
+router.patch("/inbox/conversations/:conversationId/assignee", requireStaffRole(...HELPDESK_AGENT_ROLES), async (req, res) => {
   try {
     const sess = req.session as any;
     const conversationId = req.params["conversationId"] as string;
@@ -84,7 +86,7 @@ router.patch("/inbox/conversations/:conversationId/assignee", async (req, res) =
   }
 });
 
-router.patch("/inbox/conversations/:conversationId/status", async (req, res) => {
+router.patch("/inbox/conversations/:conversationId/status", requireStaffRole(...HELPDESK_AGENT_ROLES), async (req, res) => {
   try {
     const sess = req.session as any;
     const conversationId = req.params["conversationId"] as string;
@@ -103,7 +105,7 @@ router.patch("/inbox/conversations/:conversationId/status", async (req, res) => 
   }
 });
 
-router.patch("/inbox/conversations/:conversationId/priority", async (req, res) => {
+router.patch("/inbox/conversations/:conversationId/priority", requireStaffRole(...HELPDESK_AGENT_ROLES), async (req, res) => {
   try {
     const sess = req.session as any;
     const conversationId = req.params["conversationId"] as string;
@@ -122,7 +124,7 @@ router.patch("/inbox/conversations/:conversationId/priority", async (req, res) =
   }
 });
 
-router.post("/inbox/conversations/:conversationId/notes", async (req, res) => {
+router.post("/inbox/conversations/:conversationId/notes", requireStaffRole(...HELPDESK_AGENT_ROLES), async (req, res) => {
   try {
     const sess = req.session as any;
     const conversationId = req.params["conversationId"] as string;

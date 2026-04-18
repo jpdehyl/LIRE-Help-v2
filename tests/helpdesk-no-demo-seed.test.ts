@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import supertest from "supertest";
-import { buildApp } from "../server/app-factory.js";
+import { getApp } from "./helpers/request.js";
 import { db } from "../server/db.js";
 import { helpConversations, helpInboxes, helpMessages, helpTickets } from "../shared/schema.js";
 import { eq } from "drizzle-orm";
@@ -8,13 +8,13 @@ import { seedStaff, seedTenant } from "./helpers/seed.js";
 
 describe("helpdesk never seeds demo data on read (H2)", () => {
   let tenantId: string;
-  let app: Awaited<ReturnType<typeof buildApp>>;
+  let app: Awaited<ReturnType<typeof getApp>>;
 
   beforeEach(async () => {
     const tenant = await seedTenant("fresh-tenant", "Fresh Tenant");
     tenantId = tenant.id;
     await seedStaff({ email: "manager@fresh.example.com", role: "manager", tenantId });
-    app = await buildApp();
+    app = await getApp();
   });
 
   async function loginAsManager() {
