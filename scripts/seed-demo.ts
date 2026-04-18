@@ -1221,7 +1221,7 @@ async function seedConversations(
   }
 }
 
-async function seedPlatformKnowledge(_tenantId: string) {
+async function seedPlatformKnowledge(tenantId: string) {
   const demoTitles = [
     "Dock Operating Hours & Procedures",
     "Building Contacts",
@@ -1229,7 +1229,7 @@ async function seedPlatformKnowledge(_tenantId: string) {
     "Unit Directory & Tenant Guide",
     "CAM Charges & Lease Basics",
   ];
-  await sql`DELETE FROM platform_knowledge WHERE title = ANY(${demoTitles})`;
+  await sql`DELETE FROM platform_knowledge WHERE tenant_id = ${tenantId} AND title = ANY(${demoTitles})`;
 
   const entries = [
     {
@@ -1302,8 +1302,8 @@ Rent payment: Due 1st of month. 5-day grace period. Late fee: 5% of monthly rent
   for (let i = 0; i < entries.length; i++) {
     const entry = entries[i]!;
     await sql`
-      INSERT INTO platform_knowledge (section, title, content, sort_order)
-      VALUES (${entry.section}, ${entry.title}, ${entry.content}, ${i})
+      INSERT INTO platform_knowledge (tenant_id, section, title, content, sort_order)
+      VALUES (${tenantId}, ${entry.section}, ${entry.title}, ${entry.content}, ${i})
     `;
     console.log("Knowledge entry:", entry.title);
   }

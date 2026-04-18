@@ -11,11 +11,11 @@ export type BuildAppOptions = {
 };
 
 export async function buildApp(options: BuildAppOptions = {}): Promise<express.Express> {
-  // In CJS (esbuild output): __dirname = dist/, so resolve project root one level up.
-  // In dev (ESM via tsx): import.meta.url points to server.ts in the project root, so root = that dir.
+  // bundleDir resolves to <repo>/server in dev (ESM via tsx, import.meta.url points
+  // at this file) or <repo>/dist in prod (CJS via esbuild, __dirname is the bundle
+  // output dir). In both cases the repo root is exactly one level up.
   const bundleDir = typeof __dirname !== "undefined" ? __dirname : path.dirname(new URL(import.meta.url).pathname);
-  const isCjsBundle = typeof __dirname !== "undefined";
-  const root = options.rootDir ?? (isCjsBundle ? path.resolve(bundleDir, "..") : bundleDir);
+  const root = options.rootDir ?? path.resolve(bundleDir, "..");
 
   const app = express();
   const nodeEnv = process.env.NODE_ENV ?? "development";
@@ -203,18 +203,38 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<express.E
 
   // ─── System Prompt (concierge) — base instructions + dynamic KB ───────────
 
-  async function buildSystemPrompt(): Promise<string> {
-    // Fetch KB entries from database
-    let kbContent = "";
+  async function resolveTenantIdFromHost(req: Request): Promise<string | null> {
+    const host = (req.headers.host ?? "").toLowerCase();
+    if (!host) return null;
+    const hostname = host.split(":")[0] ?? "";
+    const parts = hostname.split(".");
+    const sub = parts.length >= 3 ? parts[0] : "";
+    if (!sub || sub === "app" || sub === "www") return null;
     try {
-      const { getPlatformKnowledge } = await import("./storage.js");
-      const entries = await getPlatformKnowledge();
-      if (entries.length > 0) {
-        kbContent = "\n\nPROPERTY KNOWLEDGE BASE (from database — this is your source of truth):\n\n" +
-          entries.map(e => `## ${e.title}\n${e.content}`).join("\n\n");
-      }
+      const { db } = await import("./db.js");
+      const { tenants } = await import("../shared/schema.js");
+      const { eq } = await import("drizzle-orm");
+      const [row] = await db.select({ id: tenants.id }).from(tenants).where(eq(tenants.slug, sub)).limit(1);
+      return row?.id ?? null;
     } catch (err) {
-      console.error("[chat] KB fetch error:", err);
+      console.error("[chat] tenant resolve error:", err);
+      return null;
+    }
+  }
+
+  async function buildSystemPrompt(tenantId: string | null): Promise<string> {
+    let kbContent = "";
+    if (tenantId) {
+      try {
+        const { getPlatformKnowledge } = await import("./storage.js");
+        const entries = await getPlatformKnowledge(tenantId);
+        if (entries.length > 0) {
+          kbContent = "\n\nPROPERTY KNOWLEDGE BASE (from database — this is your source of truth):\n\n" +
+            entries.map(e => `## ${e.title}\n${e.content}`).join("\n\n");
+        }
+      } catch (err) {
+        console.error("[chat] KB fetch error:", err);
+      }
     }
 
     return `You are the LIRE Help Concierge — an AI-powered tenant assistant for light industrial real estate properties.
@@ -372,6 +392,7 @@ RESTRICTIONS:
       }
 
       const trimmed = messages.slice(-20);
+      const tenantId = await resolveTenantIdFromHost(req);
 
       const upstream = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
@@ -383,7 +404,7 @@ RESTRICTIONS:
         body: JSON.stringify({
           model: "claude-haiku-4-5-20251001",
           max_tokens: 512,
-          system: await buildSystemPrompt(),
+          system: await buildSystemPrompt(tenantId),
           messages: trimmed,
         }),
       });

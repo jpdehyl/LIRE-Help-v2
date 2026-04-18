@@ -167,37 +167,69 @@ export async function upsertAgent(propertyId: string, data: Partial<InsertAgent>
 
 // ─── Platform Knowledge ─────────────────────────────────────────────────────
 
-export async function getPlatformKnowledge(): Promise<PlatformKnowledgeEntry[]> {
-  return db.select().from(platformKnowledge).orderBy(platformKnowledge.sortOrder);
+export async function getPlatformKnowledge(tenantId: string): Promise<PlatformKnowledgeEntry[]> {
+  return db
+    .select()
+    .from(platformKnowledge)
+    .where(eq(platformKnowledge.tenantId, tenantId))
+    .orderBy(platformKnowledge.sortOrder);
 }
 
-export async function createPlatformKnowledge(data: { section: string; title: string; content: string }): Promise<PlatformKnowledgeEntry> {
-  const entries = await getPlatformKnowledge();
+export async function createPlatformKnowledge(
+  tenantId: string,
+  data: { section: string; title: string; content: string },
+): Promise<PlatformKnowledgeEntry> {
+  const entries = await getPlatformKnowledge(tenantId);
   const maxOrder = entries.length > 0 ? Math.max(...entries.map((entry) => entry.sortOrder)) : -1;
-  const [row] = await db.insert(platformKnowledge).values({ ...data, sortOrder: maxOrder + 1 }).returning();
+  const [row] = await db
+    .insert(platformKnowledge)
+    .values({ ...data, tenantId, sortOrder: maxOrder + 1 })
+    .returning();
   return row!;
 }
 
-export async function updatePlatformKnowledge(id: string, data: Partial<{ section: string; title: string; content: string }>): Promise<PlatformKnowledgeEntry | null> {
-  const [row] = await db.update(platformKnowledge).set({ ...data, updatedAt: new Date() }).where(eq(platformKnowledge.id, id)).returning();
+export async function updatePlatformKnowledge(
+  id: string,
+  tenantId: string,
+  data: Partial<{ section: string; title: string; content: string }>,
+): Promise<PlatformKnowledgeEntry | null> {
+  const [row] = await db
+    .update(platformKnowledge)
+    .set({ ...data, updatedAt: new Date() })
+    .where(and(eq(platformKnowledge.id, id), eq(platformKnowledge.tenantId, tenantId)))
+    .returning();
   return row ?? null;
 }
 
-export async function deletePlatformKnowledge(id: string): Promise<void> {
-  await db.delete(platformKnowledge).where(eq(platformKnowledge.id, id));
+export async function deletePlatformKnowledge(id: string, tenantId: string): Promise<boolean> {
+  const rows = await db
+    .delete(platformKnowledge)
+    .where(and(eq(platformKnowledge.id, id), eq(platformKnowledge.tenantId, tenantId)))
+    .returning({ id: platformKnowledge.id });
+  return rows.length > 0;
 }
 
-export async function reorderPlatformKnowledge(id: string, direction: "up" | "down"): Promise<PlatformKnowledgeEntry[]> {
-  const entries = await getPlatformKnowledge();
+export async function reorderPlatformKnowledge(
+  id: string,
+  direction: "up" | "down",
+  tenantId: string,
+): Promise<PlatformKnowledgeEntry[]> {
+  const entries = await getPlatformKnowledge(tenantId);
   const idx = entries.findIndex((entry) => entry.id === id);
   if (idx < 0) return entries;
   const swapIdx = direction === "up" ? idx - 1 : idx + 1;
   if (swapIdx < 0 || swapIdx >= entries.length) return entries;
   const a = entries[idx]!;
   const b = entries[swapIdx]!;
-  await db.update(platformKnowledge).set({ sortOrder: b.sortOrder }).where(eq(platformKnowledge.id, a.id));
-  await db.update(platformKnowledge).set({ sortOrder: a.sortOrder }).where(eq(platformKnowledge.id, b.id));
-  return getPlatformKnowledge();
+  await db
+    .update(platformKnowledge)
+    .set({ sortOrder: b.sortOrder })
+    .where(and(eq(platformKnowledge.id, a.id), eq(platformKnowledge.tenantId, tenantId)));
+  await db
+    .update(platformKnowledge)
+    .set({ sortOrder: a.sortOrder })
+    .where(and(eq(platformKnowledge.id, b.id), eq(platformKnowledge.tenantId, tenantId)));
+  return getPlatformKnowledge(tenantId);
 }
 
 // ─── Platform Sessions ──────────────────────────────────────────────────────

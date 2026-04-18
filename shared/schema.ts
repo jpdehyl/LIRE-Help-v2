@@ -101,6 +101,7 @@ export type StaffUser = typeof staffUsers.$inferSelect;
 
 export const platformKnowledge = pgTable("platform_knowledge", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id).notNull(),
   section: text("section").notNull(),
   title: text("title").notNull(),
   content: text("content").notNull(),
