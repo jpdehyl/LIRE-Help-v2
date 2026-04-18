@@ -5,6 +5,7 @@
 import express, { type Request, type Response } from "express";
 import helmet from "helmet";
 import path from "path";
+import { isCorsOriginAllowed, parseAllowedHosts } from "./platform/cors.js";
 
 export type BuildAppOptions = {
   rootDir?: string;
@@ -50,15 +51,11 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<express.E
 
   // ─── CORS ─────────────────────────────────────────────────────────────────
 
+  const extraAllowedHosts = parseAllowedHosts(process.env.CORS_ALLOWED_HOSTS);
+
   app.use((req, res, next) => {
     const origin = req.headers.origin ?? "";
-    const allowed =
-      /\.lire-help\.com$/.test(origin) ||
-      /\.replit\.dev$/.test(origin) ||
-      /\.replit\.app$/.test(origin) ||
-      origin.startsWith("http://localhost") ||
-      origin.startsWith("http://127.0.0.1");
-
+    const allowed = isCorsOriginAllowed(origin, { isProd, extraAllowedHosts });
     if (allowed) {
       res.header("Access-Control-Allow-Origin", origin);
       res.header("Access-Control-Allow-Credentials", "true");
