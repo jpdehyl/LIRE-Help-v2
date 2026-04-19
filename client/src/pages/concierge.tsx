@@ -19,7 +19,12 @@ import {
 } from "lucide-react";
 import { WorkspaceShell } from "../components/workspace/workspace-shell";
 import { conciergeApi, helpdeskApi } from "../lib/helpdesk";
-import type { ConciergeTryResponse, ConciergeTryToolCall } from "../lib/helpdesk";
+import type {
+  ConciergeKnowledgeSection,
+  ConciergeKnowledgeSummary,
+  ConciergeTryResponse,
+  ConciergeTryToolCall,
+} from "../lib/helpdesk";
 import { Badge, Button, Textarea } from "../components/ui";
 
 type ConciergeTab = "overview" | "try" | "knowledge" | "learning" | "guardrails" | "activity";
@@ -88,6 +93,8 @@ export default function ConciergePage() {
           <OverviewTab />
         ) : tab === "try" ? (
           <TryItTab />
+        ) : tab === "knowledge" ? (
+          <KnowledgeTab />
         ) : (
           <PlaceholderTab tab={tab} />
         )}
@@ -400,6 +407,136 @@ function PlaceholderTab({ tab }: { tab: ConciergeTab }) {
       </p>
     </div>
   );
+}
+
+function KnowledgeTab() {
+  const knowledgeQuery = useQuery({
+    queryKey: ["concierge", "knowledge"],
+    queryFn: conciergeApi.getKnowledge,
+    staleTime: 60_000,
+  });
+
+  if (knowledgeQuery.isLoading) {
+    return (
+      <div className="rounded-md border border-border bg-surface p-5 font-body text-[13px] text-fg-muted">
+        Loading knowledge base…
+      </div>
+    );
+  }
+
+  if (knowledgeQuery.error instanceof Error) {
+    return (
+      <div className="rounded-md border border-border bg-surface p-5 font-body text-[13px] text-error">
+        Unable to load knowledge: {knowledgeQuery.error.message}
+      </div>
+    );
+  }
+
+  const data = knowledgeQuery.data;
+  if (!data || data.totalEntries === 0) {
+    return <KnowledgeEmpty editUrl={data?.editUrl ?? "/settings/workspace"} />;
+  }
+
+  return (
+    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <KnowledgeSectionList sections={data.sections} />
+      <KnowledgeSummaryCard summary={data} />
+    </div>
+  );
+}
+
+function KnowledgeEmpty({ editUrl }: { editUrl: string }) {
+  return (
+    <div className="rounded-md border border-dashed border-border bg-surface-2 p-8 text-center">
+      <div className="mx-auto grid h-10 w-10 place-items-center rounded-sm bg-surface text-fg-muted">
+        <BookOpen className="h-5 w-5" />
+      </div>
+      <h2 className="mt-3 font-display text-[16px] font-bold tracking-tight text-fg">
+        No knowledge sources yet
+      </h2>
+      <p className="mx-auto mt-1 max-w-md font-body text-[12.5px] leading-[1.5] text-fg-muted">
+        The Concierge has no platform knowledge to draw from. Add property rules, vendor lists, and lease
+        excerpts so it can answer confidently.
+      </p>
+      <Link href={editUrl}>
+        <a className="mt-4 inline-flex h-8 items-center gap-1.5 rounded-sm bg-fg px-3 font-body text-[12px] font-medium text-surface">
+          Open workspace settings
+        </a>
+      </Link>
+    </div>
+  );
+}
+
+function KnowledgeSectionList({ sections }: { sections: ConciergeKnowledgeSection[] }) {
+  return (
+    <section className="space-y-3">
+      {sections.map((section) => (
+        <div key={section.section} className="rounded-md border border-border bg-surface p-4">
+          <div className="flex items-baseline justify-between gap-2">
+            <h3 className="font-display text-[15px] font-semibold tracking-tight text-fg">{section.section}</h3>
+            <div className="font-mono text-[11px] text-fg-subtle">
+              {section.entryCount} entr{section.entryCount === 1 ? "y" : "ies"} ·{" "}
+              {formatCharCount(section.totalCharCount)}
+            </div>
+          </div>
+          <ul className="mt-3 divide-y divide-border">
+            {section.entries.map((entry) => (
+              <li key={entry.id} className="flex items-center gap-3 py-2.5">
+                <BookOpen className="h-3 w-3 shrink-0 text-fg-subtle" />
+                <span className="min-w-0 flex-1 truncate font-body text-[13px] text-fg">{entry.title}</span>
+                <span className="font-mono text-[10px] text-fg-subtle">{formatCharCount(entry.contentChars)}</span>
+                <span className="font-mono text-[10px] text-fg-subtle">{entry.updatedAtLabel}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function KnowledgeSummaryCard({ summary }: { summary: ConciergeKnowledgeSummary }) {
+  return (
+    <aside className="space-y-3">
+      <section className="rounded-md border border-border bg-surface p-4">
+        <div className="eyebrow">Indexed into the agent</div>
+        <div className="mt-3 space-y-2 font-body text-[12px] text-fg-muted">
+          <Stat label="Sections" value={String(summary.sectionCount)} />
+          <Stat label="Entries" value={String(summary.totalEntries)} />
+          <Stat label="Characters" value={formatCharCount(summary.totalCharCount)} />
+        </div>
+        <Link href={summary.editUrl}>
+          <a className="mt-4 inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-sm border border-border bg-surface-2 px-3 font-body text-[12px] font-medium text-fg hover:bg-surface">
+            Edit knowledge
+          </a>
+        </Link>
+      </section>
+      <section className="rounded-md border border-border bg-surface p-4">
+        <div className="eyebrow">How it&rsquo;s used</div>
+        <p className="mt-2 font-body text-[12.5px] leading-[1.5] text-fg-muted">
+          The agent&rsquo;s system prompt references this catalog through the
+          <code className="mx-1 rounded-xs bg-surface-2 px-1 font-mono text-[11px]">lookup_property_context</code>
+          tool. When a tenant asks a property-specific question, the concierge calls that tool before drafting
+          a reply.
+        </p>
+      </section>
+    </aside>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="font-mono text-[10px] uppercase tracking-eyebrow text-fg-subtle">{label}</span>
+      <span className="font-mono text-[13px] font-medium text-fg">{value}</span>
+    </div>
+  );
+}
+
+function formatCharCount(n: number): string {
+  if (n < 1000) return `${n} chars`;
+  if (n < 10_000) return `${(n / 1000).toFixed(1)}k chars`;
+  return `${Math.round(n / 1000)}k chars`;
 }
 
 interface TryItTurn {
