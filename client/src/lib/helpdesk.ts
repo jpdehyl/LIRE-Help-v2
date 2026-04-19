@@ -53,8 +53,27 @@ export interface ConciergeAgentSummary {
   configured: boolean;
 }
 
+export interface ConciergeTryToolCall {
+  id: string;
+  name: string;
+  input: Record<string, unknown>;
+  result: string;
+}
+
+export interface ConciergeTryResponse {
+  sessionId: string;
+  reply: string | null;
+  confidence: "high" | "medium" | "low" | null;
+  escalated: boolean;
+  escalationReason: string | null;
+  stopReason: string;
+  toolCalls: ConciergeTryToolCall[];
+}
+
 export const conciergeApi = {
   getAgent: () => api.get<ConciergeAgentSummary>("/api/concierge/agent"),
+  tryMessage: (message: string) =>
+    api.post<ConciergeTryResponse>("/api/concierge/try", { message }),
 };
 
 export interface PropertySummaryItem {

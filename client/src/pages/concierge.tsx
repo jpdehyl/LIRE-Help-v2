@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useRef, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import {
   Activity,
@@ -10,14 +10,17 @@ import {
   GraduationCap,
   Mail,
   MessageCircle,
+  Send,
   Settings2,
   Shield,
   Sparkles,
+  UserRound,
   type LucideIcon,
 } from "lucide-react";
 import { WorkspaceShell } from "../components/workspace/workspace-shell";
-import { helpdeskApi } from "../lib/helpdesk";
-import { Badge } from "../components/ui";
+import { conciergeApi, helpdeskApi } from "../lib/helpdesk";
+import type { ConciergeTryResponse, ConciergeTryToolCall } from "../lib/helpdesk";
+import { Badge, Button, Textarea } from "../components/ui";
 
 type ConciergeTab = "overview" | "try" | "knowledge" | "learning" | "guardrails" | "activity";
 type RunState = "live" | "shadow" | "paused";
@@ -77,6 +80,8 @@ export default function ConciergePage() {
 
         {tab === "overview" ? (
           <OverviewTab />
+        ) : tab === "try" ? (
+          <TryItTab />
         ) : (
           <PlaceholderTab tab={tab} />
         )}
@@ -360,6 +365,228 @@ function PlaceholderTab({ tab }: { tab: ConciergeTab }) {
         next phase.
       </p>
     </div>
+  );
+}
+
+interface TryItTurn {
+  id: string;
+  userMessage: string;
+  response: ConciergeTryResponse | null;
+  error: string | null;
+  pending: boolean;
+}
+
+function TryItTab() {
+  const [draft, setDraft] = useState("");
+  const [turns, setTurns] = useState<TryItTurn[]>([]);
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+
+  const tryMutation = useMutation({
+    mutationFn: (message: string) => conciergeApi.tryMessage(message),
+  });
+
+  const scrollToBottom = () => {
+    requestAnimationFrame(() => {
+      scrollerRef.current?.scrollTo({ top: scrollerRef.current.scrollHeight, behavior: "smooth" });
+    });
+  };
+
+  const onSend = () => {
+    const message = draft.trim();
+    if (!message || tryMutation.isPending) return;
+    const id = `turn-${Date.now()}`;
+    const pendingTurn: TryItTurn = { id, userMessage: message, response: null, error: null, pending: true };
+    setTurns((prev) => [...prev, pendingTurn]);
+    setDraft("");
+    scrollToBottom();
+
+    tryMutation.mutate(message, {
+      onSuccess: (response) => {
+        setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, response, pending: false } : t)));
+        scrollToBottom();
+      },
+      onError: (err) => {
+        setTurns((prev) =>
+          prev.map((t) =>
+            t.id === id
+              ? {
+                  ...t,
+                  error: err instanceof Error ? err.message : "Agent run failed",
+                  pending: false,
+                }
+              : t,
+          ),
+        );
+        scrollToBottom();
+      },
+    });
+  };
+
+  return (
+    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <section className="flex min-h-[480px] flex-col overflow-hidden rounded-md border border-border bg-surface">
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+          <Sparkles className="h-3.5 w-3.5 text-accent" />
+          <div className="eyebrow">Playground</div>
+          <span className="flex-1" />
+          <span className="font-mono text-[10px] uppercase tracking-eyebrow text-fg-subtle">
+            No outbound traffic · no DB writes
+          </span>
+        </div>
+
+        <div ref={scrollerRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
+          {turns.length === 0 ? (
+            <TryItIntro />
+          ) : (
+            turns.map((turn) => <TryItTurnView key={turn.id} turn={turn} />)
+          )}
+        </div>
+
+        <div className="border-t border-border bg-surface px-4 py-3">
+          <Textarea
+            compact
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            placeholder="Type a message the way a tenant would send it…"
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+                event.preventDefault();
+                onSend();
+              }
+            }}
+            className="min-h-16"
+          />
+          <div className="mt-2 flex items-center gap-2">
+            <p className="flex-1 font-body text-[11.5px] text-fg-muted">
+              <kbd className="rounded-xs border border-border bg-surface-2 px-1 font-mono text-[10px]">⌘</kbd>
+              +
+              <kbd className="rounded-xs border border-border bg-surface-2 px-1 font-mono text-[10px]">Enter</kbd>{" "}
+              to send · runs the live Claude-managed Agent with no channel delivery.
+            </p>
+            <Button
+              size="sm"
+              variant="dark"
+              onClick={onSend}
+              disabled={!draft.trim() || tryMutation.isPending}
+              loading={tryMutation.isPending}
+            >
+              <Send className="mr-1 h-3 w-3" />
+              Send
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      <aside className="space-y-3">
+        <section className="rounded-md border border-border bg-surface p-4">
+          <div className="eyebrow">How the playground runs</div>
+          <p className="mt-2 font-body text-[12.5px] leading-[1.55] text-fg-muted">
+            Each message opens a fresh session on the Claude-managed Agent. Custom tools are intercepted:
+            <code className="mx-1 rounded-xs bg-surface-2 px-1 font-mono text-[11px]">send_reply</code>
+            is captured and shown here,
+            <code className="mx-1 rounded-xs bg-surface-2 px-1 font-mono text-[11px]">lookup_property_context</code>
+            returns a neutral stub, and nothing is written to conversations or tickets.
+          </p>
+        </section>
+      </aside>
+    </div>
+  );
+}
+
+function TryItIntro() {
+  return (
+    <div className="rounded-sm border border-dashed border-border bg-surface-2 p-5 text-center">
+      <div className="mx-auto grid h-9 w-9 place-items-center rounded-sm bg-surface text-accent">
+        <Sparkles className="h-4 w-4" />
+      </div>
+      <p className="mt-3 font-body text-[13px] leading-[1.5] text-fg">
+        Exercise the concierge without touching real threads.
+      </p>
+      <p className="mt-1 font-body text-[12px] leading-[1.5] text-fg-muted">
+        Try something like “Dock 4 compressor is down, perishables arriving 5 AM” or “Can I get my April invoice resent?”
+      </p>
+    </div>
+  );
+}
+
+function TryItTurnView({ turn }: { turn: TryItTurn }) {
+  return (
+    <div className="space-y-2.5">
+      <div className="flex justify-end">
+        <div className="max-w-[85%] rounded-sm border border-border bg-surface-2 px-3 py-2">
+          <div className="mb-0.5 flex items-center gap-1.5">
+            <UserRound className="h-3 w-3 text-fg-subtle" />
+            <span className="font-mono text-[10px] uppercase tracking-eyebrow text-fg-subtle">You</span>
+          </div>
+          <p className="whitespace-pre-wrap font-body text-[13px] leading-[1.45] text-fg">{turn.userMessage}</p>
+        </div>
+      </div>
+
+      <div className="flex justify-start">
+        <div className="max-w-[85%] space-y-2">
+          <div className="rounded-sm border border-border bg-surface px-3 py-2">
+            <div className="mb-0.5 flex items-center gap-1.5">
+              <Sparkles className="h-3 w-3 text-accent" />
+              <span className="font-mono text-[10px] uppercase tracking-eyebrow text-fg-subtle">Concierge</span>
+              {turn.response?.confidence ? (
+                <Badge tone={turn.response.confidence === "low" ? "warning" : "success"} size="sm">
+                  {turn.response.confidence.toUpperCase()} CONFIDENCE
+                </Badge>
+              ) : null}
+              {turn.response?.escalated ? (
+                <Badge tone="warning" size="sm">
+                  Escalated
+                </Badge>
+              ) : null}
+            </div>
+            {turn.pending ? (
+              <p className="font-body text-[13px] italic text-fg-muted">Running the agent…</p>
+            ) : turn.error ? (
+              <p className="font-body text-[13px] text-error">{turn.error}</p>
+            ) : turn.response?.reply ? (
+              <p className="whitespace-pre-wrap font-body text-[13px] leading-[1.5] text-fg">{turn.response.reply}</p>
+            ) : turn.response?.escalated ? (
+              <p className="font-body text-[13px] text-fg-muted">
+                Agent escalated without sending a reply
+                {turn.response.escalationReason ? ` — "${turn.response.escalationReason}"` : ""}.
+              </p>
+            ) : (
+              <p className="font-body text-[13px] text-fg-muted">
+                Agent ended the turn without calling <code className="font-mono text-[11px]">send_reply</code>.
+              </p>
+            )}
+          </div>
+
+          {turn.response?.toolCalls.length ? (
+            <ToolCallList calls={turn.response.toolCalls} />
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ToolCallList({ calls }: { calls: ConciergeTryToolCall[] }) {
+  return (
+    <details className="rounded-sm border border-border bg-surface-2 px-3 py-2 text-left">
+      <summary className="cursor-pointer select-none font-mono text-[11px] uppercase tracking-eyebrow text-fg-muted">
+        Tool calls · {calls.length}
+      </summary>
+      <ol className="mt-2 space-y-2">
+        {calls.map((call, i) => (
+          <li key={call.id} className="rounded-xs border border-border bg-surface px-2.5 py-2">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[10px] text-fg-subtle">{i + 1}.</span>
+              <code className="font-mono text-[11.5px] font-semibold text-fg">{call.name}</code>
+            </div>
+            <pre className="mt-1.5 overflow-x-auto whitespace-pre-wrap break-words rounded-xs bg-surface-2 px-2 py-1.5 font-mono text-[11px] leading-[1.45] text-fg-muted">
+              {JSON.stringify(call.input, null, 2)}
+            </pre>
+            <p className="mt-1 font-body text-[11.5px] italic text-fg-muted">{call.result}</p>
+          </li>
+        ))}
+      </ol>
+    </details>
   );
 }
 
