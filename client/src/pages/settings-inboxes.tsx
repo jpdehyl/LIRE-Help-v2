@@ -1,37 +1,36 @@
 import { Inbox as InboxIcon } from "lucide-react";
 import { WorkspaceShell } from "../components/workspace/workspace-shell";
-import { Card, CardHeader, Eyebrow } from "../components/ui";
+import { Card } from "../components/ui";
 
 export default function SettingsInboxesPage() {
   return (
-    <WorkspaceShell
-      title="Inboxes"
-      eyebrow="Settings / Inboxes"
-    >
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <Card padding="lg">
-          <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">
-              <InboxIcon className="h-5 w-5" />
+    <WorkspaceShell title="Inboxes" eyebrow="Workspace / Settings">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <Card padding="md">
+          <div className="flex items-center gap-2.5">
+            <span className="grid h-8 w-8 place-items-center rounded-xs bg-surface-2 text-fg-muted">
+              <InboxIcon className="h-4 w-4" />
             </span>
-            <CardHeader
-              eyebrow="Inbox settings"
-              title="Queue definitions and team routing"
-            />
+            <div>
+              <div className="eyebrow">Inbox settings</div>
+              <div className="mt-0.5 font-display text-[18px] font-semibold tracking-tight text-fg">
+                Queue definitions and team routing
+              </div>
+            </div>
           </div>
-          <p className="mt-6 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-            This is the home for creating, renaming, and routing team inboxes (Support, Escalations, Billing, VIP, or custom).
-            In the current phase, inbox definitions come from the helpdesk seed and are visible on the left inbox sidebar.
-            Creation and edit UI lands in the next tranche; the route exists now so the workspace information architecture
-            stays stable while downstream features are wired in.
+          <p className="mt-4 font-body text-[13px] leading-[1.55] text-fg-muted">
+            This is the home for creating, renaming, and routing team inboxes (Support, Escalations, Billing, VIP, or
+            custom). In the current phase, inbox definitions come from the helpdesk seed and are visible on the left
+            inbox sidebar. Creation and edit UI lands in the next tranche; the route exists now so the workspace
+            information architecture stays stable while downstream features are wired in.
           </p>
         </Card>
 
-        <Card variant="dashed" padding="lg" as="aside">
-          <Eyebrow>Why this route exists now</Eyebrow>
-          <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-            Operators land on /settings/inboxes when they click the inbox configuration entry in the sidebar.
-            Shipping the route early prevents dead-end clicks during dogfooding; the detailed admin UI fills in later.
+        <Card variant="dashed" padding="md" as="aside">
+          <div className="eyebrow">Why this route exists now</div>
+          <p className="mt-2 font-body text-[13px] leading-[1.55] text-fg-muted">
+            Operators land on /settings/inboxes when they click the inbox configuration entry in the sidebar. Shipping
+            the route early prevents dead-end clicks during dogfooding; the detailed admin UI fills in later.
           </p>
         </Card>
       </div>

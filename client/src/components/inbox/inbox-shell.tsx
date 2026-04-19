@@ -102,87 +102,73 @@ export function InboxShell({
   };
 
   const loading = navigationLoading || conversationsQuery.isLoading;
-  const error = navigationError
-    ?? (conversationsQuery.error instanceof Error ? conversationsQuery.error.message : null)
-    ?? (detailQuery.error instanceof Error ? detailQuery.error.message : null);
+  const error =
+    navigationError ??
+    (conversationsQuery.error instanceof Error ? conversationsQuery.error.message : null) ??
+    (detailQuery.error instanceof Error ? detailQuery.error.message : null);
 
   return (
-    <div className="flex h-[min(calc(100vh-11.5rem),900px)] min-h-[560px] min-w-0 overflow-hidden rounded-[32px] border border-slate-200/90 bg-white/90 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm dark:border-slate-800/80 dark:bg-slate-900/70 dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)]">
+    <div className="flex h-[calc(100vh-3.5rem-2.5rem)] min-h-[560px] min-w-0 border border-border bg-surface">
       <div className="hidden xl:block">
         <InboxSidebar views={views} selectedView={fallbackView?.key ?? selectedView} onSelectView={onSelectView} />
       </div>
 
-      <div className="grid min-w-0 flex-1 grid-cols-1 lg:grid-cols-[340px_minmax(0,1fr)] xl:grid-cols-[420px_minmax(0,1fr)]">
-        {loading ? (
-          <div className="grid min-w-0 flex-1 grid-cols-1 lg:col-span-2 lg:grid-cols-[340px_minmax(0,1fr)] xl:grid-cols-[420px_minmax(0,1fr)]">
-            <div className="flex min-h-0 flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-              <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-800">
-                <Skeleton className="h-3 w-32" />
-                <Skeleton className="h-6 w-20 rounded-full" />
-              </div>
-              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-slate-200 bg-[#f8fafb] px-5 py-2 dark:border-slate-800 dark:bg-slate-950/50">
-                <Skeleton className="h-3 w-48" />
-                <Skeleton className="h-3 w-12" />
-              </div>
-              <div className="min-h-0 flex-1 overflow-hidden">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <SkeletonRow key={i} />
-                ))}
-              </div>
+      {loading ? (
+        <>
+          <div className="flex w-[400px] shrink-0 flex-col border-r border-border bg-surface">
+            <div className="border-b border-border px-3.5 py-3">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="mt-1 h-4 w-24" />
             </div>
-            <div className="flex min-h-0 flex-col bg-white dark:bg-slate-900">
-              <div className="border-b border-slate-200 px-5 py-4 space-y-3 dark:border-slate-800">
-                <Skeleton className="h-3 w-40" />
-                <Skeleton className="h-6 w-3/5" />
-                <Skeleton className="h-3 w-4/5" />
-                <div className="mt-3 grid gap-3 md:grid-cols-3">
-                  {Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 space-y-2 dark:border-slate-800 dark:bg-slate-900/60">
-                      <Skeleton className="h-3 w-16" />
-                      <Skeleton className="h-4 w-24" />
-                    </div>
-                  ))}
+            <div className="flex-1">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <SkeletonRow key={i} />
+              ))}
+            </div>
+          </div>
+          <div className="flex min-h-0 flex-1 flex-col bg-surface">
+            <div className="border-b border-border px-5 py-3 space-y-2">
+              <Skeleton className="h-4 w-3/5" />
+              <Skeleton className="h-3 w-4/5" />
+            </div>
+            <div className="min-h-0 flex-1 space-y-2 px-5 py-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="rounded-sm border border-border bg-surface p-4 space-y-2">
+                  <Skeleton className="h-3 w-24" />
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-3 w-5/6" />
                 </div>
-              </div>
-              <div className="min-h-0 flex-1 space-y-3 overflow-hidden px-5 py-5">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="rounded-2xl border border-slate-200 bg-white p-4 space-y-2 dark:border-slate-800 dark:bg-slate-900">
-                    <Skeleton className="h-3 w-24" />
-                    <Skeleton className="h-3 w-full" />
-                    <Skeleton className="h-3 w-5/6" />
-                  </div>
-                ))}
-              </div>
+              ))}
             </div>
           </div>
-        ) : error ? (
-          <div className="lg:col-span-2">
-            <ErrorState
-              title="Unable to load inbox"
-              description={error}
-              onRetry={() => {
-                void conversationsQuery.refetch();
-                void detailQuery.refetch();
-              }}
-            />
-          </div>
-        ) : (
-          <>
-            <ConversationList
-              title={fallbackView?.label ?? "Conversation list"}
-              conversations={conversations}
-              selectedConversationId={activeConversation?.id ?? null}
-              onSelectConversation={onSelectConversation}
-            />
-            <ConversationDetailPane
-              conversation={activeConversation}
-              detail={detailQuery.data}
-              detailLoading={detailQuery.isLoading}
-              onMutated={invalidateHelpdesk}
-            />
-          </>
-        )}
-      </div>
+        </>
+      ) : error ? (
+        <div className="flex-1">
+          <ErrorState
+            title="Unable to load inbox"
+            description={error}
+            onRetry={() => {
+              void conversationsQuery.refetch();
+              void detailQuery.refetch();
+            }}
+          />
+        </div>
+      ) : (
+        <>
+          <ConversationList
+            title={fallbackView?.label ?? "Conversation list"}
+            conversations={conversations}
+            selectedConversationId={activeConversation?.id ?? null}
+            onSelectConversation={onSelectConversation}
+          />
+          <ConversationDetailPane
+            conversation={activeConversation}
+            detail={detailQuery.data}
+            detailLoading={detailQuery.isLoading}
+            onMutated={invalidateHelpdesk}
+          />
+        </>
+      )}
     </div>
   );
 }

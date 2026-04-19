@@ -34,7 +34,12 @@ function score(item: CommandItem, query: string): number {
   return 0;
 }
 
-export function CommandPalette({ open, onClose, commands, placeholder = "Jump to page, search conversations, or run a command" }: CommandPaletteProps) {
+export function CommandPalette({
+  open,
+  onClose,
+  commands,
+  placeholder = "Search tickets, properties, commands…",
+}: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -101,32 +106,28 @@ export function CommandPalette({ open, onClose, commands, placeholder = "Jump to
 
   return (
     <Dialog open={open} onClose={onClose} placement="top" ariaLabel="Command palette" initialFocusRef={inputRef}>
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-float dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex items-center gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-          <Search className="h-4 w-4 text-slate-400 dark:text-slate-500" aria-hidden />
+      <div className="overflow-hidden rounded-md border border-border bg-surface shadow-menu">
+        <div className="flex items-center gap-2.5 border-b border-border px-3.5 py-3">
+          <Search className="h-4 w-4 text-fg-muted" aria-hidden />
           <input
             ref={inputRef}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
-            className="w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500"
+            className="w-full bg-transparent font-body text-[14px] text-fg outline-none placeholder:text-fg-subtle"
             aria-label="Search commands"
           />
-          <kbd className="hidden items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-slate-500 sm:inline-flex dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-            ESC
-          </kbd>
+          <Kbd>ESC</Kbd>
         </div>
 
-        <div ref={listRef} className="max-h-[55vh] overflow-y-auto py-1">
+        <div ref={listRef} className="max-h-[50vh] overflow-y-auto py-1.5">
           {filtered.length === 0 ? (
-            <div className="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
-              No matching commands.
-            </div>
+            <div className="px-4 py-10 text-center font-body text-[13px] text-fg-muted">No matching commands.</div>
           ) : (
             grouped.map(([group, items]) => (
               <div key={group} className="mb-1 last:mb-0">
-                <p className="px-4 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">{group}</p>
+                <p className="eyebrow px-4 pb-1 pt-2.5 text-fg-subtle">{group}</p>
                 {items.map((cmd) => {
                   const index = filtered.indexOf(cmd);
                   const active = index === activeIndex;
@@ -139,30 +140,23 @@ export function CommandPalette({ open, onClose, commands, placeholder = "Jump to
                       onMouseEnter={() => setActiveIndex(index)}
                       onClick={() => runCommand(cmd)}
                       className={cn(
-                        "flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors",
-                        active
-                          ? "bg-slate-100 text-slate-950 dark:bg-slate-800 dark:text-slate-100"
-                          : "text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800/60",
+                        "flex w-full items-center gap-2.5 px-4 py-2 text-left font-body text-[13px] transition-colors ease-ds duration-fast",
+                        active ? "bg-surface-2 text-fg" : "text-fg hover:bg-surface-2",
                       )}
                     >
-                      <span className={cn(
-                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl",
-                        active
-                          ? "bg-white text-slate-800 shadow-sm dark:bg-slate-900 dark:text-slate-200"
-                          : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400",
-                      )}>
-                        <Icon className="h-4 w-4" aria-hidden />
+                      <span className="flex h-4 w-4 shrink-0 items-center justify-center text-fg-muted">
+                        <Icon className="h-3.5 w-3.5" aria-hidden />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium">{cmd.label}</span>
+                        <span className="block truncate">{cmd.label}</span>
                         {cmd.description ? (
-                          <span className="block truncate text-xs text-slate-500 dark:text-slate-400">{cmd.description}</span>
+                          <span className="block truncate text-[11px] text-fg-subtle">{cmd.description}</span>
                         ) : null}
                       </span>
                       {active ? (
-                        <CornerDownLeft className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" aria-hidden />
+                        <CornerDownLeft className="h-3.5 w-3.5 text-fg-subtle" aria-hidden />
                       ) : cmd.shortcut ? (
-                        <kbd className="rounded-md border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[10px] font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">{cmd.shortcut}</kbd>
+                        <Kbd>{cmd.shortcut}</Kbd>
                       ) : null}
                     </button>
                   );
@@ -172,21 +166,31 @@ export function CommandPalette({ open, onClose, commands, placeholder = "Jump to
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-4 py-2 text-[11px] text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
+        <div className="flex items-center justify-between gap-3 border-t border-border bg-surface-2 px-4 py-2 font-body text-[11px] text-fg-muted">
           <div className="flex items-center gap-3">
             <span className="inline-flex items-center gap-1">
-              <kbd className="rounded-md border border-slate-200 bg-white px-1 font-mono text-[10px] font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">↑</kbd>
-              <kbd className="rounded-md border border-slate-200 bg-white px-1 font-mono text-[10px] font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">↓</kbd>
+              <Kbd>↑</Kbd>
+              <Kbd>↓</Kbd>
               to navigate
             </span>
             <span className="inline-flex items-center gap-1">
-              <kbd className="rounded-md border border-slate-200 bg-white px-1 font-mono text-[10px] font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">↵</kbd>
+              <Kbd>↵</Kbd>
               to select
             </span>
           </div>
-          <span>{filtered.length} result{filtered.length === 1 ? "" : "s"}</span>
+          <span>
+            {filtered.length} result{filtered.length === 1 ? "" : "s"}
+          </span>
         </div>
       </div>
     </Dialog>
+  );
+}
+
+function Kbd({ children }: { children: React.ReactNode }) {
+  return (
+    <kbd className="inline-flex items-center rounded-xs border border-border bg-surface-2 px-1.5 py-[2px] font-mono text-[10px] font-medium leading-none text-fg-muted">
+      {children}
+    </kbd>
   );
 }

@@ -3,44 +3,31 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { WorkspaceShell } from "../components/workspace/workspace-shell";
 import { helpdeskApi } from "../lib/helpdesk";
-import { Badge, Card, ErrorState, Eyebrow, Heading, Skeleton, SkeletonCard } from "../components/ui";
+import { Badge, Card, ErrorState, Skeleton, SkeletonCard } from "../components/ui";
 
 const summaryMeta = [
   { key: "openConversations", label: "Open conversations", icon: Inbox, href: "/inbox/all" },
-  { key: "unassigned", label: "Unassigned work", icon: UserRoundMinus, href: "/inbox/unassigned" },
+  { key: "unassigned", label: "Unassigned", icon: UserRoundMinus, href: "/inbox/unassigned" },
   { key: "slaAtRisk", label: "SLA at risk", icon: AlertTriangle, href: "/inbox/sla_at_risk" },
-  { key: "waitingOnCustomer", label: "Waiting on customer", icon: TimerReset, href: "/inbox/all" },
+  { key: "waitingOnCustomer", label: "Waiting on tenant", icon: TimerReset, href: "/inbox/all" },
 ] as const;
 
 function DashboardSkeleton() {
   return (
-    <div className="space-y-6">
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="rounded-card border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900">
-            <div className="flex items-start justify-between gap-3">
-              <Skeleton className="h-11 w-11 rounded-2xl" />
-              <Skeleton className="h-6 w-20 rounded-full" />
-            </div>
-            <Skeleton className="mt-4 h-4 w-40" />
-            <Skeleton className="mt-2 h-3 w-24" />
-            <Skeleton className="mt-2 h-3 w-32" />
-          </div>
+    <div className="space-y-5">
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <SkeletonCard key={i} />
         ))}
       </section>
-
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
-      </section>
-
-      <section className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         {Array.from({ length: 2 }).map((_, i) => (
-          <div key={i} className="rounded-card border border-slate-200 bg-white p-6 shadow-card dark:border-slate-800 dark:bg-slate-900 space-y-3">
-            <Skeleton className="h-3 w-32" />
-            <Skeleton className="h-5 w-56" />
-            <div className="space-y-3 pt-2">
+          <div key={i} className="rounded-sm border border-border bg-surface p-4 space-y-2.5">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-4 w-40" />
+            <div className="space-y-2 pt-1">
               {Array.from({ length: 4 }).map((__, j) => (
-                <Skeleton key={j} className="h-14 w-full rounded-2xl" />
+                <Skeleton key={j} className="h-12 w-full rounded-sm" />
               ))}
             </div>
           </div>
@@ -64,14 +51,11 @@ export default function DashboardPage() {
   });
 
   return (
-    <WorkspaceShell
-      title="Dashboard"
-      eyebrow="Support workspace / Dashboard"
-    >
+    <WorkspaceShell title="Dashboard" eyebrow="Workspace">
       {metricsQuery.isLoading ? (
         <DashboardSkeleton />
       ) : metricsQuery.error instanceof Error ? (
-        <Card variant="solid" className="border-red-200 bg-red-50 p-0 dark:border-red-900/60 dark:bg-red-500/10">
+        <Card variant="solid" className="p-0">
           <ErrorState
             title="Unable to load dashboard metrics"
             description={metricsQuery.error.message}
@@ -79,41 +63,71 @@ export default function DashboardPage() {
           />
         </Card>
       ) : metricsQuery.data ? (
-        <div className="space-y-6">
+        <div className="space-y-5">
+          {/* Primary KPI row */}
+          <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {summaryMeta.map((card) => {
+              const Icon = card.icon;
+              const value = metricsQuery.data.summary[card.key];
+              return (
+                <Link key={card.key} href={card.href}>
+                  <a className="block rounded-sm border border-border bg-surface p-4 transition-colors ease-ds duration-fast hover:bg-surface-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="eyebrow">{card.label}</p>
+                      <Icon className="h-3.5 w-3.5 text-fg-subtle" />
+                    </div>
+                    <p className="mt-2 font-mono text-[28px] font-medium leading-none tracking-tight text-fg">
+                      {value}
+                    </p>
+                    <p className="mt-2 font-body text-[12px] text-fg-muted">
+                      {value === 0 ? "Nothing blocked here right now." : "Open queue to work this segment."}
+                    </p>
+                  </a>
+                </Link>
+              );
+            })}
+          </section>
+
+          {/* Portfolio */}
           {propertiesQuery.data && propertiesQuery.data.properties.length > 0 ? (
             <section>
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <div>
-                  <Eyebrow>Portfolio</Eyebrow>
-                  <Heading level={2} size="h3" className="mt-1">Properties at a glance</Heading>
-                </div>
-                <Link href="/customers"><a className="text-sm font-medium text-blue-600 dark:text-blue-400">View all</a></Link>
+              <div className="mb-2.5 flex items-center justify-between gap-3">
+                <div className="eyebrow">Portfolio</div>
+                <Link href="/customers">
+                  <a className="font-body text-[12px] font-medium text-fg-muted hover:text-fg">View all →</a>
+                </Link>
               </div>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {propertiesQuery.data.properties.map((property) => (
                   <Link key={property.id} href={`/inbox/all?propertyId=${property.id}`}>
-                    <a className="block rounded-card border border-slate-200 bg-white p-5 shadow-card transition hover:border-slate-300 hover:bg-slate-50 hover:shadow-raised dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 dark:hover:bg-slate-800/60">
+                    <a className="block rounded-sm border border-border bg-surface p-4 transition-colors ease-ds duration-fast hover:bg-surface-2">
                       <div className="flex items-start justify-between gap-3">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                          <Building2 className="h-5 w-5" />
+                        <div className="grid h-8 w-8 place-items-center rounded-xs bg-surface-2 text-fg-muted">
+                          <Building2 className="h-4 w-4" />
                         </div>
                         {property.openTicketCount > 0 ? (
-                          <Badge tone="orange" size="md">{property.openTicketCount} open</Badge>
+                          <Badge tone="orange" size="sm">
+                            {property.openTicketCount} open
+                          </Badge>
                         ) : (
-                          <Badge tone="success" size="md">All clear</Badge>
+                          <Badge tone="success" size="sm">
+                            All clear
+                          </Badge>
                         )}
                       </div>
-                      <div className="mt-3">
-                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{property.name}</p>
+                      <div className="mt-2.5">
+                        <p className="font-body text-[13px] font-semibold text-fg">{property.name}</p>
                         {property.location ? (
-                          <p className="mt-1 flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                          <p className="mt-0.5 flex items-center gap-1 font-body text-[11px] text-fg-muted">
                             <MapPin className="h-3 w-3" />
                             {property.location}
                           </p>
                         ) : null}
-                        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                        <p className="mt-2 font-body text-[12px] text-fg-muted">
                           {property.unitCount > 1 ? `${property.unitCount} units` : "Single-tenant"} ·{" "}
-                          {property.openTicketCount === 0 ? "No open tickets" : `${property.openTicketCount} open ticket${property.openTicketCount === 1 ? "" : "s"}`}
+                          {property.openTicketCount === 0
+                            ? "No open tickets"
+                            : `${property.openTicketCount} ticket${property.openTicketCount === 1 ? "" : "s"}`}
                         </p>
                       </div>
                     </a>
@@ -123,96 +137,91 @@ export default function DashboardPage() {
             </section>
           ) : null}
 
-          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {summaryMeta.map((card) => {
-              const Icon = card.icon;
-              const value = metricsQuery.data.summary[card.key];
-
-              return (
-                <Link key={card.key} href={card.href}>
-                  <a className="rounded-card border border-slate-200 bg-white p-5 shadow-card transition hover:border-slate-300 hover:bg-slate-50 hover:shadow-raised dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 dark:hover:bg-slate-800/60">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{card.label}</p>
-                        <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-50">{value}</p>
-                        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{value === 0 ? "Nothing blocked here right now." : "Open the queue to work this segment."}</p>
-                      </div>
-                      <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">
-                        <Icon className="h-5 w-5" />
-                      </span>
-                    </div>
-                  </a>
-                </Link>
-              );
-            })}
-          </section>
-
-          <section className="grid gap-6 lg:grid-cols-2">
-            <article className="rounded-card border border-slate-200 bg-white p-6 shadow-card dark:border-slate-800 dark:bg-slate-900">
+          {/* Triage + activity */}
+          <section className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+            <article className="rounded-sm border border-border bg-surface p-4">
               <div className="flex items-center justify-between gap-3">
-                <div>
-                  <Eyebrow>Triage by team</Eyebrow>
-                  <Heading level={2} className="mt-1">Where work is waiting</Heading>
-                </div>
-                <Link href="/inbox/all"><a className="text-sm font-medium text-blue-600 dark:text-blue-400">Open inbox</a></Link>
+                <div className="eyebrow">Triage by team</div>
+                <Link href="/inbox/all">
+                  <a className="font-body text-[12px] font-medium text-fg-muted hover:text-fg">Open inbox →</a>
+                </Link>
               </div>
-              <div className="mt-5 space-y-3">
+              <div className="mt-3 space-y-2">
                 {metricsQuery.data.byInbox.map((inbox) => (
-                  <div key={inbox.inboxLabel} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/60">
+                  <div key={inbox.inboxLabel} className="rounded-xs bg-surface-2 px-3 py-2.5">
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{inbox.inboxLabel}</p>
-                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{inbox.count}</p>
+                      <p className="font-body text-[13px] font-semibold text-fg">{inbox.inboxLabel}</p>
+                      <p className="font-mono text-[14px] text-fg">{inbox.count}</p>
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <Badge tone="slate">{inbox.unassignedCount} unassigned</Badge>
-                      <Badge tone="slate">{inbox.atRiskCount} at risk</Badge>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      <Badge tone="muted" size="sm">
+                        {inbox.unassignedCount} unassigned
+                      </Badge>
+                      <Badge tone="warning" size="sm">
+                        {inbox.atRiskCount} at risk
+                      </Badge>
                     </div>
                   </div>
                 ))}
               </div>
             </article>
 
+            <article className="rounded-sm border border-border bg-surface p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="eyebrow">Recent activity</div>
+                <Link href="/inbox/all">
+                  <a className="font-body text-[12px] font-medium text-fg-muted hover:text-fg">See all →</a>
+                </Link>
+              </div>
+              <div className="mt-3 space-y-2">
+                {metricsQuery.data.recentActivity.length > 0 ? (
+                  metricsQuery.data.recentActivity.map((item) => (
+                    <Link key={item.id} href={`/inbox/all?conversation=${item.conversationId}`}>
+                      <a className="block rounded-xs bg-surface-2 px-3 py-2.5 transition-colors ease-ds duration-fast hover:bg-border">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="truncate font-body text-[13px] font-semibold text-fg">{item.title}</p>
+                          <span className="shrink-0 font-mono text-[10px] text-fg-subtle">{item.createdAtLabel}</span>
+                        </div>
+                        <p className="mt-1 font-body text-[12px] text-fg-muted">
+                          {item.author} · {item.type.replaceAll("_", " ")}
+                        </p>
+                      </a>
+                    </Link>
+                  ))
+                ) : (
+                  <p className="font-body text-[12px] text-fg-muted">No recent activity yet.</p>
+                )}
+              </div>
+            </article>
           </section>
 
-          <section className="grid gap-6 lg:grid-cols-2">
-            <article className="rounded-card border border-slate-200 bg-white p-6 shadow-card dark:border-slate-800 dark:bg-slate-900">
-              <p className="eyebrow">Recent activity</p>
-              <div className="mt-4 space-y-3">
-                {metricsQuery.data.recentActivity.length > 0 ? metricsQuery.data.recentActivity.map((item) => (
-                  <Link key={item.id} href={`/inbox/all?conversation=${item.conversationId}`}>
-                    <a className="block rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/60 transition hover:bg-slate-100 dark:hover:bg-slate-800/60">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{item.title}</p>
-                        <span className="text-xs text-slate-500 dark:text-slate-400">{item.createdAtLabel}</span>
+          {/* Open tickets */}
+          <section>
+            <div className="mb-2.5 flex items-center justify-between gap-3">
+              <div className="eyebrow">Open tickets</div>
+              <Link href="/inbox/all">
+                <a className="font-body text-[12px] font-medium text-fg-muted hover:text-fg">See all →</a>
+              </Link>
+            </div>
+            <div className="grid gap-2">
+              {metricsQuery.data.openTickets.map((ticket) => (
+                <Link key={ticket.id} href={`/inbox/all?conversation=${ticket.id}`}>
+                  <a className="block rounded-sm border border-border bg-surface px-3.5 py-2.5 transition-colors ease-ds duration-fast hover:bg-surface-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-body text-[13px] font-semibold text-fg">{ticket.subject}</p>
+                        <p className="mt-0.5 font-body text-[12px] text-fg-muted">
+                          {ticket.requesterName} · {ticket.company}
+                        </p>
                       </div>
-                      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{item.author} · {item.type.replaceAll("_", " ")}</p>
-                    </a>
-                  </Link>
-                )) : <p className="text-sm text-slate-500 dark:text-slate-400">No recent activity yet.</p>}
-              </div>
-            </article>
-
-            <article className="rounded-card border border-slate-200 bg-white p-6 shadow-card dark:border-slate-800 dark:bg-slate-900">
-              <div className="flex items-center justify-between gap-3">
-                <p className="eyebrow">Open tickets</p>
-                <Link href="/inbox/all"><a className="text-sm font-medium text-blue-600 dark:text-blue-400">See all</a></Link>
-              </div>
-              <div className="mt-4 space-y-3">
-                {metricsQuery.data.openTickets.map((ticket) => (
-                  <Link key={ticket.id} href={`/inbox/all?conversation=${ticket.id}`}>
-                    <a className="block rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/60 transition hover:bg-slate-100 dark:hover:bg-slate-800/60">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{ticket.subject}</p>
-                          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{ticket.requesterName} · {ticket.company}</p>
-                        </div>
-                        <Badge tone="slate">{ticket.priority}</Badge>
-                      </div>
-                    </a>
-                  </Link>
-                ))}
-              </div>
-            </article>
+                      <Badge tone="muted" size="sm">
+                        {ticket.priority}
+                      </Badge>
+                    </div>
+                  </a>
+                </Link>
+              ))}
+            </div>
           </section>
         </div>
       ) : null}

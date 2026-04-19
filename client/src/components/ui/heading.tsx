@@ -5,16 +5,17 @@ type HeadingLevel = 1 | 2 | 3 | 4;
 
 interface HeadingProps extends HTMLAttributes<HTMLHeadingElement> {
   level?: HeadingLevel;
-  size?: "display" | "h1" | "h2" | "h3" | "h4";
+  size?: "display" | "h1" | "h2" | "h3" | "h4" | "h5";
   children: ReactNode;
 }
 
 const sizeClasses: Record<NonNullable<HeadingProps["size"]>, string> = {
-  display: "text-[clamp(1.8rem,3vw,2.4rem)] font-semibold tracking-[-0.045em] text-slate-950 dark:text-slate-50",
-  h1: "text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-50",
-  h2: "text-lg font-semibold text-slate-950 dark:text-slate-50",
-  h3: "text-sm font-semibold text-slate-950 dark:text-slate-100",
-  h4: "text-sm font-semibold text-slate-900 dark:text-slate-200",
+  display: "font-display font-bold text-[clamp(2.5rem,4vw,4rem)] leading-[1.05] tracking-tight text-fg",
+  h1: "font-display font-bold text-[clamp(1.75rem,3vw,3rem)] leading-[1.05] tracking-tight text-fg",
+  h2: "font-display font-semibold text-[clamp(1.5rem,2.4vw,2.25rem)] leading-[1.05] tracking-tight text-fg",
+  h3: "font-display font-semibold text-[clamp(1.25rem,1.8vw,1.75rem)] leading-[1.25] tracking-tight text-fg",
+  h4: "font-display font-semibold text-[1.375rem] leading-[1.25] tracking-tight text-fg",
+  h5: "font-display font-semibold text-[1.125rem] leading-[1.25] tracking-tight text-fg",
 };
 
 export function Heading({ level = 2, size, className, children, ...rest }: HeadingProps) {
@@ -33,7 +34,10 @@ export function Eyebrow({
   ...rest
 }: HTMLAttributes<HTMLParagraphElement> & { children: ReactNode }) {
   return (
-    <p className={cn("text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400", className)} {...rest}>
+    <p
+      className={cn("font-body text-[11px] font-semibold uppercase tracking-eyebrow text-fg-muted", className)}
+      {...rest}
+    >
       {children}
     </p>
   );
@@ -45,7 +49,7 @@ export function Caption({
   ...rest
 }: HTMLAttributes<HTMLParagraphElement> & { children: ReactNode }) {
   return (
-    <p className={cn("text-xs leading-relaxed text-slate-500 dark:text-slate-400", className)} {...rest}>
+    <p className={cn("font-body text-[12px] leading-[1.5] text-fg-muted", className)} {...rest}>
       {children}
     </p>
   );

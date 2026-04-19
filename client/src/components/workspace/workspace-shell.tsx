@@ -1,10 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import {
-  BarChart3,
   Bell,
-  BookOpen,
-  Bot,
-  Building2,
+  ChevronRight,
   Command,
   Inbox as InboxIcon,
   LayoutDashboard,
@@ -12,8 +9,6 @@ import {
   Menu,
   Monitor,
   Moon,
-  Plus,
-  Radio,
   Search,
   Settings,
   Shield,
@@ -24,7 +19,7 @@ import {
 import { useAuth } from "../../lib/auth";
 import { useTheme } from "../../lib/theme";
 import { AppSidebar } from "./app-sidebar";
-import { CommandPalette, Eyebrow, Heading, Sheet, type CommandItem } from "../ui";
+import { CommandPalette, Sheet, type CommandItem } from "../ui";
 
 interface WorkspaceShellProps {
   title: string;
@@ -34,23 +29,18 @@ interface WorkspaceShellProps {
 }
 
 const navigationCommands: CommandItem[] = [
-  { id: "go-dashboard", label: "Dashboard", description: "Operator metrics and property summary", href: "/dashboard", icon: LayoutDashboard, group: "Navigation", keywords: "home overview metrics" },
-  { id: "go-inbox", label: "Inbox", description: "All open conversations", href: "/inbox/all", icon: InboxIcon, group: "Navigation", keywords: "queue conversations support" },
-  { id: "go-inbox-unassigned", label: "Unassigned inbox", description: "Conversations with no owner", href: "/inbox/unassigned", icon: InboxIcon, group: "Navigation", keywords: "unassigned triage" },
-  { id: "go-inbox-sla", label: "SLA at risk", description: "Queue filtered to SLA risk", href: "/inbox/sla_at_risk", icon: InboxIcon, group: "Navigation", keywords: "sla breached at risk" },
-  { id: "go-tickets", label: "Tickets", description: "Linked work objects", href: "/tickets", icon: Ticket, group: "Navigation" },
-  { id: "go-customers", label: "Customers", description: "Companies and contacts", href: "/customers", icon: Users, group: "Navigation", keywords: "companies accounts" },
-  { id: "go-settings", label: "Settings", description: "Inboxes, workflows, and team config", href: "/settings", icon: Settings, group: "Navigation", keywords: "preferences config admin" },
-  { id: "go-platform", label: "Platform admin", description: "Properties, agents, and knowledge base", href: "/platform-dashboard", icon: Shield, group: "Navigation", keywords: "admin platform internal" },
-  { id: "go-agent", label: "Agent", href: "/agent", icon: Bot, group: "Workspace" },
-  { id: "go-knowledge", label: "Knowledge", href: "/knowledge", icon: BookOpen, group: "Workspace" },
-  { id: "go-reports", label: "Reports", href: "/reports", icon: BarChart3, group: "Workspace" },
-  { id: "go-outbound", label: "Outbound", href: "/outbound", icon: Radio, group: "Workspace" },
-  { id: "go-contacts", label: "Contacts", href: "/contacts", icon: Building2, group: "Workspace" },
+  { id: "go-dashboard", label: "Go to Dashboard", href: "/dashboard", icon: LayoutDashboard, group: "Navigation", keywords: "home overview metrics" },
+  { id: "go-inbox", label: "Go to Inbox", href: "/inbox/all", icon: InboxIcon, group: "Navigation", keywords: "queue conversations support" },
+  { id: "go-inbox-unassigned", label: "Unassigned inbox", href: "/inbox/unassigned", icon: InboxIcon, group: "Navigation", keywords: "unassigned triage" },
+  { id: "go-inbox-sla", label: "SLA at risk", href: "/inbox/sla_at_risk", icon: InboxIcon, group: "Navigation", keywords: "sla breached at risk" },
+  { id: "go-tickets", label: "Go to Tickets", href: "/tickets", icon: Ticket, group: "Navigation" },
+  { id: "go-customers", label: "Go to Customers", href: "/customers", icon: Users, group: "Navigation", keywords: "companies accounts" },
+  { id: "go-settings", label: "Go to Settings", href: "/settings", icon: Settings, group: "Navigation", keywords: "preferences config admin" },
+  { id: "go-platform", label: "Platform admin", href: "/platform-dashboard", icon: Shield, group: "Navigation", keywords: "admin platform internal" },
 ];
 
-export function WorkspaceShell({ title, children, eyebrow = "Support workspace", actions }: WorkspaceShellProps) {
-  const { user, logout } = useAuth();
+export function WorkspaceShell({ title, children, eyebrow = "Workspace", actions }: WorkspaceShellProps) {
+  const { logout } = useAuth();
   const { mode, resolved, setMode, toggle } = useTheme();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
@@ -58,12 +48,12 @@ export function WorkspaceShell({ title, children, eyebrow = "Support workspace",
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
-      const isTyping = target && (
-        target.tagName === "INPUT" ||
-        target.tagName === "TEXTAREA" ||
-        target.tagName === "SELECT" ||
-        target.isContentEditable
-      );
+      const isTyping =
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable);
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         setPaletteOpen((open) => !open);
@@ -115,8 +105,12 @@ export function WorkspaceShell({ title, children, eyebrow = "Support workspace",
   const ThemeIcon = mode === "system" ? Monitor : resolved === "dark" ? Moon : Sun;
   const themeLabel = mode === "system" ? "Theme: system" : resolved === "dark" ? "Theme: dark" : "Theme: light";
 
+  // Parse breadcrumb trail from "eyebrow" format "A / B / C".
+  const crumbs = eyebrow.split("/").map((s) => s.trim()).filter(Boolean);
+  const allCrumbs = crumbs.length > 0 ? [...crumbs, title] : [title];
+
   return (
-    <div className="flex min-h-screen bg-transparent text-slate-900 dark:text-slate-100">
+    <div className="flex h-screen w-screen overflow-hidden bg-bg text-fg">
       <AppSidebar />
 
       <Sheet open={navOpen} onClose={() => setNavOpen(false)} ariaLabel="Workspace navigation">
@@ -125,77 +119,73 @@ export function WorkspaceShell({ title, children, eyebrow = "Support workspace",
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
 
-      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 border-b border-slate-200/90 bg-white/85 px-4 py-4 backdrop-blur-xl supports-[backdrop-filter]:bg-white/75 sm:px-6 lg:px-8 dark:border-slate-800/80 dark:bg-slate-950/70 dark:supports-[backdrop-filter]:bg-slate-950/60">
-          <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-            <div className="flex items-start gap-3">
-              <button
-                type="button"
-                onClick={() => setNavOpen(true)}
-                className="mt-0.5 inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:bg-slate-50 lg:hidden dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
-                aria-label="Open workspace navigation"
-              >
-                <Menu className="h-4 w-4" />
-              </button>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-surface px-4 sm:px-5">
+          <button
+            type="button"
+            onClick={() => setNavOpen(true)}
+            className="grid h-8 w-8 place-items-center rounded-sm text-fg-muted transition-colors ease-ds duration-fast hover:bg-surface-2 hover:text-fg lg:hidden"
+            aria-label="Open workspace navigation"
+          >
+            <Menu className="h-4 w-4" />
+          </button>
 
-              <div>
-                <Eyebrow>{eyebrow}</Eyebrow>
-                <Heading level={1} size="display" className="mt-2">{title}</Heading>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-3 xl:items-end">
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPaletteOpen(true)}
-                  className="flex min-h-11 items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-500 shadow-sm transition hover:border-slate-300 hover:bg-white min-[420px]:min-w-[300px] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-slate-600 dark:hover:bg-slate-800"
-                  aria-label="Open command palette"
+          <nav
+            aria-label="Breadcrumb"
+            className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden font-body text-[13px]"
+          >
+            {allCrumbs.map((c, i) => (
+              <span key={`${c}-${i}`} className="flex items-center gap-2 min-w-0">
+                {i > 0 ? <ChevronRight className="h-3.5 w-3.5 shrink-0 text-fg-subtle" /> : null}
+                <span
+                  className={[
+                    "truncate",
+                    i === allCrumbs.length - 1 ? "font-semibold text-fg" : "text-fg-muted",
+                  ].join(" ")}
                 >
-                  <Search className="h-4 w-4" />
-                  <span className="flex-1 text-left">Search conversations, tickets, or customers</span>
-                  <span className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-400 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
-                    <Command className="inline h-3 w-3" />K
-                  </span>
-                </button>
-                <button className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
-                  <Plus className="h-4 w-4" />
-                  Create
-                </button>
-                <button
-                  type="button"
-                  onClick={toggle}
-                  onContextMenu={(event) => { event.preventDefault(); setMode("system"); }}
-                  aria-label={themeLabel}
-                  title={`${themeLabel} — click to toggle, right-click to follow system`}
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
-                >
-                  <ThemeIcon className="h-4 w-4" />
-                </button>
-                <button className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800" aria-label="Notifications">
-                  <Bell className="h-4 w-4" />
-                </button>
-                {actions}
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 font-medium capitalize text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                  {user?.role ?? "staff"}
+                  {c}
                 </span>
-                <div className="rounded-full border border-slate-200 bg-white px-3 py-1.5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                  {user?.name ?? user?.email}
-                </div>
-                <button onClick={logout} className="inline-flex items-center gap-1.5 font-medium text-slate-600 transition hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100">
-                  <LogOut className="h-3.5 w-3.5" />
-                  Sign out
-                </button>
-              </div>
-            </div>
-          </div>
+              </span>
+            ))}
+          </nav>
+
+          <button
+            type="button"
+            onClick={() => setPaletteOpen(true)}
+            aria-label="Open command palette"
+            className="hidden items-center gap-2 rounded-sm border border-border bg-surface-2 px-2.5 py-1.5 font-body text-[12px] text-fg-muted transition-colors ease-ds duration-fast hover:bg-surface sm:inline-flex min-[720px]:min-w-[220px]"
+          >
+            <Search className="h-3.5 w-3.5" />
+            <span className="flex-1 text-left">Jump to…</span>
+            <span className="inline-flex items-center rounded-xs border border-border bg-surface px-1.5 py-[1px] font-mono text-[10px] font-medium text-fg-muted">
+              <Command className="mr-0.5 h-2.5 w-2.5" />K
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={toggle}
+            onContextMenu={(event) => {
+              event.preventDefault();
+              setMode("system");
+            }}
+            aria-label={themeLabel}
+            title={`${themeLabel} — click to toggle, right-click to follow system`}
+            className="grid h-8 w-8 place-items-center rounded-sm text-fg-muted transition-colors ease-ds duration-fast hover:bg-surface-2 hover:text-fg"
+          >
+            <ThemeIcon className="h-3.5 w-3.5" />
+          </button>
+          <button
+            className="grid h-8 w-8 place-items-center rounded-sm text-fg-muted transition-colors ease-ds duration-fast hover:bg-surface-2 hover:text-fg"
+            aria-label="Notifications"
+          >
+            <Bell className="h-3.5 w-3.5" />
+          </button>
+          {actions}
         </header>
 
-        <main className="min-h-0 flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
-          <div className="mx-auto w-full max-w-[1440px]">{children}</div>
+        <main className="min-h-0 flex-1 overflow-auto bg-bg">
+          <div className="mx-auto w-full max-w-[1440px] px-4 py-5 sm:px-5 lg:px-6">{children}</div>
         </main>
       </div>
     </div>

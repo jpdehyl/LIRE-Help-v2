@@ -19,19 +19,17 @@ export function EmptyState({
   className,
   tone = "neutral",
 }: EmptyStateProps) {
-  const bg = tone === "muted" ? "bg-[#f6f8fa] dark:bg-slate-950" : "bg-white dark:bg-slate-900";
+  const bg = tone === "muted" ? "bg-bg" : "bg-surface";
   return (
     <div className={cn("flex h-full items-center justify-center p-8 text-center", bg, className)}>
       <div className="max-w-sm">
         {Icon ? (
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-            <Icon className="h-5 w-5" />
+          <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-sm bg-surface-2 text-fg-muted">
+            <Icon className="h-4 w-4" />
           </div>
         ) : null}
-        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</p>
-        {description ? (
-          <p className="mt-1 text-sm leading-relaxed text-slate-500 dark:text-slate-400">{description}</p>
-        ) : null}
+        <p className="font-display text-[15px] font-semibold text-fg">{title}</p>
+        {description ? <p className="mt-1 font-body text-[13px] leading-[1.5] text-fg-muted">{description}</p> : null}
         {action ? <div className="mt-4 flex justify-center">{action}</div> : null}
       </div>
     </div>
@@ -54,15 +52,15 @@ export function ErrorState({
   className,
 }: ErrorStateProps) {
   return (
-    <div className={cn("flex h-full items-center justify-center bg-[#f6f8fa] p-8 text-center dark:bg-slate-950", className)}>
+    <div className={cn("flex h-full items-center justify-center bg-bg p-8 text-center", className)}>
       <div className="max-w-md">
-        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</p>
-        {description ? <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{description}</p> : null}
+        <p className="font-display text-[15px] font-semibold text-fg">{title}</p>
+        {description ? <p className="mt-1 font-body text-[13px] text-fg-muted">{description}</p> : null}
         {onRetry ? (
           <button
             type="button"
             onClick={onRetry}
-            className="mt-4 inline-flex items-center justify-center rounded-pill bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+            className="mt-4 inline-flex items-center justify-center rounded-sm bg-fg px-3 py-1.5 font-body text-[12px] font-medium text-surface transition-opacity ease-ds duration-fast hover:opacity-90"
           >
             {retryLabel}
           </button>

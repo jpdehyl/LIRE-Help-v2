@@ -1,5 +1,4 @@
 import type { InboxViewDefinition, InboxViewKey } from "./types";
-import { Eyebrow, Heading } from "../ui";
 
 interface InboxSidebarProps {
   views: InboxViewDefinition[];
@@ -8,9 +7,9 @@ interface InboxSidebarProps {
 }
 
 const sectionLabels = {
-  default_views: "Default views",
-  team_inboxes: "Team inboxes",
-  saved_views: "Saved views",
+  default_views: "Default",
+  team_inboxes: "Teams",
+  saved_views: "Saved",
 } as const;
 
 export function InboxSidebar({ views, selectedView, onSelectView }: InboxSidebarProps) {
@@ -21,66 +20,51 @@ export function InboxSidebar({ views, selectedView, onSelectView }: InboxSidebar
   }));
 
   return (
-    <aside className="flex h-full min-h-0 w-full max-w-xs flex-col border-r border-slate-200 bg-[#f8fafb] dark:border-slate-800 dark:bg-slate-950/60">
-      <div className="border-b border-slate-200 px-5 py-5 dark:border-slate-800">
-        <Eyebrow>Inbox navigation</Eyebrow>
-        <Heading level={2} size="h3" className="mt-2">Queues and saved views</Heading>
-        <p className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
-          Counts reflect the current helpdesk snapshot while the visible shell stays calmer and more product-like.
-        </p>
+    <aside className="flex h-full min-h-0 w-[224px] shrink-0 flex-col border-r border-border bg-surface">
+      <div className="border-b border-border px-4 py-3">
+        <div className="eyebrow text-fg-subtle">Views</div>
+        <div className="mt-1 font-display text-[18px] font-bold tracking-tight text-fg">Inbox</div>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 py-5">
-        {sections.map(({ section, label, views: sectionViews }) => (
-          <section key={section}>
-            <div className="px-2 pb-2">
-              <Eyebrow>{label}</Eyebrow>
-            </div>
-            <div className="space-y-1.5">
-              {sectionViews.map((view) => {
-                const active = view.key === selectedView;
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-2.5 py-3">
+        {sections.map(({ section, label, views: sectionViews }) =>
+          sectionViews.length === 0 ? null : (
+            <section key={section}>
+              <div className="eyebrow px-2 pb-1.5 text-fg-subtle">{label}</div>
+              <div className="space-y-0.5">
+                {sectionViews.map((view) => {
+                  const active = view.key === selectedView;
+                  return (
+                    <button
+                      key={view.key}
+                      type="button"
+                      onClick={() => onSelectView(view.key)}
+                      className={[
+                        "flex w-full items-center gap-2 rounded-sm border-l-2 px-2 py-[7px] text-left font-body text-[13px] transition-colors ease-ds duration-fast",
+                        active
+                          ? "border-accent bg-surface-2 font-semibold text-fg"
+                          : "border-transparent text-fg-muted hover:bg-surface-2 hover:text-fg",
+                      ].join(" ")}
+                    >
+                      <span className="flex-1 truncate">{view.label}</span>
+                      {view.count > 0 ? (
+                        <span className="font-mono text-[11px] text-fg-muted">{view.count}</span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          ),
+        )}
+      </div>
 
-                return (
-                  <button
-                    key={view.key}
-                    type="button"
-                    onClick={() => onSelectView(view.key)}
-                    className={[
-                      "flex w-full items-start gap-3 rounded-[22px] border px-3 py-3 text-left transition-all",
-                      active
-                        ? "border-slate-900 bg-slate-900 text-white shadow-sm dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900"
-                        : "border-transparent bg-transparent text-slate-700 hover:border-slate-200 hover:bg-white hover:shadow-sm dark:text-slate-300 dark:hover:border-slate-800 dark:hover:bg-slate-900",
-                    ].join(" ")}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-sm font-semibold tracking-tight">{view.label}</span>
-                        <span
-                          className={[
-                            "rounded-full px-2 py-0.5 text-[11px] font-semibold",
-                            active
-                              ? "bg-white/10 text-white dark:bg-slate-900/10 dark:text-slate-900"
-                              : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
-                          ].join(" ")}
-                        >
-                          {view.count}
-                        </span>
-                      </div>
-                      <p
-                        className={[
-                          "mt-1 text-xs leading-5",
-                          active ? "text-slate-300 dark:text-slate-700" : "text-slate-500 dark:text-slate-400",
-                        ].join(" ")}
-                      >
-                        {view.description}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        ))}
+      <div className="border-t border-border bg-surface-2 px-3.5 py-2.5">
+        <div className="eyebrow text-[10px] text-fg-subtle">24h autonomy</div>
+        <div className="mt-1 flex items-baseline gap-1.5">
+          <span className="font-mono text-[22px] font-medium leading-none text-fg">82</span>
+          <span className="font-body text-[11px] text-fg-muted">% without human</span>
+        </div>
       </div>
     </aside>
   );

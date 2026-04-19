@@ -49,7 +49,7 @@ export function Dialog({ open, onClose, children, className, ariaLabel, initialF
 
   return createPortal(
     <div
-      className={cn("fixed inset-0 z-50 flex bg-slate-950/40 backdrop-blur-sm dark:bg-black/60", alignment)}
+      className={cn("fixed inset-0 z-50 flex bg-[rgba(10,10,10,0.6)] backdrop-blur-sm", alignment)}
       role="dialog"
       aria-modal="true"
       aria-label={ariaLabel}

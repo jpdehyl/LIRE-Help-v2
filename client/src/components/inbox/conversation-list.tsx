@@ -1,15 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Inbox } from "lucide-react";
 import type { ConversationRow } from "./types";
-import { Badge, EmptyState, Eyebrow, PriorityBadge, SlaBadge, StatusBadge } from "../ui";
-
-function Kbd({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-md border border-slate-200 bg-white px-1 font-mono text-[10px] font-semibold text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-      {children}
-    </span>
-  );
-}
+import { EmptyState, PriorityBadge, SlaBadge, StatusBadge } from "../ui";
 
 interface ConversationListProps {
   title: string;
@@ -18,7 +10,12 @@ interface ConversationListProps {
   onSelectConversation: (conversationId: string) => void;
 }
 
-export function ConversationList({ title, conversations, selectedConversationId, onSelectConversation }: ConversationListProps) {
+export function ConversationList({
+  title,
+  conversations,
+  selectedConversationId,
+  onSelectConversation,
+}: ConversationListProps) {
   const activeRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
@@ -27,7 +24,7 @@ export function ConversationList({ title, conversations, selectedConversationId,
 
   if (conversations.length === 0) {
     return (
-      <div className="h-full border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+      <div className="h-full border-r border-border bg-surface">
         <EmptyState
           icon={Inbox}
           title="Queue is clear"
@@ -38,24 +35,15 @@ export function ConversationList({ title, conversations, selectedConversationId,
   }
 
   return (
-    <section className="flex h-full min-h-0 flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-      <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
-        <div className="flex items-center justify-between gap-3">
-          <Eyebrow>{title}</Eyebrow>
-          <div className="flex items-center gap-2">
-            <span className="hidden items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-slate-400 xl:inline-flex dark:text-slate-500" aria-hidden>
-              <Kbd>J</Kbd>
-              <Kbd>K</Kbd>
-              <span>to navigate</span>
-            </span>
-            <Badge tone="slate" size="md">{conversations.length} in view</Badge>
+    <section className="flex h-full min-h-0 w-[400px] shrink-0 flex-col border-r border-border bg-surface">
+      <div className="flex items-center gap-2 border-b border-border px-3.5 py-3">
+        <div className="min-w-0 flex-1">
+          <div className="eyebrow text-fg-muted">{title}</div>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="font-mono text-[18px] font-medium text-fg">{conversations.length}</span>
+            <span className="font-body text-[12px] text-fg-muted">open</span>
           </div>
         </div>
-      </div>
-
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-slate-200 bg-[#f8fafb] px-5 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:border-slate-800 dark:bg-slate-950/50 dark:text-slate-500">
-        <span>Requester, company, snippet</span>
-        <span>State</span>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -70,44 +58,62 @@ export function ConversationList({ title, conversations, selectedConversationId,
               onClick={() => onSelectConversation(conversation.id)}
               aria-current={active ? "true" : undefined}
               className={[
-                "grid w-full grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-slate-200 px-5 py-4 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 dark:border-slate-800",
-                active
-                  ? "bg-[#eef3f6] shadow-[inset_3px_0_0_0_rgb(15_23_42)] dark:bg-slate-800/80 dark:shadow-[inset_3px_0_0_0_rgb(226_232_240)]"
-                  : "bg-white hover:bg-[#f8fafb] dark:bg-slate-900 dark:hover:bg-slate-800/50",
+                "relative block w-full border-b border-border px-3.5 py-3 text-left transition-colors ease-ds duration-fast focus:outline-none",
+                active ? "bg-surface-2" : "bg-surface hover:bg-surface-2",
               ].join(" ")}
             >
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{conversation.requesterName}</span>
-                  <Badge tone="slate">{conversation.company}</Badge>
-                  {conversation.unread ? <span className="h-2.5 w-2.5 rounded-full bg-slate-900 dark:bg-slate-100" aria-label="Unread conversation" /> : null}
-                </div>
-                <p className="mt-1 text-sm font-medium text-slate-800 dark:text-slate-200">{conversation.subject}</p>
-                <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">{conversation.preview}</p>
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                  <span>{conversation.requesterEmail}</span>
-                  <span>•</span>
-                  <span>{conversation.inboxLabel}</span>
-                  <span>•</span>
-                  <span>{conversation.messageCount} messages</span>
-                  <span>•</span>
-                  <span>{conversation.waitingSinceLabel}</span>
-                </div>
+              {active ? <span className="absolute inset-y-0 left-0 w-[2px] bg-accent" /> : null}
+              <div className="flex items-center gap-2">
+                {conversation.unread ? (
+                  <span className="h-[6px] w-[6px] rounded-full bg-accent" aria-label="Unread conversation" />
+                ) : null}
+                <span className="font-mono text-[11px] tracking-[0.02em] text-fg-subtle">
+                  {conversation.id.slice(0, 8).toUpperCase()}
+                </span>
+                <span className="flex-1" />
+                <span className="font-mono text-[11px] text-fg-muted">{conversation.lastActivityLabel}</span>
               </div>
-
-              <div className="flex flex-col items-end gap-2 text-right">
-                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{conversation.lastActivityLabel}</span>
+              <div
+                className={[
+                  "mt-1 line-clamp-2 font-body text-[13px] leading-[1.35] text-fg",
+                  conversation.unread ? "font-semibold" : "font-medium",
+                ].join(" ")}
+              >
+                {conversation.subject}
+              </div>
+              <div className="mt-1 line-clamp-2 font-body text-[12px] leading-[1.45] text-fg-muted">
+                {conversation.preview}
+              </div>
+              <div className="mt-2 flex items-center gap-1.5">
                 <PriorityBadge priority={conversation.priority} />
+                {conversation.slaState !== "healthy" ? <SlaBadge sla={conversation.slaState} /> : null}
                 <StatusBadge status={conversation.status} />
-                <SlaBadge sla={conversation.slaState} />
-                <span className="max-w-[180px] text-xs text-slate-500 dark:text-slate-400">
-                  {conversation.assignee ? `Owner: ${conversation.assignee}` : "Unassigned"}
+                <span className="flex-1" />
+                <span className="font-mono text-[10px] text-fg-subtle">
+                  {conversation.inboxLabel}
                 </span>
               </div>
             </button>
           );
         })}
       </div>
+
+      <div className="flex items-center gap-2 border-t border-border bg-surface-2 px-3.5 py-2 font-body text-[11px] text-fg-muted">
+        <Kbd>J</Kbd>
+        <Kbd>K</Kbd>
+        <span>navigate</span>
+        <span className="flex-1" />
+        <Kbd>⌘K</Kbd>
+        <span>jump</span>
+      </div>
     </section>
+  );
+}
+
+function Kbd({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center rounded-xs border border-border bg-surface px-1.5 py-[1px] font-mono text-[10px] font-medium leading-none text-fg-muted">
+      {children}
+    </span>
   );
 }

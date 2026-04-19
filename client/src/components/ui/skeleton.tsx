@@ -1,7 +1,7 @@
 import { cn } from "./cn";
 
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={cn("shimmer rounded-xl", className)} aria-hidden />;
+  return <div className={cn("shimmer rounded-xs", className)} aria-hidden />;
 }
 
 export function SkeletonText({ lines = 3, className }: { lines?: number; className?: string }) {
@@ -16,32 +16,34 @@ export function SkeletonText({ lines = 3, className }: { lines?: number; classNa
 
 export function SkeletonCard({ className }: { className?: string }) {
   return (
-    <div className={cn("rounded-card border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900", className)} aria-hidden>
+    <div className={cn("rounded-sm border border-border bg-surface p-4", className)} aria-hidden>
       <div className="flex items-start justify-between gap-3">
-        <Skeleton className="h-4 w-32" />
-        <Skeleton className="h-10 w-10 rounded-2xl" />
+        <Skeleton className="h-3 w-28" />
+        <Skeleton className="h-7 w-7 rounded-sm" />
       </div>
-      <Skeleton className="mt-4 h-8 w-20" />
-      <Skeleton className="mt-3 h-3 w-48" />
+      <Skeleton className="mt-3 h-6 w-20" />
+      <Skeleton className="mt-2 h-3 w-48" />
     </div>
   );
 }
 
 export function SkeletonRow() {
   return (
-    <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-800" aria-hidden>
+    <div
+      className="grid w-full grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-border px-4 py-3"
+      aria-hidden
+    >
       <div className="min-w-0 space-y-2">
         <div className="flex items-center gap-2">
-          <Skeleton className="h-4 w-36" />
-          <Skeleton className="h-4 w-16 rounded-full" />
+          <Skeleton className="h-3 w-32" />
+          <Skeleton className="h-3 w-14 rounded-xs" />
         </div>
         <Skeleton className="h-3 w-3/4" />
         <Skeleton className="h-3 w-2/3" />
       </div>
-      <div className="flex flex-col items-end gap-2">
-        <Skeleton className="h-3 w-14" />
-        <Skeleton className="h-4 w-16 rounded-full" />
-        <Skeleton className="h-4 w-20 rounded-full" />
+      <div className="flex flex-col items-end gap-1.5">
+        <Skeleton className="h-3 w-12" />
+        <Skeleton className="h-3 w-14 rounded-xs" />
       </div>
     </div>
   );

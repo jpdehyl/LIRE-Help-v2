@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -6,81 +6,69 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --primary: 217 91% 60%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 217 91% 60%;
-    --radius: 0.5rem;
+    /* DeHyl design tokens — see public/design/colors_and_type.css */
+    --bg: #FAFAFA;
+    --surface: #FFFFFF;
+    --surface-2: #F5F5F5;
+    --fg: #111111;
+    --fg-muted: #737373;
+    --fg-subtle: #A3A3A3;
+    --border: #E5E5E5;
+    --border-strong: #111111;
 
-    --surface: 210 40% 98%;
-    --surface-muted: 210 33% 96%;
-    --surface-raised: 0 0% 100%;
-    --surface-sunken: 210 33% 94%;
+    --accent: #FF4D00;
+    --accent-hover: #E54400;
+    --accent-press: #CC3D00;
+    --accent-ink: #FFFFFF;
+
+    --success: #00875A;
+    --warning: #F59E0B;
+    --error: #DC2626;
+
+    --font-display: "Inter Tight", system-ui, -apple-system, sans-serif;
+    --font-body: "Inter", system-ui, -apple-system, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+    --shadow-pop: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --shadow-menu: 0 4px 16px rgba(0, 0, 0, 0.10);
+
+    --ease: cubic-bezier(0.2, 0, 0, 1);
+    --dur-fast: 120ms;
+    --dur-base: 160ms;
+    --dur-slow: 220ms;
   }
 
   .dark {
-    --background: 224 71% 4%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 11%;
-    --card-foreground: 210 40% 98%;
-    --primary: 217 91% 60%;
-    --primary-foreground: 222.2 47% 11%;
-    --secondary: 217 32% 17%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 32% 17%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 217 32% 17%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62% 45%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217 32% 17%;
-    --input: 217 32% 17%;
-    --ring: 217 91% 60%;
-
-    --surface: 222 47% 9%;
-    --surface-muted: 220 40% 13%;
-    --surface-raised: 222 47% 11%;
-    --surface-sunken: 224 71% 6%;
+    --bg: #0A0A0A;
+    --surface: #141414;
+    --surface-2: #1C1C1C;
+    --fg: #F5F5F5;
+    --fg-muted: #A3A3A3;
+    --fg-subtle: #525252;
+    --border: #262626;
+    --border-strong: #F5F5F5;
   }
-}
 
-@layer base {
-  * { @apply border-border; }
+  * {
+    border-color: var(--border);
+  }
+
   html {
-    font-family: "Inter", system-ui, sans-serif;
-    background: #f3f6f8;
-  }
-  html.dark {
-    background: #0b1120;
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--fg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   body {
-    @apply bg-background text-foreground;
     min-height: 100vh;
-    background:
-      radial-gradient(circle at top left, rgba(15, 23, 42, 0.05), transparent 24%),
-      linear-gradient(180deg, #f8fafb 0%, #f3f6f8 100%);
-    color: #0f172a;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.6;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-  }
-  .dark body {
-    background:
-      radial-gradient(circle at top left, rgba(96, 165, 250, 0.08), transparent 28%),
-      linear-gradient(180deg, #0b1120 0%, #0a0f1a 100%);
-    color: #e2e8f0;
   }
 
   #root {
@@ -88,28 +76,92 @@
   }
 
   ::selection {
-    background: rgba(15, 23, 42, 0.12);
+    background: var(--accent);
+    color: var(--accent-ink);
   }
-  .dark ::selection {
-    background: rgba(148, 163, 184, 0.25);
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 8px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  .dark ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    background-clip: content-box;
+    border: 2px solid transparent;
   }
 
   :focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.08), 0 0 0 4px rgba(59, 130, 246, 0.35);
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
     border-radius: inherit;
-  }
-  .dark :focus-visible {
-    box-shadow: 0 0 0 2px rgba(226, 232, 240, 0.08), 0 0 0 4px rgba(59, 130, 246, 0.45);
   }
 }
 
 @layer components {
   .eyebrow {
-    @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500;
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 11px;
+    line-height: 1;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
   }
-  .section-title {
-    @apply text-sm font-semibold text-slate-950 dark:text-slate-100;
+
+  .num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--fg);
+  }
+
+  .ds-h1 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 48px;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    color: var(--fg);
+  }
+  .ds-h2 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 36px;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    color: var(--fg);
+  }
+  .ds-h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 28px;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    color: var(--fg);
+  }
+  .ds-h4 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 22px;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    color: var(--fg);
+  }
+  .ds-h5 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 18px;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    color: var(--fg);
   }
 }
 
@@ -117,16 +169,20 @@
   .shimmer {
     position: relative;
     overflow: hidden;
-    background: linear-gradient(90deg, rgba(226, 232, 240, 0.6) 0%, rgba(226, 232, 240, 0.95) 50%, rgba(226, 232, 240, 0.6) 100%);
+    background: linear-gradient(90deg, rgba(0, 0, 0, 0.04) 0%, rgba(0, 0, 0, 0.08) 50%, rgba(0, 0, 0, 0.04) 100%);
     background-size: 200% 100%;
     animation: shimmer 1.6s ease-in-out infinite;
   }
   .dark .shimmer {
-    background: linear-gradient(90deg, rgba(51, 65, 85, 0.55) 0%, rgba(71, 85, 105, 0.7) 50%, rgba(51, 65, 85, 0.55) 100%);
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.04) 100%);
     background-size: 200% 100%;
   }
   @keyframes shimmer {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
   }
 }

@@ -7,8 +7,6 @@ import {
   Badge,
   Button,
   EmptyState,
-  Eyebrow,
-  Heading,
   PriorityBadge,
   Select,
   SlaBadge,
@@ -23,17 +21,22 @@ interface ConversationDetailProps {
   onMutated?: () => Promise<void> | void;
 }
 
-const timelineClasses = {
-  customer: "border-blue-200 bg-blue-50 dark:border-blue-900/60 dark:bg-blue-500/10",
-  teammate: "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900",
-  internal_note: "border-amber-200 bg-amber-50 dark:border-amber-900/60 dark:bg-amber-500/10",
-  system: "border-violet-200 bg-violet-50 dark:border-violet-900/60 dark:bg-violet-500/10",
+const timelineKinds = {
+  customer: { eyebrow: "Tenant", barColor: "" },
+  teammate: { eyebrow: "Teammate", barColor: "" },
+  internal_note: { eyebrow: "Internal note", barColor: "var(--accent-press)" },
+  system: { eyebrow: "System", barColor: "" },
 } as const;
 
 const statuses: ConversationStatus[] = ["open", "pending", "waiting_on_customer", "resolved"];
 const priorities: PriorityLevel[] = ["low", "medium", "high", "urgent"];
 
-export function ConversationDetailPane({ conversation, detail, detailLoading = false, onMutated }: ConversationDetailProps) {
+export function ConversationDetailPane({
+  conversation,
+  detail,
+  detailLoading = false,
+  onMutated,
+}: ConversationDetailProps) {
   const [note, setNote] = useState("");
   const [composerMode, setComposerMode] = useState<"reply" | "note">("note");
   const availableAssignees = detail?.availableAssignees ?? [];
@@ -88,79 +91,78 @@ export function ConversationDetailPane({ conversation, detail, detailLoading = f
         tone="muted"
         icon={MessageSquare}
         title="Select a conversation"
-        description="The right pane is reserved for the active work surface: conversation record, ticket state, notes, and action rail."
+        description="Pick a ticket to see its timeline, ticket state, and next actions."
       />
     );
   }
 
-  const mutationError = assigneeMutation.error ?? statusMutation.error ?? priorityMutation.error ?? noteMutation.error;
-  const isBusy = assigneeMutation.isPending || statusMutation.isPending || priorityMutation.isPending || noteMutation.isPending;
+  const mutationError =
+    assigneeMutation.error ?? statusMutation.error ?? priorityMutation.error ?? noteMutation.error;
+  const isBusy =
+    assigneeMutation.isPending || statusMutation.isPending || priorityMutation.isPending || noteMutation.isPending;
 
   return (
-    <section className="grid h-full min-h-0 grid-cols-1 bg-[#f6f8fa] 2xl:grid-cols-[minmax(0,1fr)_300px] dark:bg-slate-950/60">
-      <div className="flex min-h-0 flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-        <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <Eyebrow>Active conversation</Eyebrow>
-              <Heading level={2} className="mt-1">{detail.title}</Heading>
-              <p className="mt-1 text-sm leading-relaxed text-slate-500 dark:text-slate-400">{detail.summary}</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <StatusBadge status={detail.ticket.status} size="md" />
-              <PriorityBadge priority={detail.ticket.priority} size="md" />
-              <SlaBadge sla={detail.ticket.slaState} size="md" />
-            </div>
+    <section className="grid h-full min-h-0 flex-1 min-w-0 grid-cols-1 bg-bg 2xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="flex min-h-0 min-w-0 flex-col border-r border-border bg-surface">
+        {/* Slim header */}
+        <div className="flex items-center gap-2.5 border-b border-border px-5 py-3">
+          <div className="min-w-0 flex-1">
+            <div className="truncate font-body text-[14px] font-semibold text-fg">{detail.title}</div>
+            <div className="truncate font-body text-[12px] text-fg-muted">{detail.summary}</div>
           </div>
-
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/60">
-              <p className="eyebrow">Assignee</p>
-              <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-100">{detail.ticket.assignee ?? "Unassigned"}</p>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Team: {detail.ticket.team}</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/60">
-              <p className="eyebrow">Ticket</p>
-              <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-100">{detail.ticket.id}</p>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{detail.ticket.nextMilestone}</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/60">
-              <p className="eyebrow">Tags</p>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {detail.ticket.tags.length > 0 ? detail.ticket.tags.map((tag) => (
-                  <Badge key={tag} tone="slate">{tag}</Badge>
-                )) : <span className="text-xs text-slate-500 dark:text-slate-400">No tags yet</span>}
-              </div>
-            </div>
-          </div>
+          <PriorityBadge priority={detail.ticket.priority} />
+          {detail.ticket.slaState !== "healthy" ? <SlaBadge sla={detail.ticket.slaState} /> : null}
+          <StatusBadge status={detail.ticket.status} />
         </div>
 
-        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-5">
-          {detail.timeline.length > 0 ? detail.timeline.map((item) => (
-            <article key={item.id} className={`rounded-2xl border p-4 ${timelineClasses[item.type]}`}>
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="eyebrow">{item.type.replaceAll("_", " ")}</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{item.author}</p>
-                </div>
-                <span className="text-xs text-slate-500 dark:text-slate-400">{item.createdAtLabel}</span>
-              </div>
-              <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-300">{item.body}</p>
-            </article>
-          )) : (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400">
+        {/* Timeline */}
+        <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto px-5 py-4">
+          {detail.timeline.length > 0 ? (
+            detail.timeline.map((item) => {
+              const kind = timelineKinds[item.type];
+              const isInternal = item.type === "internal_note";
+              return (
+                <article
+                  key={item.id}
+                  className={[
+                    "rounded-sm border px-3.5 py-3",
+                    isInternal ? "border-[rgba(255,77,0,0.25)] bg-[rgba(255,77,0,0.06)]" : "border-border bg-surface",
+                  ].join(" ")}
+                  style={kind.barColor ? { borderLeft: `3px solid ${kind.barColor}` } : undefined}
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="eyebrow"
+                      style={{ color: isInternal ? "var(--accent-press)" : "var(--fg-muted)" }}
+                    >
+                      {kind.eyebrow}
+                    </span>
+                    <span className="text-fg-subtle">·</span>
+                    <span className="font-body text-[12px] font-medium text-fg">{item.author}</span>
+                    <span className="flex-1" />
+                    <span className="font-mono text-[10px] text-fg-subtle">{item.createdAtLabel}</span>
+                  </div>
+                  <p className="mt-1.5 whitespace-pre-wrap font-body text-[13.5px] leading-[1.6] text-fg">
+                    {item.body}
+                  </p>
+                </article>
+              );
+            })
+          ) : (
+            <div className="rounded-sm border border-dashed border-border bg-surface-2 p-5 font-body text-[13px] text-fg-muted">
               No message history yet. Add an internal note to capture next steps.
             </div>
           )}
         </div>
 
-        <div className="border-t border-slate-200 bg-[#f8fafb] px-5 py-4 dark:border-slate-800 dark:bg-slate-950/50">
-          <div className="flex items-center gap-2">
+        {/* Composer */}
+        <div className="border-t border-border bg-surface px-5 py-3">
+          <div className="flex items-center gap-1.5">
             {(["reply", "note"] as const).map((mode) => (
               <Button
                 key={mode}
                 size="sm"
-                variant={composerMode === mode ? "primary" : "secondary"}
+                variant={composerMode === mode ? "dark" : "ghost"}
                 onClick={() => setComposerMode(mode)}
               >
                 {mode === "reply" ? "Reply" : "Internal note"}
@@ -168,22 +170,27 @@ export function ConversationDetailPane({ conversation, detail, detailLoading = f
             ))}
           </div>
           {composerMode === "reply" ? (
-            <div className="mt-3 rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
-              Outbound reply sending is still intentionally restrained in this phase. Use internal notes for handoff context while triage controls are live.
+            <div className="mt-2 rounded-sm border border-dashed border-border bg-surface-2 p-3 font-body text-[12.5px] text-fg-muted">
+              Outbound reply sending is still intentionally restrained in this phase. Use internal notes for handoff
+              context while triage controls are live.
             </div>
           ) : (
-            <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+            <div className="mt-2 rounded-sm border border-[rgba(255,77,0,0.4)] bg-[rgba(255,77,0,0.04)]">
               <Textarea
                 compact
                 value={note}
                 onChange={(event) => setNote(event.target.value)}
                 placeholder="Add context for the next operator, manager, or specialist…"
-                className="min-h-28"
+                className="min-h-24 border-0 bg-transparent focus:bg-transparent"
+                style={{ borderColor: "transparent" }}
               />
-              <div className="mt-3 flex items-center justify-between gap-3">
-                <p className="text-xs text-slate-500 dark:text-slate-400">Internal notes stay in the operator timeline and do not send to the customer.</p>
+              <div className="flex items-center justify-between gap-2 border-t border-border px-3 py-1.5">
+                <p className="font-body text-[11px] text-fg-muted">
+                  Internal notes stay in the operator timeline and don't send to the tenant.
+                </p>
                 <Button
                   size="sm"
+                  variant="dark"
                   loading={noteMutation.isPending}
                   disabled={!note.trim() || noteMutation.isPending}
                   onClick={() => noteMutation.mutate(note)}
@@ -193,88 +200,121 @@ export function ConversationDetailPane({ conversation, detail, detailLoading = f
               </div>
             </div>
           )}
-          {mutationError instanceof Error && <p className="mt-3 text-xs text-red-600 dark:text-red-400">{mutationError.message}</p>}
+          {mutationError instanceof Error ? (
+            <p className="mt-2 font-body text-[12px] text-error">{mutationError.message}</p>
+          ) : null}
         </div>
       </div>
 
-      <aside className="min-h-0 overflow-y-auto bg-[#f6f8fa] px-4 py-4 dark:bg-slate-950/60">
-        <div className="space-y-4">
-          <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-            <p className="eyebrow">Triage controls</p>
-            <div className="mt-3 space-y-3">
-              <div>
-                <p className="mb-1 text-xs font-medium text-slate-500 dark:text-slate-400">Assignee</p>
-                <Select
-                  compact
-                  value={availableAssignees.find((item) => item.name === detail.ticket.assignee)?.id ?? ""}
-                  onChange={(event) => assigneeMutation.mutate(event.target.value || null)}
-                  disabled={isBusy}
-                >
-                  <option value="">Unassigned</option>
-                  {availableAssignees.map((assignee) => (
-                    <option key={assignee.id} value={assignee.id}>{assignee.name} · {assignee.role}</option>
-                  ))}
-                </Select>
-              </div>
-
-              <div>
-                <p className="mb-1 text-xs font-medium text-slate-500 dark:text-slate-400">Status</p>
-                <Select
-                  compact
-                  value={detail.ticket.status}
-                  onChange={(event) => statusMutation.mutate(event.target.value as ConversationStatus)}
-                  disabled={isBusy}
-                >
-                  {statuses.map((status) => (
-                    <option key={status} value={status}>{status.replaceAll("_", " ")}</option>
-                  ))}
-                </Select>
-              </div>
-
-              <div>
-                <p className="mb-1 text-xs font-medium text-slate-500 dark:text-slate-400">Priority</p>
-                <Select
-                  compact
-                  value={detail.ticket.priority}
-                  onChange={(event) => priorityMutation.mutate(event.target.value as PriorityLevel)}
-                  disabled={isBusy}
-                >
-                  {priorities.map((priority) => (
-                    <option key={priority} value={priority}>{priority}</option>
-                  ))}
-                </Select>
-              </div>
-
-              <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
-                {busyLabel}
-              </div>
+      {/* Right rail */}
+      <aside className="min-h-0 overflow-y-auto bg-bg px-4 py-4 space-y-3">
+        <section className="rounded-sm border border-border bg-surface p-3.5">
+          <p className="eyebrow">Triage</p>
+          <div className="mt-2.5 space-y-2.5">
+            <div>
+              <p className="mb-1 font-body text-[11px] uppercase tracking-eyebrow text-fg-subtle">Assignee</p>
+              <Select
+                compact
+                value={availableAssignees.find((item) => item.name === detail.ticket.assignee)?.id ?? ""}
+                onChange={(event) => assigneeMutation.mutate(event.target.value || null)}
+                disabled={isBusy}
+              >
+                <option value="">Unassigned</option>
+                {availableAssignees.map((assignee) => (
+                  <option key={assignee.id} value={assignee.id}>
+                    {assignee.name} · {assignee.role}
+                  </option>
+                ))}
+              </Select>
             </div>
-          </section>
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-            <p className="eyebrow">Customer context</p>
-            <h3 className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">{detail.customer.name}</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400">{detail.customer.company}</p>
-            <div className="mt-3 grid gap-2 text-xs text-slate-500 dark:text-slate-400">
-              <p>Tier: <span className="font-medium capitalize text-slate-700 dark:text-slate-200">{detail.customer.tier}</span></p>
-              <p>Health: <span className="font-medium capitalize text-slate-700 dark:text-slate-200">{detail.customer.health.replaceAll("_", " ")}</span></p>
-              <p>Last seen: <span className="font-medium text-slate-700 dark:text-slate-200">{detail.customer.lastSeenLabel}</span></p>
+            <div>
+              <p className="mb-1 font-body text-[11px] uppercase tracking-eyebrow text-fg-subtle">Status</p>
+              <Select
+                compact
+                value={detail.ticket.status}
+                onChange={(event) => statusMutation.mutate(event.target.value as ConversationStatus)}
+                disabled={isBusy}
+              >
+                {statuses.map((status) => (
+                  <option key={status} value={status}>
+                    {status.replaceAll("_", " ")}
+                  </option>
+                ))}
+              </Select>
             </div>
-          </section>
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-            <p className="eyebrow">Suggested next actions</p>
-            <div className="mt-3 space-y-3">
-              {detail.suggestedActions.length > 0 ? detail.suggestedActions.map((action) => (
-                <div key={action.id} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/60">
-                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{action.label}</p>
-                  <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{action.detail}</p>
+            <div>
+              <p className="mb-1 font-body text-[11px] uppercase tracking-eyebrow text-fg-subtle">Priority</p>
+              <Select
+                compact
+                value={detail.ticket.priority}
+                onChange={(event) => priorityMutation.mutate(event.target.value as PriorityLevel)}
+                disabled={isBusy}
+              >
+                {priorities.map((priority) => (
+                  <option key={priority} value={priority}>
+                    {priority}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            <div className="rounded-xs bg-surface-2 px-2.5 py-1.5 font-body text-[11px] text-fg-muted">{busyLabel}</div>
+          </div>
+        </section>
+
+        <section className="rounded-sm border border-border bg-surface p-3.5">
+          <p className="eyebrow">Tenant</p>
+          <h3 className="mt-1.5 font-body text-[13px] font-semibold text-fg">{detail.customer.name}</h3>
+          <p className="font-body text-[12px] text-fg-muted">{detail.customer.company}</p>
+          <div className="mt-2.5 grid gap-1.5 font-body text-[12px] text-fg-muted">
+            <Row label="Tier" value={detail.customer.tier} />
+            <Row label="Health" value={detail.customer.health.replaceAll("_", " ")} />
+            <Row label="Last seen" value={detail.customer.lastSeenLabel} />
+          </div>
+        </section>
+
+        <section className="rounded-sm border border-border bg-surface p-3.5">
+          <p className="eyebrow">Tags</p>
+          <div className="mt-2 flex flex-wrap gap-1">
+            {detail.ticket.tags.length > 0 ? (
+              detail.ticket.tags.map((tag) => (
+                <Badge key={tag} tone="muted" size="sm">
+                  {tag}
+                </Badge>
+              ))
+            ) : (
+              <span className="font-body text-[12px] text-fg-muted">No tags yet</span>
+            )}
+          </div>
+        </section>
+
+        <section className="rounded-sm border border-border bg-surface p-3.5">
+          <p className="eyebrow">Suggested next actions</p>
+          <div className="mt-2.5 space-y-2">
+            {detail.suggestedActions.length > 0 ? (
+              detail.suggestedActions.map((action) => (
+                <div key={action.id} className="rounded-xs bg-surface-2 px-3 py-2.5">
+                  <p className="font-body text-[13px] font-medium text-fg">{action.label}</p>
+                  <p className="mt-1 font-body text-[12px] leading-[1.45] text-fg-muted">{action.detail}</p>
                 </div>
-              )) : <p className="text-sm text-slate-500 dark:text-slate-400">No suggested actions yet.</p>}
-            </div>
-          </section>
-        </div>
+              ))
+            ) : (
+              <p className="font-body text-[12px] text-fg-muted">No suggested actions yet.</p>
+            )}
+          </div>
+        </section>
       </aside>
     </section>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <span className="font-body text-[10px] uppercase tracking-eyebrow text-fg-subtle w-16">{label}</span>
+      <span className="flex-1 truncate font-body text-[12px] text-fg">{value}</span>
+    </div>
   );
 }

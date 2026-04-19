@@ -2,8 +2,8 @@ import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import { cn } from "./cn";
 
-type ButtonVariant = "primary" | "secondary" | "ghost" | "subtle" | "danger";
-type ButtonSize = "sm" | "md" | "lg" | "icon";
+type ButtonVariant = "primary" | "secondary" | "ghost" | "subtle" | "danger" | "dark";
+type ButtonSize = "xs" | "sm" | "md" | "lg" | "icon";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -14,25 +14,23 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const base =
-  "inline-flex items-center justify-center gap-2 font-semibold tracking-tight transition-colors disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none";
+  "inline-flex items-center justify-center gap-1.5 font-medium font-body rounded-sm transition-[background-color,border-color,color] ease-ds duration-fast disabled:cursor-not-allowed disabled:opacity-40";
 
 const variants: Record<ButtonVariant, string> = {
-  primary:
-    "bg-slate-950 text-white hover:bg-slate-800 active:bg-slate-900 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white dark:active:bg-slate-200",
-  secondary:
-    "border border-slate-200 bg-white text-slate-800 shadow-sm hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-600 dark:hover:bg-slate-800",
-  ghost:
-    "bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100",
-  subtle:
-    "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700",
-  danger: "bg-red-600 text-white hover:bg-red-500 dark:bg-red-500 dark:hover:bg-red-400",
+  primary: "bg-accent text-accent-ink hover:bg-accent-hover active:bg-accent-press",
+  dark: "bg-fg text-surface hover:opacity-90",
+  secondary: "bg-surface text-fg border border-border hover:bg-surface-2",
+  ghost: "bg-transparent text-fg-muted hover:bg-surface-2 hover:text-fg",
+  subtle: "bg-surface-2 text-fg hover:bg-border",
+  danger: "bg-error text-white hover:opacity-90",
 };
 
 const sizes: Record<ButtonSize, string> = {
-  sm: "h-8 rounded-pill px-3 text-xs",
-  md: "h-10 rounded-2xl px-4 text-sm",
-  lg: "h-12 rounded-2xl px-5 text-sm",
-  icon: "h-10 w-10 rounded-2xl text-sm",
+  xs: "h-6 px-2 text-[11px]",
+  sm: "h-7 px-2.5 text-[12px]",
+  md: "h-[34px] px-3 text-[13px]",
+  lg: "h-10 px-4 text-[13px]",
+  icon: "h-7 w-7 p-0 text-[12px]",
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
@@ -47,7 +45,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       className={cn(base, variants[variant], sizes[size], className)}
       {...rest}
     >
-      {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : leftIcon}
+      {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : leftIcon}
       {children}
       {!loading && rightIcon ? rightIcon : null}
     </button>

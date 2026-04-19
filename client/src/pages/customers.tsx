@@ -1,6 +1,6 @@
 import { Building2, Users } from "lucide-react";
 import { WorkspaceShell } from "../components/workspace/workspace-shell";
-import { Badge, Card, CardHeader } from "../components/ui";
+import { Badge, Card } from "../components/ui";
 
 const customerCards = [
   { name: "Northstar Logistics", contact: "Maya Chen", tier: "Strategic", state: "Watch", note: "Renewal timing this week" },
@@ -10,50 +10,56 @@ const customerCards = [
 
 export default function CustomersPage() {
   return (
-    <WorkspaceShell
-      title="Customers"
-      eyebrow="Support workspace / Customers"
-    >
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <Card padding="lg">
-          <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">
-              <Users className="h-5 w-5" />
+    <WorkspaceShell title="Customers" eyebrow="Workspace">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <Card padding="md">
+          <div className="flex items-center gap-2.5">
+            <span className="grid h-8 w-8 place-items-center rounded-xs bg-surface-2 text-fg-muted">
+              <Users className="h-4 w-4" />
             </span>
-            <CardHeader
-              eyebrow="Customer context scaffold"
-              title="Companies, contacts, and health signals"
-            />
+            <div>
+              <div className="eyebrow">Customers</div>
+              <div className="mt-0.5 font-display text-[18px] font-semibold tracking-tight text-fg">
+                Companies, contacts, health
+              </div>
+            </div>
           </div>
 
-          <div className="mt-6 grid gap-3 lg:grid-cols-2">
+          <div className="mt-4 grid gap-2.5 lg:grid-cols-2">
             {customerCards.map((customer) => (
-              <Card key={customer.name} variant="soft" padding="sm" as="article">
-                <div className="flex items-start gap-3">
-                  <span className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-slate-500 ring-1 ring-inset ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700">
-                    <Building2 className="h-4 w-4" />
+              <article
+                key={customer.name}
+                className="rounded-sm border border-border bg-surface-2 px-3.5 py-3"
+              >
+                <div className="flex items-start gap-2.5">
+                  <span className="mt-0.5 grid h-8 w-8 place-items-center rounded-xs bg-surface text-fg-muted border border-border">
+                    <Building2 className="h-3.5 w-3.5" />
                   </span>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{customer.name}</p>
-                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Primary contact: {customer.contact}</p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <Badge tone="slate">{customer.tier}</Badge>
-                      <Badge tone="slate">{customer.state}</Badge>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-body text-[13px] font-semibold text-fg">{customer.name}</p>
+                    <p className="mt-0.5 font-body text-[12px] text-fg-muted">Primary contact: {customer.contact}</p>
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      <Badge tone="muted" size="sm">
+                        {customer.tier}
+                      </Badge>
+                      <Badge tone="muted" size="sm">
+                        {customer.state}
+                      </Badge>
                     </div>
-                    <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">{customer.note}</p>
+                    <p className="mt-2 font-body text-[12px] text-fg-muted">{customer.note}</p>
                   </div>
                 </div>
-              </Card>
+              </article>
             ))}
           </div>
         </Card>
 
-        <Card variant="dashed" padding="lg" as="aside">
-          <p className="eyebrow">Planned later</p>
-          <ul className="mt-4 space-y-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-            <li>• Per-customer timelines and linked conversation history</li>
-            <li>• Organization metadata, tags, ownership, and lifecycle state</li>
-            <li>• Customer detail routes with account health and relationship context</li>
+        <Card variant="dashed" padding="md" as="aside">
+          <div className="eyebrow">Planned later</div>
+          <ul className="mt-3 space-y-2 font-body text-[13px] leading-[1.55] text-fg-muted">
+            <li>· Per-customer timelines and linked conversation history</li>
+            <li>· Organization metadata, tags, ownership, lifecycle state</li>
+            <li>· Customer detail routes with account health + relationship context</li>
           </ul>
         </Card>
       </div>
