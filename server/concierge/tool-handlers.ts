@@ -21,6 +21,9 @@ import { sendSms } from "../channels/twilio-sms.js";
 import { sendEmail } from "../channels/postmark-email.js";
 import { sendWhatsapp } from "../channels/whatsapp-meta.js";
 import { sendZoomChat } from "../channels/zoom-chat.js";
+import { getPlatformKnowledge } from "../storage.js";
+
+const KB_LOOKUP_MAX_RESULTS = 10;
 
 // Reply sender per channel. Adding WhatsApp / Zoom later is a matter of
 // one more case and one more adapter — the rest of the flow is
@@ -272,6 +275,37 @@ async function lookupPropertyHandler(
   });
 }
 
+async function lookupKnowledgeHandler(
+  input: Record<string, unknown>,
+  brief: ConversationBrief,
+): Promise<string> {
+  const section = typeof input.section === "string" ? input.section.trim().toLowerCase() : null;
+  const query = typeof input.query === "string" ? input.query.trim().toLowerCase() : null;
+
+  const all = await getPlatformKnowledge(brief.tenantId);
+  const filtered = all.filter((entry) => {
+    if (section && entry.section.toLowerCase() !== section) return false;
+    if (query) {
+      const haystack = `${entry.title}\n${entry.content}`.toLowerCase();
+      if (!haystack.includes(query)) return false;
+    }
+    return true;
+  });
+
+  const hits = filtered.slice(0, KB_LOOKUP_MAX_RESULTS).map((entry) => ({
+    id: entry.id,
+    section: entry.section,
+    title: entry.title,
+    content: entry.content,
+  }));
+
+  return JSON.stringify({
+    total_matched: filtered.length,
+    returned: hits.length,
+    entries: hits,
+  });
+}
+
 async function updateTicketHandler(input: Record<string, unknown>, brief: ConversationBrief): Promise<string> {
   const [ticket] = await db
     .select()
@@ -307,6 +341,8 @@ export const conciergeToolHandler: ToolHandler = async (call: ToolCall, brief: C
       return addInternalNoteHandler(input, brief);
     case "lookup_property_context":
       return lookupPropertyHandler(input, brief);
+    case "lookup_knowledge":
+      return lookupKnowledgeHandler(input, brief);
     case "update_ticket":
       return updateTicketHandler(input, brief);
     default:
