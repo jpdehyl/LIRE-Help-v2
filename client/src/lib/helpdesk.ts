@@ -53,8 +53,28 @@ export interface ConciergeAgentSummary {
   configured: boolean;
 }
 
+export interface ConciergeSettings {
+  autonomyCeilingPct: number;
+  channels: {
+    email: boolean;
+    whatsapp: boolean;
+    sms: boolean;
+    zoom: boolean;
+    slack: boolean;
+    messenger: boolean;
+  };
+}
+
+export type ConciergeSettingsPatch = {
+  autonomyCeilingPct?: number;
+  channels?: Partial<ConciergeSettings["channels"]>;
+};
+
 export const conciergeApi = {
   getAgent: () => api.get<ConciergeAgentSummary>("/api/concierge/agent"),
+  getSettings: () => api.get<ConciergeSettings>("/api/concierge/settings"),
+  updateSettings: (patch: ConciergeSettingsPatch) =>
+    api.patch<ConciergeSettings>("/api/concierge/settings", patch),
 };
 
 export interface PropertySummaryItem {

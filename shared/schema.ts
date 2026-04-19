@@ -7,6 +7,28 @@ import { z } from "zod";
 
 // ─── Tenants ─────────────────────────────────────────────────────────────────
 
+// Concierge configuration stored per tenant. Migrated to a JSONB column on
+// tenants rather than a dedicated table because the shape evolves during
+// dogfooding and we want additive rollouts without constant migrations.
+export interface ConciergeSettings {
+  autonomyCeilingPct: number;
+  channels: {
+    email: boolean;
+    whatsapp: boolean;
+    sms: boolean;
+    zoom: boolean;
+    slack: boolean;
+    messenger: boolean;
+  };
+  // Future: audiences, escalation rules. Add fields additively — deserialize
+  // is lenient so old rows keep working.
+}
+
+export const DEFAULT_CONCIERGE_SETTINGS: ConciergeSettings = {
+  autonomyCeilingPct: 80,
+  channels: { email: true, whatsapp: true, sms: true, zoom: false, slack: false, messenger: false },
+};
+
 export const tenants = pgTable("tenants", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
@@ -18,6 +40,7 @@ export const tenants = pgTable("tenants", {
   timezone: text("timezone").default("America/Los_Angeles"),
   isActive: boolean("is_active").default(true).notNull(),
   trialEndsAt: timestamp("trial_ends_at"),
+  conciergeSettingsJson: jsonb("concierge_settings_json").$type<Partial<ConciergeSettings>>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
