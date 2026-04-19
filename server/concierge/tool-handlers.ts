@@ -18,16 +18,17 @@ import type { ConversationBrief } from "./types.js";
 import type { ConciergeToolName } from "./custom-tools.js";
 import type { ToolCall, ToolHandler } from "./session-runner.js";
 import { sendSms } from "../channels/twilio-sms.js";
+import { sendEmail } from "../channels/postmark-email.js";
 
-// Reply sender per channel. Adding WhatsApp / email / Zoom later is a
-// matter of one more case and one more adapter — the rest of the flow is
+// Reply sender per channel. Adding WhatsApp / Zoom later is a matter of
+// one more case and one more adapter — the rest of the flow is
 // channel-agnostic.
 async function sendToChannel(
-  channel: ConversationBrief["channel"],
+  brief: ConversationBrief,
   to: string,
   body: string,
 ): Promise<{ providerMessageId: string; providerMetadata: Record<string, unknown> }> {
-  switch (channel) {
+  switch (brief.channel) {
     case "sms": {
       const result = await sendSms({ to, body });
       return {
@@ -35,8 +36,18 @@ async function sendToChannel(
         providerMetadata: { provider: "twilio", status: result.status },
       };
     }
+    case "email": {
+      // Subject: reuse the conversation's subject, prefixed with "Re:"
+      // unless it already starts with one.
+      const subject = /^re:/i.test(brief.subject) ? brief.subject : `Re: ${brief.subject}`;
+      const result = await sendEmail({ to, subject, textBody: body });
+      return {
+        providerMessageId: result.messageId,
+        providerMetadata: { provider: "postmark", submittedAt: result.submittedAt },
+      };
+    }
     default:
-      throw new Error(`sendToChannel: channel "${channel}" not yet wired`);
+      throw new Error(`sendToChannel: channel "${brief.channel}" not yet wired`);
   }
 }
 
@@ -139,7 +150,7 @@ async function sendReplyHandler(input: Record<string, unknown>, brief: Conversat
   }
 
   try {
-    const { providerMessageId, providerMetadata } = await sendToChannel(brief.channel, customer.externalId, body);
+    const { providerMessageId, providerMetadata } = await sendToChannel(brief, customer.externalId, body);
     await recordOutboundReply(brief, body, providerMessageId, providerMetadata);
     return `Reply sent to ${customer.externalId} (${brief.channel}).`;
   } catch (err) {

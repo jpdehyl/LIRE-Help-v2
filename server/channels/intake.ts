@@ -29,6 +29,12 @@ export interface ChannelInbound {
   // Optional friendly name for new customers (Twilio gives us city/state
   // but not name; we leave name as null when unknown).
   suggestedName?: string;
+  // Optional subject override. Email passes the real Subject header;
+  // SMS/WhatsApp derive the subject from the first message body (default).
+  subject?: string;
+  // Optional email for helpCustomers.email. Only populated for channels
+  // that actually carry email (Postmark inbound, future SMTP).
+  email?: string;
 }
 
 export interface IntakeResult {
@@ -65,7 +71,7 @@ async function upsertCustomer(tenantId: string, inbound: ChannelInbound): Promis
       tenantId,
       externalId: inbound.handle,
       name: inbound.suggestedName ?? inbound.handle,
-      email: null,
+      email: inbound.email ?? null,
       tier: "standard",
       health: "stable",
       lastSeenAt: now,
@@ -111,7 +117,10 @@ async function upsertOpenConversation(
     return { id: openRow.id, isNew: false };
   }
 
-  const subject = inbound.body.slice(0, 80).replace(/\s+/g, " ").trim() || `${inbound.channel} inquiry`;
+  const subject =
+    inbound.subject?.trim() ||
+    inbound.body.slice(0, 80).replace(/\s+/g, " ").trim() ||
+    `${inbound.channel} inquiry`;
   const [row] = await db
     .insert(helpConversations)
     .values({

@@ -78,6 +78,9 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<express.E
   app.use((req, res, next) => {
     // B7 carve-out: the credit upload route mounts its own 35MB parser.
     if (req.path === "/api/pilots/credit/documents/upload") return next();
+    // Postmark inbound emails can exceed 100kb; the route mounts its own
+    // 2MB JSON parser.
+    if (req.path === "/webhooks/postmark/inbound") return next();
     return defaultJsonParser(req, res, next);
   });
 
@@ -164,6 +167,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<express.E
   const { default: leasingRoutes } = await import("./pilots/leasing/routes.js");
   const { default: creditRoutes } = await import("./pilots/credit/routes.js");
   const { default: twilioRoutes } = await import("./channels/twilio-routes.js");
+  const { default: postmarkRoutes } = await import("./channels/postmark-routes.js");
 
   app.use("/api/auth", authRoutes);
   app.use("/api/properties", propertiesRoutes);
@@ -178,6 +182,9 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<express.E
   // Twilio posts form-encoded, not JSON — the route mounts its own
   // urlencoded parser so we don't widen the global one.
   app.use("/webhooks/twilio", twilioRoutes);
+  // Postmark inbound emails can exceed the 100kb global JSON cap, so the
+  // route mounts its own 2MB JSON parser.
+  app.use("/webhooks/postmark", postmarkRoutes);
 
   // ─── /api/public/brand ────────────────────────────────────────────────────
 
