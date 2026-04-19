@@ -2,6 +2,7 @@
 // Thin entrypoint that builds the app via buildApp() and binds it to a port.
 
 import { buildApp } from "./server/app-factory.js";
+import { redact } from "./server/helpers/redact.js";
 
 async function main() {
   const app = await buildApp();
@@ -13,6 +14,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error("Fatal startup error:", err);
+  console.error("Fatal startup error:", redact(err instanceof Error ? err.message : err));
   process.exit(1);
 });

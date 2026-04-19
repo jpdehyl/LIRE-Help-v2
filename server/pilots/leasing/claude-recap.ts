@@ -1,4 +1,5 @@
 import { logTokenUsage } from "../../token-logger.js";
+import { redact } from "../../helpers/redact.js";
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
@@ -47,7 +48,7 @@ export async function draftTourRecap(params: {
   });
 
   if (!res.ok) {
-    throw new Error(`Tour recap failed: ${res.status} ${await res.text()}`);
+    throw new Error(`Tour recap failed: ${res.status} ${redact(await res.text())}`);
   }
 
   const data = (await res.json()) as {

@@ -6,6 +6,7 @@ import express, { type Request, type Response } from "express";
 import helmet from "helmet";
 import path from "path";
 import { isCorsOriginAllowed, parseAllowedHosts } from "./platform/cors.js";
+import { redact } from "./helpers/redact.js";
 
 export type BuildAppOptions = {
   rootDir?: string;
@@ -415,9 +416,9 @@ RESTRICTIONS:
       });
 
       if (!upstream.ok) {
-        const err = await upstream.text();
-        console.error("Anthropic error:", upstream.status, err);
-        return res.status(502).json({ error: "upstream_error", detail: err });
+        const errText = await upstream.text();
+        console.error("[chat] anthropic upstream", upstream.status, redact(errText));
+        return res.status(502).json({ error: "upstream_error" });
       }
 
       const data = (await upstream.json()) as {
