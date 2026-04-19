@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, Sparkles } from "lucide-react";
 import { helpdeskApi } from "../../lib/helpdesk";
 import type { ConversationDetail, ConversationRow, ConversationStatus, PriorityLevel } from "./types";
 import {
@@ -39,11 +39,56 @@ export function ConversationDetailPane({
 }: ConversationDetailProps) {
   const [note, setNote] = useState("");
   const [composerMode, setComposerMode] = useState<"reply" | "note">("note");
+  const [aiDraft, setAiDraft] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiEscalate, setAiEscalate] = useState(false);
+  const activeConversationIdRef = useRef<string | null>(null);
   const availableAssignees = detail?.availableAssignees ?? [];
   const busyLabel = useMemo(() => {
     if (!detail) return null;
     return detail.ticket.assignee ? `Assigned to ${detail.ticket.assignee}` : "No owner yet";
   }, [detail]);
+
+  const conversationId = conversation?.id ?? null;
+  useEffect(() => {
+    activeConversationIdRef.current = conversationId;
+    setAiDraft(null);
+    setAiError(null);
+    setAiLoading(false);
+    setAiEscalate(false);
+  }, [conversationId]);
+
+  const regenerateDraft = async () => {
+    if (!conversation || !detail || aiLoading) return;
+    const requestId = conversation.id;
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const tenant = detail.customer?.name || "A tenant";
+      const company = detail.customer?.company ? ` from ${detail.customer.company}` : "";
+      const ask = conversation.preview || conversation.subject || "requesting assistance";
+      const userMsg = `I'm ${tenant}${company}. ${ask}`;
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [{ role: "user", content: userMsg }],
+          sessionId: `inbox-${requestId}`,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (activeConversationIdRef.current !== requestId) return;
+      if (!res.ok) throw new Error((data && data.error) || `Request failed (${res.status})`);
+      setAiDraft(((data.response as string) || "").trim() || null);
+      setAiEscalate(!!data.escalate);
+    } catch (err) {
+      if (activeConversationIdRef.current !== requestId) return;
+      setAiError(err instanceof Error ? err.message : "Draft request failed.");
+    } finally {
+      if (activeConversationIdRef.current === requestId) setAiLoading(false);
+    }
+  };
 
   const assigneeMutation = useMutation({
     mutationFn: (assigneeStaffId: string | null) => helpdeskApi.updateAssignee(conversation!.id, assigneeStaffId),
@@ -208,6 +253,57 @@ export function ConversationDetailPane({
 
       {/* Right rail */}
       <aside className="min-h-0 overflow-y-auto bg-bg px-4 py-4 space-y-3">
+        <section className="rounded-sm bg-[#111111] p-3.5 text-[#FAFAFA]">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-3.5 w-3.5 text-accent" />
+            <div className="eyebrow text-[#FAFAFA]">Suggested next step</div>
+            <span className="flex-1" />
+            {aiDraft ? <Badge tone="success" size="sm">LIVE · CLAUDE</Badge> : null}
+            {aiEscalate ? <Badge tone="warning" size="sm">ESCALATE</Badge> : null}
+          </div>
+          <div className="mt-2.5 font-body text-[12px] leading-[1.5] text-[rgba(255,255,255,0.72)]">
+            {aiEscalate
+              ? "Concierge flagged this for human escalation. Review draft before sending."
+              : aiDraft
+              ? "Drafted live from the platform knowledge base."
+              : "Generate a reply using the property knowledge base and this conversation's context."}
+          </div>
+          {(aiDraft || aiLoading) ? (
+            <div
+              className="mt-2.5 whitespace-pre-wrap rounded-xs border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.06)] px-3 py-2.5 font-body text-[13px] leading-[1.5]"
+            >
+              {aiLoading ? "Drafting from the live knowledge base…" : aiDraft}
+            </div>
+          ) : null}
+          {aiError ? (
+            <div className="mt-2 rounded-xs border border-[rgba(220,38,38,0.45)] bg-[rgba(220,38,38,0.18)] px-2.5 py-1.5 font-body text-[11px] text-[#FEE2E2]">
+              {aiError}
+            </div>
+          ) : null}
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => {
+                if (aiDraft) setNote(aiDraft);
+                setComposerMode("note");
+              }}
+              disabled={aiLoading || !aiDraft}
+            >
+              Use draft
+            </Button>
+            <button
+              type="button"
+              onClick={regenerateDraft}
+              disabled={aiLoading}
+              className="inline-flex h-7 items-center gap-1.5 rounded-sm border border-[rgba(255,255,255,0.15)] bg-transparent px-2.5 font-body text-[12px] font-medium text-[#FAFAFA] transition-colors ease-ds duration-fast hover:bg-[rgba(255,255,255,0.06)] disabled:opacity-40"
+            >
+              <Sparkles className="h-3 w-3" />
+              {aiLoading ? "Drafting…" : aiDraft ? "Regenerate" : "Draft with Claude"}
+            </button>
+          </div>
+        </section>
+
         <section className="rounded-sm border border-border bg-surface p-3.5">
           <p className="eyebrow">Triage</p>
           <div className="mt-2.5 space-y-2.5">

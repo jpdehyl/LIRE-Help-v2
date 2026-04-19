@@ -6,6 +6,7 @@ import {
   Inbox as InboxIcon,
   LayoutDashboard,
   LogOut,
+  Maximize,
   Menu,
   Monitor,
   Moon,
@@ -39,11 +40,12 @@ const navigationCommands: CommandItem[] = [
   { id: "go-platform", label: "Platform admin", href: "/platform-dashboard", icon: Shield, group: "Navigation", keywords: "admin platform internal" },
 ];
 
-export function WorkspaceShell({ title, children, eyebrow = "Workspace", actions }: WorkspaceShellProps) {
+export function WorkspaceShell({ title, children, eyebrow = "Operations", actions }: WorkspaceShellProps) {
   const { logout } = useAuth();
   const { mode, resolved, setMode, toggle } = useTheme();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -162,6 +164,20 @@ export function WorkspaceShell({ title, children, eyebrow = "Workspace", actions
             </span>
           </button>
 
+          <button
+            type="button"
+            onClick={() => setFocusMode((v) => !v)}
+            title="Focus mode — collapse side panels"
+            className={[
+              "hidden h-7 items-center gap-1.5 rounded-sm px-2 font-body text-[12px] font-medium transition-colors ease-ds duration-fast sm:inline-flex",
+              focusMode
+                ? "bg-fg text-surface hover:opacity-90"
+                : "text-fg-muted hover:bg-surface-2 hover:text-fg",
+            ].join(" ")}
+          >
+            <Maximize className="h-3 w-3" />
+            {focusMode ? "Exit focus" : "Focus"}
+          </button>
           <button
             type="button"
             onClick={toggle}

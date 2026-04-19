@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { Plus } from "lucide-react";
 import { InboxShell } from "../components/inbox/inbox-shell";
 import { DEFAULT_INBOX_VIEW_KEY, inboxViewKeys } from "../components/inbox/types";
 import type { InboxViewKey } from "../components/inbox/types";
@@ -44,8 +45,18 @@ export default function InboxPage({ viewId }: InboxPageProps) {
     navigate(`/inbox/${view}${query ? `?${query}` : ""}`);
   };
 
+  const actions = (
+    <button
+      type="button"
+      className="inline-flex h-8 items-center gap-1.5 rounded-sm bg-accent px-2.5 font-body text-[12px] font-medium text-accent-ink transition-opacity ease-ds duration-fast hover:opacity-90"
+    >
+      <Plus className="h-3.5 w-3.5" />
+      New ticket
+    </button>
+  );
+
   return (
-    <WorkspaceShell title="Inbox" eyebrow="Workspace">
+    <WorkspaceShell title="Inbox" eyebrow="Operations" actions={actions}>
       <InboxShell
         views={navigationQuery.data?.views ?? []}
         navigationLoading={navigationQuery.isLoading}

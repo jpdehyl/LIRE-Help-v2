@@ -51,7 +51,7 @@ export default function DashboardPage() {
   });
 
   return (
-    <WorkspaceShell title="Dashboard" eyebrow="Workspace">
+    <WorkspaceShell title="Dashboard" eyebrow="Operations">
       {metricsQuery.isLoading ? (
         <DashboardSkeleton />
       ) : metricsQuery.error instanceof Error ? (

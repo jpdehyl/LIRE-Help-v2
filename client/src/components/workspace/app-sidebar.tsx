@@ -12,7 +12,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../../lib/auth";
+import { helpdeskApi } from "../../lib/helpdesk";
 
 type NavItem = {
   href: string;
@@ -50,6 +52,12 @@ interface AppSidebarProps {
 export function AppSidebar({ embedded = false, onNavigate }: AppSidebarProps = {}) {
   const [location] = useLocation();
   const { user, logout } = useAuth();
+  const propertiesQuery = useQuery({
+    queryKey: ["helpdesk", "properties-summary"],
+    queryFn: helpdeskApi.getPropertiesSummary,
+    staleTime: 60_000,
+  });
+  const properties = propertiesQuery.data?.properties ?? [];
 
   const asideClass = embedded
     ? "flex h-full w-full flex-col bg-surface"
@@ -61,6 +69,8 @@ export function AppSidebar({ embedded = false, onNavigate }: AppSidebarProps = {
     .slice(0, 2)
     .map((p) => p[0]?.toUpperCase() ?? "")
     .join("") || "·";
+
+  const propertyCode = (id: string) => id.slice(0, 6).toUpperCase();
 
   return (
     <aside className={asideClass}>
@@ -88,6 +98,27 @@ export function AppSidebar({ embedded = false, onNavigate }: AppSidebarProps = {
         <Divider />
         <SectionLabel>Admin</SectionLabel>
         <SectionItems items={adminItems} location={location} onNavigate={onNavigate} />
+
+        {properties.length > 0 ? (
+          <>
+            <Divider />
+            <SectionLabel>Portfolio</SectionLabel>
+            <div className="space-y-0.5">
+              {properties.map((p) => (
+                <Link key={p.id} href={`/inbox/all?propertyId=${p.id}`}>
+                  <a
+                    onClick={() => onNavigate?.()}
+                    className="flex items-center gap-2.5 rounded-sm px-2.5 py-1.5 font-body text-[12px] text-fg-muted transition-colors ease-ds duration-fast hover:bg-surface-2 hover:text-fg"
+                    title={p.name}
+                  >
+                    <span className="font-mono text-[10px] text-fg-subtle shrink-0">{propertyCode(p.id)}</span>
+                    <span className="flex-1 truncate">{p.name}</span>
+                  </a>
+                </Link>
+              ))}
+            </div>
+          </>
+        ) : null}
       </nav>
 
       {/* Footer: user */}

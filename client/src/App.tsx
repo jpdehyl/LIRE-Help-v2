@@ -3,6 +3,7 @@ import { Redirect, Route, Switch } from "wouter";
 import { AuthProvider, useAuth } from "./lib/auth";
 import DashboardPage from "./pages/dashboard";
 import InboxPage from "./pages/inbox";
+import LandingPage from "./pages/landing";
 import LoginPage from "./pages/login";
 import PlatformDashboard from "./pages/platform-dashboard";
 import TicketsPage from "./pages/tickets";
@@ -37,6 +38,8 @@ function AppRoutes() {
 
   return (
     <Switch>
+      <Route path="/" component={LandingPage} />
+
       <Route path="/login">
         {user ? <Redirect to="/dashboard" /> : <LoginPage />}
       </Route>
@@ -105,7 +108,7 @@ function AppRoutes() {
       </Route>
 
       <Route>
-        {user ? <Redirect to="/dashboard" /> : <Redirect to="/login" />}
+        <Redirect to="/" />
       </Route>
     </Switch>
   );
