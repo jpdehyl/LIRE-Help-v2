@@ -12,9 +12,29 @@ import Anthropic from "@anthropic-ai/sdk";
 import { eq } from "drizzle-orm";
 import { db } from "../db.js";
 import { helpConversations, helpCustomers, properties } from "../../shared/schema.js";
+import type { ConciergeSettings } from "../../shared/schema.js";
+import { getConciergeSettings } from "../storage.js";
 import { loadConciergeIdentity, runConciergeTurn } from "./session-runner.js";
 import { conciergeToolHandler } from "./tool-handlers.js";
 import type { Channel, ConversationBrief } from "./types.js";
+
+// Conversation.channel → ConciergeSettings.channels key. `web` is a
+// playground-only channel with no corresponding admin toggle; it always
+// runs. Unknown values fall through as the raw string and won't match any
+// settings key, which means the gate treats them as disabled — fail-closed.
+function channelSettingsKey(channel: string): keyof ConciergeSettings["channels"] | null {
+  switch (channel) {
+    case "email":
+    case "whatsapp":
+    case "sms":
+    case "zoom":
+    case "slack":
+    case "messenger":
+      return channel;
+    default:
+      return null;
+  }
+}
 
 function derivePropertyCode(slug: string, name: string): string {
   const source = (slug || name).replace(/[^a-zA-Z]/g, "").toUpperCase();
@@ -41,6 +61,22 @@ export async function runConciergeForInbound(args: RunArgs): Promise<void> {
   if (!conversation) {
     console.error("[concierge] conversation not found:", args.conversationId);
     return;
+  }
+
+  // Channel gate: consult the tenant's concierge settings before invoking
+  // the agent. If the operator toggled this channel off in Settings, we
+  // stop here — the inbound message is already on helpMessages so a human
+  // can pick it up from the inbox; the concierge just doesn't auto-reply.
+  const settingsKey = channelSettingsKey(conversation.channel);
+  if (settingsKey !== null) {
+    const settings = await getConciergeSettings(conversation.tenantId);
+    if (!settings.channels[settingsKey]) {
+      console.log("[concierge] channel disabled in settings — skipping turn", {
+        conversationId: args.conversationId,
+        channel: conversation.channel,
+      });
+      return;
+    }
   }
 
   const [customer] = conversation.customerId
