@@ -14,7 +14,6 @@ import {
   Settings,
   Shield,
   Sun,
-  Ticket,
   Users,
 } from "lucide-react";
 import { useAuth } from "../../lib/auth";
@@ -33,8 +32,7 @@ const navigationCommands: CommandItem[] = [
   { id: "go-dashboard", label: "Go to Dashboard", href: "/dashboard", icon: LayoutDashboard, group: "Navigation", keywords: "home overview metrics" },
   { id: "go-inbox", label: "Go to Inbox", href: "/inbox/all", icon: InboxIcon, group: "Navigation", keywords: "queue conversations support" },
   { id: "go-inbox-unassigned", label: "Unassigned inbox", href: "/inbox/unassigned", icon: InboxIcon, group: "Navigation", keywords: "unassigned triage" },
-  { id: "go-inbox-sla", label: "SLA at risk", href: "/inbox/sla_at_risk", icon: InboxIcon, group: "Navigation", keywords: "sla breached at risk" },
-  { id: "go-tickets", label: "Go to Tickets", href: "/tickets", icon: Ticket, group: "Navigation" },
+  { id: "go-inbox-sla", label: "SLA at risk", href: "/inbox/escalations", icon: InboxIcon, group: "Navigation", keywords: "sla breached at risk escalations" },
   { id: "go-customers", label: "Go to Customers", href: "/customers", icon: Users, group: "Navigation", keywords: "companies accounts" },
   { id: "go-settings", label: "Go to Settings", href: "/settings", icon: Settings, group: "Navigation", keywords: "preferences config admin" },
   { id: "go-platform", label: "Platform admin", href: "/platform-dashboard", icon: Shield, group: "Navigation", keywords: "admin platform internal" },
