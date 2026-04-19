@@ -3,6 +3,7 @@ import {
   tenants,
   properties,
   staffUsers,
+  type StaffRole,
 } from "../../shared/schema.js";
 import { hashPassword } from "../../server/helpers/authHelpers.js";
 
@@ -48,7 +49,7 @@ export async function seedProperty(tenantId: string, slug: string, name = slug) 
 
 export async function seedStaff(opts: {
   email: string;
-  role: "superadmin" | "owner" | "manager" | "staff" | "readonly";
+  role: StaffRole;
   tenantId: string | null;
   propertyId?: string | null;
   password?: string;
