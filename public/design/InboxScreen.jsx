@@ -405,18 +405,22 @@ function DetailPane({ ticket, property, timeline, aiPanelVisible, onSend, onTria
   const [aiError,    setAiError]    = useStateI(null);
   const [aiEscalate, setAiEscalate] = useStateI(false);
   const [aiLive,     setAiLive]     = useStateI(false);
+  const activeTicketIdRef = useRefI(ticket?.id);
 
   useEffectI(() => {
+    activeTicketIdRef.current = ticket?.id;
     const d = draftFor(ticket);
     setAiDraft(d.draft);
     setAiSummary(d.summary);
     setAiError(null);
     setAiEscalate(false);
     setAiLive(false);
+    setAiLoading(false);
   }, [ticket?.id]);
 
   const regenerateDraft = async () => {
     if (!ticket || aiLoading) return;
+    const requestTicketId = ticket.id;
     setAiLoading(true);
     setAiError(null);
     try {
@@ -430,10 +434,11 @@ function DetailPane({ ticket, property, timeline, aiPanelVisible, onSend, onTria
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: [{ role: "user", content: userMsg }],
-          sessionId: `inbox-${ticket.id}`,
+          sessionId: `inbox-${requestTicketId}`,
         }),
       });
       const data = await res.json().catch(() => ({}));
+      if (activeTicketIdRef.current !== requestTicketId) return;
       if (!res.ok) throw new Error((data && data.error) || `Request failed (${res.status})`);
       setAiDraft((data.response || "").trim() || aiDraft);
       setAiEscalate(!!data.escalate);
@@ -442,9 +447,10 @@ function DetailPane({ ticket, property, timeline, aiPanelVisible, onSend, onTria
         : "Drafted live from the platform knowledge base.");
       setAiLive(true);
     } catch (err) {
+      if (activeTicketIdRef.current !== requestTicketId) return;
       setAiError(err && err.message ? err.message : "Draft request failed.");
     } finally {
-      setAiLoading(false);
+      if (activeTicketIdRef.current === requestTicketId) setAiLoading(false);
     }
   };
 
