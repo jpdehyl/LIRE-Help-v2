@@ -13,6 +13,7 @@ import SettingsGeneralPage from "./pages/settings-general";
 import SettingsInboxesPage from "./pages/settings-inboxes";
 import SettingsWorkflowsPage from "./pages/settings-workflows";
 import SettingsPlaceholderPage from "./pages/settings-placeholder";
+import SettingsAiAutomationPage from "./pages/settings-ai-automation";
 import LeasingPage from "./pages/leasing";
 import CreditReviewPage from "./pages/credit-review";
 
@@ -223,6 +224,11 @@ function AppRoutes() {
       <Route path="/settings/workflows">
         <RequireAuth>
           <SettingsWorkflowsPage />
+        </RequireAuth>
+      </Route>
+      <Route path="/settings/ai-automation">
+        <RequireAuth>
+          <SettingsAiAutomationPage />
         </RequireAuth>
       </Route>
       {settingsTileStubs.map((stub) => (

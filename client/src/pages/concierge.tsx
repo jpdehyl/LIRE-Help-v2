@@ -10,10 +10,9 @@ import {
   GraduationCap,
   Mail,
   MessageCircle,
-  Phone,
+  Settings2,
   Shield,
   Sparkles,
-  Video,
   type LucideIcon,
 } from "lucide-react";
 import { WorkspaceShell } from "../components/workspace/workspace-shell";
@@ -57,7 +56,8 @@ export default function ConciergePage() {
   const actions = (
     <Link href="/settings/ai-automation">
       <a className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-border bg-surface px-2.5 font-body text-[12px] font-medium text-fg-muted transition-colors ease-ds duration-fast hover:bg-surface-2 hover:text-fg">
-        Settings
+        <Settings2 className="h-3.5 w-3.5" />
+        Configure
       </a>
     </Link>
   );
@@ -76,7 +76,7 @@ export default function ConciergePage() {
         <TabBar tab={tab} onChange={setTab} />
 
         {tab === "overview" ? (
-          <OverviewTab autonomyPct={82} />
+          <OverviewTab />
         ) : (
           <PlaceholderTab tab={tab} />
         )}
@@ -233,10 +233,10 @@ function TabBar({ tab, onChange }: { tab: ConciergeTab; onChange: (tab: Concierg
   );
 }
 
-function OverviewTab({ autonomyPct }: { autonomyPct: number }) {
+function OverviewTab() {
   return (
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
-      <AdminControls autonomyPct={autonomyPct} />
+      <AgentBriefCard />
       <div className="space-y-5">
         <Skills />
         <LiveActivityList />
@@ -245,127 +245,26 @@ function OverviewTab({ autonomyPct }: { autonomyPct: number }) {
   );
 }
 
-function AdminControls({ autonomyPct }: { autonomyPct: number }) {
-  const [channels, setChannels] = useState<Record<string, boolean>>({
-    email: true,
-    whatsapp: true,
-    sms: true,
-    zoom: false,
-  });
-  const activeChannels = Object.values(channels).filter(Boolean).length;
-
-  const toggle = (key: string) => setChannels((prev) => ({ ...prev, [key]: !prev[key] }));
-
+function AgentBriefCard() {
   return (
     <section className="rounded-md border border-border bg-surface p-5">
-      <div className="eyebrow">Admin controls</div>
+      <div className="eyebrow">How this works</div>
       <h2 className="mt-1 font-display text-[18px] font-bold tracking-tight text-fg">
-        How the Concierge connects with your world
+        One Claude-managed Agent, many skills
       </h2>
-
-      <div className="mt-5">
-        <div className="flex items-center justify-between">
-          <div className="eyebrow text-fg-subtle">Autonomy ceiling</div>
-          <span className="font-mono text-[13px] font-semibold text-fg">{autonomyPct}%</span>
-        </div>
-        <div className="mt-2 h-[6px] w-full overflow-hidden rounded-full bg-surface-2">
-          <div className="h-full rounded-full bg-accent" style={{ width: `${autonomyPct}%` }} />
-        </div>
-        <p className="mt-2 font-body text-[12px] text-fg-muted">
-          Above this threshold, Concierge acts. Below, it drafts for human review.
-        </p>
-      </div>
-
-      <div className="mt-5">
-        <div className="eyebrow text-fg-subtle">Channels it can speak on</div>
-        <div className="mt-2 grid grid-cols-2 gap-2 md:grid-cols-4">
-          <ChannelPill icon={Mail} label="Email" enabled={channels.email} onClick={() => toggle("email")} />
-          <ChannelPill icon={MessageCircle} label="WhatsApp" enabled={channels.whatsapp} onClick={() => toggle("whatsapp")} />
-          <ChannelPill icon={Phone} label="SMS" enabled={channels.sms} onClick={() => toggle("sms")} />
-          <ChannelPill icon={Video} label="Zoom" enabled={channels.zoom} onClick={() => toggle("zoom")} />
-        </div>
-        <p className="mt-2 font-body text-[12px] text-fg-muted">
-          Currently active on <span className="font-semibold text-fg">{activeChannels}</span> channels. Toggles sync to
-          each channel&rsquo;s connector.
-        </p>
-      </div>
-
-      <div className="mt-5">
-        <div className="eyebrow text-fg-subtle">Who can reach it directly</div>
-        <div className="mt-2 divide-y divide-border">
-          <ReachRow name="All tenants" description="Can reach Concierge directly via any channel" tone="direct" />
-          <ReachRow name="Atlas Cold Storage · After-hours only" description="" tone="direct" />
-          <ReachRow
-            name="Northstar Logistics · VP contacts"
-            description="Always route to a human first"
-            tone="human_first"
-          />
-        </div>
-      </div>
+      <p className="mt-2 font-body text-[13px] leading-[1.55] text-fg-muted">
+        The Concierge is a single Anthropic Managed Agent — prompt, model, and tools live in Claude Console. LIRE
+        routes inbound threads into it, surfaces its replies inside the inbox, and escalates when confidence is low.
+      </p>
+      <p className="mt-2 font-body text-[13px] leading-[1.55] text-fg-muted">
+        Edit the brain (prompt, tools, skills, model) in Claude Console. Change how LIRE routes to it —
+        autonomy ceiling, channel access, audiences — in{" "}
+        <Link href="/settings/ai-automation">
+          <a className="font-semibold text-fg underline-offset-2 hover:underline">AI &amp; Automation settings</a>
+        </Link>
+        .
+      </p>
     </section>
-  );
-}
-
-function ChannelPill({
-  icon: Icon,
-  label,
-  enabled,
-  onClick,
-}: {
-  icon: LucideIcon;
-  label: string;
-  enabled: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={enabled}
-      className={[
-        "flex items-center justify-between rounded-sm border px-3 py-2.5 text-left font-body text-[12px] transition-colors ease-ds duration-fast",
-        enabled
-          ? "border-fg bg-fg text-surface"
-          : "border-border bg-surface-2 text-fg-muted hover:bg-surface hover:text-fg",
-      ].join(" ")}
-    >
-      <span className="inline-flex items-center gap-2 font-medium">
-        <Icon className="h-3.5 w-3.5" />
-        {label}
-      </span>
-      <span className="font-mono text-[10px] uppercase tracking-eyebrow">{enabled ? "On" : "Off"}</span>
-    </button>
-  );
-}
-
-function ReachRow({
-  name,
-  description,
-  tone,
-}: {
-  name: string;
-  description: string;
-  tone: "direct" | "human_first";
-}) {
-  return (
-    <div className="flex items-center gap-3 py-3">
-      <div className="grid h-7 w-7 place-items-center rounded-full border border-border bg-surface-2">
-        <Sparkles className="h-3 w-3 text-fg-muted" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="font-body text-[13px] font-semibold text-fg">{name}</div>
-        {description ? <div className="font-body text-[12px] text-fg-muted">{description}</div> : null}
-      </div>
-      {tone === "direct" ? (
-        <Badge tone="success" size="sm">
-          Direct
-        </Badge>
-      ) : (
-        <Badge tone="warning" size="sm">
-          Human first
-        </Badge>
-      )}
-    </div>
   );
 }
 

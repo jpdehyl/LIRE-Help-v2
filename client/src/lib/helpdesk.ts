@@ -39,6 +39,24 @@ export const helpdeskApi = {
   getPropertiesSummary: () => api.get<{ properties: PropertySummaryItem[] }>("/api/helpdesk/properties-summary"),
 };
 
+export interface ConciergeAgentSummary {
+  id: string;
+  name: string;
+  model: string;
+  version: string;
+  systemPromptPreview: string;
+  systemPromptFull: string;
+  toolsCount: number;
+  skillsCount: number;
+  consoleUrl: string | null;
+  lastUpdatedLabel: string | null;
+  configured: boolean;
+}
+
+export const conciergeApi = {
+  getAgent: () => api.get<ConciergeAgentSummary>("/api/concierge/agent"),
+};
+
 export interface PropertySummaryItem {
   id: string;
   code: string;
