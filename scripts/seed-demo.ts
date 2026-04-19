@@ -1319,6 +1319,51 @@ async function clearHelpdeskData(tenantId: string): Promise<void> {
   console.log("Helpdesk data cleared.");
 }
 
+async function upsertBerkeleyPilot() {
+  // Berkeley Partners is the pilot tenant for /leasing and /credit-review.
+  // YAML configs live at config/tenants/berkeley/{leasing,credit-checklist}.yaml.
+  // Seeding a tenant + owner staff here makes both pilot routes click-through-
+  // able for an investor demo without any additional setup.
+  const [tenant] = await sql`
+    INSERT INTO tenants (name, slug, plan, billing_email, phone, country, timezone, is_active)
+    VALUES (
+      'Berkeley Partners',
+      'berkeley',
+      'enterprise',
+      'pilots@berkeleypartners.com',
+      '+1-415-555-0199',
+      'US',
+      'America/Los_Angeles',
+      true
+    )
+    ON CONFLICT (slug) DO UPDATE SET
+      name = EXCLUDED.name,
+      plan = EXCLUDED.plan,
+      billing_email = EXCLUDED.billing_email,
+      updated_at = now()
+    RETURNING id, name
+  `;
+  console.log("Tenant:", tenant.name, tenant.id);
+  const tenantId = tenant.id as string;
+
+  const passwordHash = await bcrypt.hash("Demo2026", 12);
+  const [staff] = await sql`
+    INSERT INTO staff_users (email, password_hash, name, role, tenant_id, property_id, is_active)
+    VALUES ('demo@berkeley.com', ${passwordHash}, 'Bahaar Kapur', 'owner', ${tenantId}, NULL, true)
+    ON CONFLICT (email) DO UPDATE SET
+      password_hash = EXCLUDED.password_hash,
+      name = EXCLUDED.name,
+      role = EXCLUDED.role,
+      tenant_id = EXCLUDED.tenant_id,
+      is_active = true,
+      updated_at = now()
+    RETURNING id, name, email
+  `;
+  console.log("Staff:", staff.name, "<" + staff.email + ">", staff.id);
+
+  return tenantId;
+}
+
 async function main() {
   console.log("=== Northstar Industrial Group — Demo Seed ===\n");
 
@@ -1335,8 +1380,12 @@ async function main() {
   await seedConversations(tenantId, propertyIds, staffIds, inboxIds, customerIds, tagMap);
   await seedPlatformKnowledge(tenantId);
 
+  console.log("\n=== Berkeley Partners — Pilot Tenant ===\n");
+  await upsertBerkeleyPilot();
+
   console.log("\n=== Seed complete ===");
-  console.log("Demo login: demo@northstar.com / Demo2026");
+  console.log("Northstar login: demo@northstar.com / Demo2026");
+  console.log("Berkeley  login: demo@berkeley.com  / Demo2026  (→ /leasing, /credit-review)");
   await sql.end();
 }
 

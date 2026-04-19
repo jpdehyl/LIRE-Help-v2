@@ -90,7 +90,11 @@ export class AzureBlobStore implements BlobStore {
         "x-ms-blob-content-type": input.mimeType ?? "application/octet-stream",
         "Content-Length": String(input.data.length),
       },
-      body: input.data,
+      // Node's fetch accepts a Buffer at runtime, but TypeScript's lib
+      // BodyInit is strict (Node's Uint8Array<ArrayBufferLike> vs the web
+      // Uint8Array<ArrayBuffer> disagreement). The cast is safe: Node's
+      // undici fetch handles Buffer natively.
+      body: input.data as unknown as BodyInit,
     });
 
     if (!res.ok) {
