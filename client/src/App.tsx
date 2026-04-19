@@ -9,6 +9,7 @@ import PlatformDashboard from "./pages/platform-dashboard";
 import TicketsPage from "./pages/tickets";
 import CustomersPage from "./pages/customers";
 import SettingsPage from "./pages/settings";
+import SettingsGeneralPage from "./pages/settings-general";
 import SettingsInboxesPage from "./pages/settings-inboxes";
 import SettingsWorkflowsPage from "./pages/settings-workflows";
 import SettingsPlaceholderPage from "./pages/settings-placeholder";
@@ -98,11 +99,6 @@ const settingsSectionStubs: readonly SettingsStub[] = [
 
 // Home tile deep-links. Each tile on /settings points to one of these.
 const settingsTileStubs: readonly SettingsStub[] = [
-  {
-    path: "/settings/workspace/general",
-    title: "General",
-    description: "Set your workspace name, time zone, languages, and more.",
-  },
   {
     path: "/settings/workspace/teammates",
     title: "Teammates",
@@ -214,6 +210,11 @@ function AppRoutes() {
 
       {/* Settings: section landing pages and per-tile deep links. Order matters — */}
       {/* more specific paths come before /settings so wouter's Switch picks them first. */}
+      <Route path="/settings/workspace/general">
+        <RequireAuth>
+          <SettingsGeneralPage />
+        </RequireAuth>
+      </Route>
       <Route path="/settings/inboxes">
         <RequireAuth>
           <SettingsInboxesPage />
