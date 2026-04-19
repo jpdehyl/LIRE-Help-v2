@@ -10,7 +10,14 @@ import { z } from "zod";
 // Concierge configuration stored per tenant. Migrated to a JSONB column on
 // tenants rather than a dedicated table because the shape evolves during
 // dogfooding and we want additive rollouts without constant migrations.
+export type ConciergeRunState = "live" | "shadow" | "paused";
+
 export interface ConciergeSettings {
+  // live: the agent auto-replies per confidence. shadow: the agent runs
+  // but every send_reply is downgraded to a draft for human review — no
+  // outbound traffic. paused: the orchestrator skips dispatch entirely,
+  // leaving inbound messages in the inbox for a human.
+  runState: ConciergeRunState;
   autonomyCeilingPct: number;
   channels: {
     email: boolean;
@@ -25,6 +32,7 @@ export interface ConciergeSettings {
 }
 
 export const DEFAULT_CONCIERGE_SETTINGS: ConciergeSettings = {
+  runState: "live",
   autonomyCeilingPct: 80,
   channels: { email: true, whatsapp: true, sms: true, zoom: false, slack: false, messenger: false },
 };

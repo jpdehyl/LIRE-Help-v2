@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import {
   Activity,
@@ -22,6 +22,7 @@ import { conciergeApi, helpdeskApi } from "../lib/helpdesk";
 import type {
   ConciergeKnowledgeSection,
   ConciergeKnowledgeSummary,
+  ConciergeSettings,
   ConciergeTryResponse,
   ConciergeTryToolCall,
 } from "../lib/helpdesk";
@@ -41,7 +42,7 @@ const tabs: { key: ConciergeTab; label: string; icon: LucideIcon }[] = [
 
 export default function ConciergePage() {
   const [tab, setTab] = useState<ConciergeTab>("overview");
-  const [runState, setRunState] = useState<RunState>("live");
+  const queryClient = useQueryClient();
 
   const metricsQuery = useQuery({
     queryKey: ["helpdesk", "dashboard", "metrics"],
@@ -54,6 +55,29 @@ export default function ConciergePage() {
     queryFn: helpdeskApi.getPropertiesSummary,
     staleTime: 60_000,
   });
+
+  const settingsQuery = useQuery({
+    queryKey: ["concierge", "settings"],
+    queryFn: conciergeApi.getSettings,
+    staleTime: 30_000,
+  });
+
+  const runStateMutation = useMutation({
+    mutationFn: (runState: RunState) => conciergeApi.updateSettings({ runState }),
+    onSuccess: (next) => {
+      queryClient.setQueryData(["concierge", "settings"], next);
+    },
+  });
+
+  const runState: RunState = settingsQuery.data?.runState ?? "live";
+  const onRunStateChange = (next: RunState) => {
+    if (next === runState) return;
+    // Optimistic so the pill flips instantly; the mutation reconciles.
+    queryClient.setQueryData<ConciergeSettings | undefined>(["concierge", "settings"], (prev) =>
+      prev ? { ...prev, runState: next } : prev,
+    );
+    runStateMutation.mutate(next);
+  };
 
   const openThreads = metricsQuery.data?.summary.openConversations ?? null;
   const propertiesWithOpen = useMemo(() => {
@@ -81,7 +105,7 @@ export default function ConciergePage() {
           propertiesWithOpen={propertiesWithOpen || propertiesQuery.data?.properties.length || 0}
           loading={metricsQuery.isLoading || propertiesQuery.isLoading}
           runState={runState}
-          onRunStateChange={setRunState}
+          onRunStateChange={onRunStateChange}
           autonomousSharePct={autonomousSharePct}
           avgFirstResponseMs={avgFirstResponseMs}
           firstResponseSampleCount={firstResponseSampleCount}

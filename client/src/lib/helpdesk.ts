@@ -92,7 +92,10 @@ export interface ConciergeKnowledgeSummary {
   editUrl: string;
 }
 
+export type ConciergeRunState = "live" | "shadow" | "paused";
+
 export interface ConciergeSettings {
+  runState: ConciergeRunState;
   autonomyCeilingPct: number;
   channels: {
     email: boolean;
@@ -105,6 +108,7 @@ export interface ConciergeSettings {
 }
 
 export type ConciergeSettingsPatch = {
+  runState?: ConciergeRunState;
   autonomyCeilingPct?: number;
   channels?: Partial<ConciergeSettings["channels"]>;
 };

@@ -17,6 +17,7 @@ const router = Router();
 router.use(requireStaff);
 
 const SettingsPatchSchema = z.object({
+  runState: z.enum(["live", "shadow", "paused"]).optional(),
   autonomyCeilingPct: z.number().int().min(0).max(100).optional(),
   channels: z
     .object({
@@ -56,6 +57,7 @@ router.patch("/settings", async (req, res) => {
 
   try {
     const patch: ConciergeSettingsPatch = {
+      runState: parse.data.runState,
       autonomyCeilingPct: parse.data.autonomyCeilingPct,
       channels: parse.data.channels,
     };
