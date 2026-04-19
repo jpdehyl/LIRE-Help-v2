@@ -97,6 +97,10 @@ export const staffUsers = pgTable("staff_users", {
 
 export type StaffUser = typeof staffUsers.$inferSelect;
 
+export const STAFF_ROLES = ["superadmin", "owner", "manager", "staff", "readonly", "compliance"] as const;
+export type StaffRole = typeof STAFF_ROLES[number];
+export const SUBORDINATE_ROLES = ["manager", "staff", "readonly"] as const satisfies readonly StaffRole[];
+
 // ─── Staff Identities (SSO providers) ────────────────────────────────────────
 //
 // One row per linked OIDC identity. A single staff user can be linked to

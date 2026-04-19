@@ -2,7 +2,7 @@ import { Router } from "express";
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "./db.js";
-import { staffUsers } from "../shared/schema.js";
+import { staffUsers, STAFF_ROLES, SUBORDINATE_ROLES } from "../shared/schema.js";
 import { hashPassword, safeUser } from "./helpers/authHelpers.js";
 import { requireStaffRole } from "./middleware/auth.js";
 import { assertPropertyInTenant, PropertyScopeError } from "./helpers/tenant-scope.js";
@@ -10,23 +10,23 @@ import { assertPropertyInTenant, PropertyScopeError } from "./helpers/tenant-sco
 const router = Router();
 
 const createBody = z.object({
-  email: z.string().email().transform((v) => v.toLowerCase().trim()),
-  password: z.string().min(8),
+  email: z.string().email().max(254).transform((v) => v.toLowerCase().trim()),
+  password: z.string().min(8).max(128),
   name: z.string().min(1).transform((v) => v.trim()),
-  role: z.enum(["superadmin", "owner", "manager", "staff", "readonly"]).default("readonly"),
+  role: z.enum(STAFF_ROLES).default("readonly"),
   tenantId: z.string().uuid().optional(),
   propertyId: z.string().uuid().nullish(),
-  whatsappNumber: z.string().optional(),
+  whatsappNumber: z.string().optional().nullable(),
 });
 
 const patchBody = z.object({
   name: z.string().min(1).optional(),
-  role: z.enum(["superadmin", "owner", "manager", "staff", "readonly"]).optional(),
+  role: z.enum(STAFF_ROLES).optional(),
   tenantId: z.string().uuid().nullish(),
   propertyId: z.string().uuid().nullish(),
   isActive: z.boolean().optional(),
-  password: z.string().min(8).optional(),
-  whatsappNumber: z.string().nullish(),
+  password: z.string().min(8).max(128).optional(),
+  whatsappNumber: z.string().optional().nullable(),
 });
 
 router.get("/", requireStaffRole("superadmin", "owner", "manager"), async (req, res) => {
@@ -58,7 +58,7 @@ router.post("/", requireStaffRole("superadmin", "owner"), async (req, res) => {
       : ((sess.staffTenantId as string | undefined) ?? null);
     if (!isSuperadmin && !tenantId) return res.status(400).json({ message: "Session has no tenant" });
 
-    if (!isSuperadmin && !["manager", "staff", "readonly"].includes(parsed.data.role)) {
+    if (!isSuperadmin && !SUBORDINATE_ROLES.includes(parsed.data.role as typeof SUBORDINATE_ROLES[number])) {
       return res.status(403).json({ message: "Cannot assign that role" });
     }
 
@@ -100,6 +100,13 @@ router.patch("/:id", requireStaffRole("superadmin", "owner"), async (req, res) =
     const isSuperadmin = sess.staffRole === "superadmin";
     const isOwner = sess.staffRole === "owner";
 
+    if (!isSuperadmin && !sess.staffTenantId) {
+      return res.status(400).json({ message: "Session has no tenant" });
+    }
+
+    const userId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    if (!userId) return res.status(400).json({ message: "User id is required" });
+
     const updates: Record<string, unknown> = { updatedAt: new Date() };
     if (parsed.data.name !== undefined) updates.name = parsed.data.name.trim();
     if (parsed.data.isActive !== undefined) updates.isActive = parsed.data.isActive;
@@ -108,23 +115,55 @@ router.patch("/:id", requireStaffRole("superadmin", "owner"), async (req, res) =
     if (isSuperadmin) {
       if (parsed.data.role !== undefined) updates.role = parsed.data.role;
       if (parsed.data.tenantId !== undefined) updates.tenantId = parsed.data.tenantId;
-      if (parsed.data.propertyId !== undefined) updates.propertyId = parsed.data.propertyId;
+
+      if (parsed.data.propertyId !== undefined) {
+        if (parsed.data.propertyId === null) {
+          updates.propertyId = null;
+        } else {
+          // Determine the effective tenant: either the new tenantId being
+          // assigned in this same payload, or the current row's tenantId.
+          let effectiveTenantId: string | null | undefined = parsed.data.tenantId;
+          if (effectiveTenantId === undefined) {
+            const [row] = await db
+              .select({ t: staffUsers.tenantId })
+              .from(staffUsers)
+              .where(eq(staffUsers.id, userId))
+              .limit(1);
+            effectiveTenantId = row?.t ?? null;
+          }
+          if (effectiveTenantId) {
+            try {
+              await assertPropertyInTenant(parsed.data.propertyId, effectiveTenantId);
+            } catch (err) {
+              if (err instanceof PropertyScopeError) {
+                return res.status(400).json({ message: "propertyId outside target tenant" });
+              }
+              throw err;
+            }
+          }
+          updates.propertyId = parsed.data.propertyId;
+        }
+      }
     } else if (isOwner && parsed.data.role !== undefined) {
-      if (!["manager", "staff", "readonly"].includes(parsed.data.role)) {
+      if (!SUBORDINATE_ROLES.includes(parsed.data.role as typeof SUBORDINATE_ROLES[number])) {
         return res.status(403).json({ message: "Cannot assign that role" });
       }
       updates.role = parsed.data.role;
     }
 
-    if (!isSuperadmin && parsed.data.propertyId !== undefined && parsed.data.propertyId !== null && sess.staffTenantId) {
-      try {
-        await assertPropertyInTenant(parsed.data.propertyId, sess.staffTenantId);
-        updates.propertyId = parsed.data.propertyId;
-      } catch (err) {
-        if (err instanceof PropertyScopeError) {
-          return res.status(403).json({ message: "propertyId outside tenant scope" });
+    if (!isSuperadmin && parsed.data.propertyId !== undefined) {
+      if (parsed.data.propertyId === null) {
+        updates.propertyId = null;
+      } else {
+        try {
+          await assertPropertyInTenant(parsed.data.propertyId, sess.staffTenantId);
+          updates.propertyId = parsed.data.propertyId;
+        } catch (err) {
+          if (err instanceof PropertyScopeError) {
+            return res.status(403).json({ message: "propertyId outside tenant scope" });
+          }
+          throw err;
         }
-        throw err;
       }
     }
 
@@ -132,17 +171,22 @@ router.patch("/:id", requireStaffRole("superadmin", "owner"), async (req, res) =
       updates.passwordHash = await hashPassword(parsed.data.password);
     }
 
-    const userId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    if (!userId) return res.status(400).json({ message: "User id is required" });
     const where = isSuperadmin
       ? eq(staffUsers.id, userId)
       : and(eq(staffUsers.id, userId), eq(staffUsers.tenantId, sess.staffTenantId));
 
-    const [updated] = await db.update(staffUsers).set(updates).where(where).returning();
+    const shouldRevoke = Boolean(parsed.data.password) || parsed.data.isActive === false;
+
+    const [updated] = await db.transaction(async (tx) => {
+      const [row] = await tx.update(staffUsers).set(updates).where(where).returning();
+      if (!row) return [undefined] as const;
+      if (shouldRevoke) {
+        await revokeSessionsForStaff(tx, row.id);
+      }
+      return [row] as const;
+    });
+
     if (!updated) return res.status(404).json({ message: "User not found" });
-    if (parsed.data.password || parsed.data.isActive === false) {
-      await revokeSessionsForStaff(updated.id);
-    }
     res.json(safeUser(updated));
   } catch (err) {
     console.error("[staff patch]", err);
@@ -154,14 +198,29 @@ router.delete("/:id", requireStaffRole("superadmin", "owner"), async (req, res) 
   try {
     const sess = req.session as any;
     const isSuperadmin = sess.staffRole === "superadmin";
+
+    if (!isSuperadmin && !sess.staffTenantId) {
+      return res.status(400).json({ message: "Session has no tenant" });
+    }
+
     const userId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     if (!userId) return res.status(400).json({ message: "User id is required" });
     const where = isSuperadmin
       ? eq(staffUsers.id, userId)
       : and(eq(staffUsers.id, userId), eq(staffUsers.tenantId, sess.staffTenantId));
-    const [updated] = await db.update(staffUsers).set({ isActive: false, updatedAt: new Date() }).where(where).returning();
+
+    const [updated] = await db.transaction(async (tx) => {
+      const [row] = await tx
+        .update(staffUsers)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(where)
+        .returning();
+      if (!row) return [undefined] as const;
+      await revokeSessionsForStaff(tx, row.id);
+      return [row] as const;
+    });
+
     if (!updated) return res.status(404).json({ message: "User not found" });
-    await revokeSessionsForStaff(updated.id);
     res.json({ ok: true });
   } catch (err) {
     console.error("[staff delete]", err);
@@ -169,8 +228,8 @@ router.delete("/:id", requireStaffRole("superadmin", "owner"), async (req, res) 
   }
 });
 
-async function revokeSessionsForStaff(staffId: string) {
-  await db.execute(sql`DELETE FROM staff_sessions WHERE sess::jsonb->>'staffId' = ${staffId}`);
+async function revokeSessionsForStaff(database: { execute: typeof db.execute }, staffId: string) {
+  await database.execute(sql`DELETE FROM staff_sessions WHERE sess::jsonb->>'staffId' = ${staffId}`);
 }
 
 export default router;

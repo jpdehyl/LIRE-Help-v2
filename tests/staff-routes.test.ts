@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import supertest from "supertest";
 import { getApp } from "./helpers/request.js";
 import { seedTenant, seedProperty, seedStaff, truncateAll } from "./helpers/seed.js";
+import { pgClient } from "../server/db.js";
 
 async function agentFor(email: string) {
   const app = await getApp();
@@ -74,9 +75,15 @@ describe("staff-routes hardening (B2)", () => {
     const me1 = await targetAgent.get("/api/auth/me");
     expect(me1.status).toBe(200);
 
+    const sessBefore = await pgClient`SELECT 1 FROM staff_sessions WHERE sess::jsonb->>'staffId' = ${target.id}` as unknown as Array<{ "?column?": number }>;
+    expect(sessBefore.length).toBeGreaterThan(0);
+
     const ownerAgent = await agentFor("owner-a@x.com");
     const del = await ownerAgent.delete(`/api/staff/${target.id}`);
     expect(del.status).toBe(200);
+
+    const sessAfter = await pgClient`SELECT 1 FROM staff_sessions WHERE sess::jsonb->>'staffId' = ${target.id}` as unknown as Array<{ "?column?": number }>;
+    expect(sessAfter.length).toBe(0);
 
     const me2 = await targetAgent.get("/api/auth/me");
     expect(me2.status).toBe(401);
