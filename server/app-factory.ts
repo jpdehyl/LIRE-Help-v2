@@ -81,6 +81,8 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<express.E
     // Postmark inbound emails can exceed 100kb; the route mounts its own
     // 2MB JSON parser.
     if (req.path === "/webhooks/postmark/inbound") return next();
+    // Zoom webhooks need the raw body for HMAC verification.
+    if (req.path === "/webhooks/zoom/chat") return next();
     return defaultJsonParser(req, res, next);
   });
 
@@ -168,6 +170,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<express.E
   const { default: creditRoutes } = await import("./pilots/credit/routes.js");
   const { default: twilioRoutes } = await import("./channels/twilio-routes.js");
   const { default: postmarkRoutes } = await import("./channels/postmark-routes.js");
+  const { default: zoomRoutes } = await import("./channels/zoom-routes.js");
 
   app.use("/api/auth", authRoutes);
   app.use("/api/properties", propertiesRoutes);
@@ -185,6 +188,9 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<express.E
   // Postmark inbound emails can exceed the 100kb global JSON cap, so the
   // route mounts its own 2MB JSON parser.
   app.use("/webhooks/postmark", postmarkRoutes);
+  // Zoom webhook verification requires the raw body bytes, so the route
+  // mounts express.raw instead of the global JSON parser.
+  app.use("/webhooks/zoom", zoomRoutes);
 
   // ─── /api/public/brand ────────────────────────────────────────────────────
 
