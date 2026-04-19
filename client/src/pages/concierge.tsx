@@ -55,6 +55,9 @@ export default function ConciergePage() {
     const rows = propertiesQuery.data?.properties ?? [];
     return rows.filter((p) => p.openTicketCount > 0).length;
   }, [propertiesQuery.data]);
+  const autonomousSharePct = metricsQuery.data?.autonomousSharePct ?? null;
+  const avgFirstResponseMs = metricsQuery.data?.avgFirstResponseMs ?? null;
+  const firstResponseSampleCount = metricsQuery.data?.firstResponseSampleCount ?? 0;
 
   const actions = (
     <Link href="/settings/ai-automation">
@@ -74,6 +77,9 @@ export default function ConciergePage() {
           loading={metricsQuery.isLoading || propertiesQuery.isLoading}
           runState={runState}
           onRunStateChange={setRunState}
+          autonomousSharePct={autonomousSharePct}
+          avgFirstResponseMs={avgFirstResponseMs}
+          firstResponseSampleCount={firstResponseSampleCount}
         />
 
         <TabBar tab={tab} onChange={setTab} />
@@ -96,16 +102,24 @@ function ConciergeHero({
   loading,
   runState,
   onRunStateChange,
+  autonomousSharePct,
+  avgFirstResponseMs,
+  firstResponseSampleCount,
 }: {
   openThreads: number | null;
   propertiesWithOpen: number;
   loading: boolean;
   runState: RunState;
   onRunStateChange: (state: RunState) => void;
+  autonomousSharePct: number | null;
+  avgFirstResponseMs: number | null;
+  firstResponseSampleCount: number;
 }) {
   const headline = loading
     ? "Connecting to Claude…"
     : `Handling ${openThreads ?? 0} live thread${openThreads === 1 ? "" : "s"} across ${propertiesWithOpen} propert${propertiesWithOpen === 1 ? "y" : "ies"}`;
+  const avgResponseLabel = formatResponseLatency(avgFirstResponseMs);
+  const autonomyLabel = autonomousSharePct != null ? `${autonomousSharePct}%` : "—";
 
   return (
     <section className="overflow-hidden rounded-md border border-border bg-[#0F0F0F] text-[#FAFAFA]">
@@ -122,9 +136,15 @@ function ConciergeHero({
             {headline}
           </h1>
           <p className="mt-2 font-body text-[13px] leading-[1.5] text-[rgba(255,255,255,0.68)]">
-            <span className="font-semibold text-[#FF4D00]">82%</span> resolved end-to-end this week ·{" "}
-            <span className="text-[rgba(255,255,255,0.85)]">1m 14s</span> average first response · CSAT proxy{" "}
-            <span className="text-[rgba(255,255,255,0.85)]">94</span>.
+            <span className="font-semibold text-[#FF4D00]">{autonomyLabel}</span> answered without a human this week ·{" "}
+            <span className="text-[rgba(255,255,255,0.85)]">{avgResponseLabel}</span> average first response
+            {firstResponseSampleCount > 0 ? (
+              <span className="text-[rgba(255,255,255,0.5)]">
+                {" "}
+                · {firstResponseSampleCount} sample{firstResponseSampleCount === 1 ? "" : "s"}
+              </span>
+            ) : null}
+            .
           </p>
         </div>
         <RunStateToggle value={runState} onChange={onRunStateChange} />
@@ -348,6 +368,20 @@ function LiveActivityList() {
       </ul>
     </section>
   );
+}
+
+function formatResponseLatency(ms: number | null): string {
+  if (ms == null || !Number.isFinite(ms) || ms < 0) return "—";
+  const totalSeconds = Math.round(ms / 1000);
+  if (totalSeconds < 60) return `${totalSeconds}s`;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes < 60) {
+    return seconds === 0 ? `${minutes}m` : `${minutes}m ${seconds}s`;
+  }
+  const hours = Math.floor(minutes / 60);
+  const minsRemaining = minutes % 60;
+  return minsRemaining === 0 ? `${hours}h` : `${hours}h ${minsRemaining}m`;
 }
 
 function PlaceholderTab({ tab }: { tab: ConciergeTab }) {

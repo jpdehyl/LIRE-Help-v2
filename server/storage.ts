@@ -915,6 +915,9 @@ export async function getHelpdeskDashboardMetrics(
       summary: { openConversations: 0, unassigned: 0, slaAtRisk: 0, slaBreached: 0, resolvedToday: 0, waitingOnCustomer: 0 },
       afterHoursHandled: 0,
       tenantCount: 0,
+      autonomousSharePct: null,
+      avgFirstResponseMs: null,
+      firstResponseSampleCount: 0,
       channels: [],
       byStatus: statusOrder.map((status) => ({ status, count: 0 })),
       byInbox: [],
@@ -946,6 +949,41 @@ export async function getHelpdeskDashboardMetrics(
   const slaBreached = openRows.filter((row) => row.slaState === "breached").length;
 
   const channels = buildChannelMetrics(context.conversations, now);
+
+  // Concierge run quality: trailing 7 days.
+  // - autonomousSharePct: of the conversations whose first non-customer
+  //   message landed in the last 7 days, what share were sent by the AI
+  //   (messageSource === "ai") vs a human teammate.
+  // - avgFirstResponseMs: mean of helpTickets.responseLatencyMs populated
+  //   in the same window.
+  const last7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const messagesByConvo = new Map<string, typeof context.messages>();
+  for (const msg of context.messages) {
+    const arr = messagesByConvo.get(msg.conversationId) ?? [];
+    arr.push(msg);
+    messagesByConvo.set(msg.conversationId, arr);
+  }
+
+  let aiCount = 0;
+  let humanCount = 0;
+  for (const [, msgs] of messagesByConvo) {
+    const sorted = [...msgs].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    const firstResponse = sorted.find(
+      (m) => m.messageType !== "customer" && (m.messageSource === "ai" || m.messageSource === "human"),
+    );
+    if (!firstResponse || firstResponse.createdAt < last7d) continue;
+    if (firstResponse.messageSource === "ai") aiCount += 1;
+    else if (firstResponse.messageSource === "human") humanCount += 1;
+  }
+  const firstResponseSampleCount = aiCount + humanCount;
+  const autonomousSharePct =
+    firstResponseSampleCount > 0 ? Math.round((aiCount / firstResponseSampleCount) * 100) : null;
+
+  const latencies = context.tickets
+    .filter((t) => t.responseLatencyMs != null && t.updatedAt >= last7d)
+    .map((t) => t.responseLatencyMs as number);
+  const avgFirstResponseMs =
+    latencies.length > 0 ? Math.round(latencies.reduce((sum, v) => sum + v, 0) / latencies.length) : null;
 
   const inboxMap = new Map<string, HelpdeskInboxMetric>();
   for (const row of rows) {
@@ -982,6 +1020,9 @@ export async function getHelpdeskDashboardMetrics(
     },
     afterHoursHandled,
     tenantCount: new Set(context.customers.map((c) => c.company ?? c.id)).size,
+    autonomousSharePct,
+    avgFirstResponseMs,
+    firstResponseSampleCount,
     channels,
     byStatus,
     byInbox: [...inboxMap.values()].sort((a, b) => b.count - a.count),

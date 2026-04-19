@@ -168,6 +168,11 @@ export interface HelpdeskDashboardMetrics {
   };
   afterHoursHandled: number;
   tenantCount: number;
+  // Concierge run quality in the trailing 7 days. Null when there's no data
+  // yet so the UI can render a dash instead of "0%" on a fresh deployment.
+  autonomousSharePct: number | null;
+  avgFirstResponseMs: number | null;
+  firstResponseSampleCount: number;
   channels: ChannelMetric[];
   byStatus: HelpdeskStatusCount[];
   byInbox: HelpdeskInboxMetric[];
