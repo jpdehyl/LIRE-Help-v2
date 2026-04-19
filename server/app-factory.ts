@@ -83,6 +83,8 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<express.E
     if (req.path === "/webhooks/postmark/inbound") return next();
     // Zoom webhooks need the raw body for HMAC verification.
     if (req.path === "/webhooks/zoom/chat") return next();
+    // Meta's WhatsApp signs the raw body too.
+    if (req.path === "/webhooks/whatsapp" || req.path === "/webhooks/whatsapp/") return next();
     return defaultJsonParser(req, res, next);
   });
 
@@ -164,6 +166,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<express.E
   const { default: knowledgeRoutes } = await import("./knowledge-routes.js");
   const { default: platformSessionsRoutes } = await import("./platform-sessions-routes.js");
   const { default: helpdeskRoutes } = await import("./helpdesk-routes.js");
+  const { default: conciergeAdminRoutes } = await import("./concierge/admin-routes.js");
   const { logTokenUsage } = await import("./token-logger.js");
   const { default: metricsRoutes } = await import("./metrics-routes.js");
   const { default: leasingRoutes } = await import("./pilots/leasing/routes.js");
@@ -171,6 +174,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<express.E
   const { default: twilioRoutes } = await import("./channels/twilio-routes.js");
   const { default: postmarkRoutes } = await import("./channels/postmark-routes.js");
   const { default: zoomRoutes } = await import("./channels/zoom-routes.js");
+  const { default: whatsappRoutes } = await import("./channels/whatsapp-routes.js");
 
   app.use("/api/auth", authRoutes);
   app.use("/api/properties", propertiesRoutes);
@@ -179,6 +183,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<express.E
   app.use("/api/knowledge", knowledgeRoutes);
   app.use("/api/platform-sessions", platformSessionsRoutes);
   app.use("/api/helpdesk", helpdeskRoutes);
+  app.use("/api/concierge", conciergeAdminRoutes);
   app.use("/api/admin/metrics", metricsRoutes);
   app.use("/api/pilots/leasing", leasingRoutes);
   app.use("/api/pilots/credit", creditRoutes);
@@ -191,6 +196,10 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<express.E
   // Zoom webhook verification requires the raw body bytes, so the route
   // mounts express.raw instead of the global JSON parser.
   app.use("/webhooks/zoom", zoomRoutes);
+  // Meta's WhatsApp webhook signs the raw body with X-Hub-Signature-256,
+  // so this route also needs express.raw. GET requests (Meta's
+  // verification handshake) have no body — they're handled separately.
+  app.use("/webhooks/whatsapp", whatsappRoutes);
 
   // ─── /api/public/brand ────────────────────────────────────────────────────
 
