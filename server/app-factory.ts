@@ -47,7 +47,10 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<express.E
       crossOriginEmbedderPolicy: false,
     }),
   );
-  app.use(express.json());
+  app.use((req, res, next) => {
+    if (req.path === "/api/pilots/credit/documents/upload") return next();
+    return express.json()(req, res, next);
+  });
 
   // ─── CORS ─────────────────────────────────────────────────────────────────
 

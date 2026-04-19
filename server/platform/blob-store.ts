@@ -35,11 +35,14 @@ const LOCAL_ROOT = path.resolve(process.cwd(), ".blobs");
 
 export class LocalFsBlobStore implements BlobStore {
   async put(input: PutBlobInput): Promise<Blob> {
+    const safeName = (input.filename.split(/[\\/]/).pop() ?? "file")
+      .replace(/[^a-zA-Z0-9._-]/g, "_")
+      .slice(0, 120) || "file";
     const sha256 = createHash("sha256").update(input.data).digest("hex");
     const id = randomUUID();
     const dir = path.join(LOCAL_ROOT, input.tenantSlug, input.kind);
     await mkdir(dir, { recursive: true });
-    const absPath = path.join(dir, `${id}-${input.filename}`);
+    const absPath = path.join(dir, `${id}-${safeName}`);
     await writeFile(absPath, input.data);
     return {
       blobUrl: `file://${absPath}`,
@@ -79,9 +82,12 @@ export class AzureBlobStore implements BlobStore {
   }
 
   async put(input: PutBlobInput): Promise<Blob> {
+    const safeName = (input.filename.split(/[\\/]/).pop() ?? "file")
+      .replace(/[^a-zA-Z0-9._-]/g, "_")
+      .slice(0, 120) || "file";
     const sha256 = createHash("sha256").update(input.data).digest("hex");
     const id = randomUUID();
-    const blobName = `${input.tenantSlug}/${input.kind}/${id}-${input.filename}`;
+    const blobName = `${input.tenantSlug}/${input.kind}/${id}-${safeName}`;
 
     const res = await fetch(this.requestUrl(blobName), {
       method: "PUT",

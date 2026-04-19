@@ -1,4 +1,4 @@
-import { Router, type Request, type Response } from "express";
+import express, { Router, type Request, type Response } from "express";
 import { and, desc, eq } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import { db } from "../../db.js";
@@ -153,66 +153,95 @@ router.post("/documents", async (req: Request, res: Response) => {
 // Upload a file: body is JSON with { lesseeId, filename, mimeType, base64 }.
 // Small-file path — acceptable for pilot. Large files should upload directly
 // to Azure via SAS URL and then POST metadata to /documents above.
-router.post("/documents/upload", async (req: Request, res: Response) => {
-  const { tenantId, tenantSlug, staffId } = getTenantContext(req);
-  if (!tenantId || !tenantSlug) return res.status(400).json({ message: "Missing tenant context" });
+const ALLOWED_UPLOAD_MIME = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/tiff",
+]);
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 
-  const { lesseeId, filename, mimeType, base64 } = req.body ?? {};
-  if (typeof lesseeId !== "string" || typeof filename !== "string" || typeof base64 !== "string") {
-    return res.status(400).json({ message: "lesseeId, filename, and base64 required" });
-  }
+router.post(
+  "/documents/upload",
+  express.json({ limit: "35mb" }),
+  async (req: Request, res: Response) => {
+    const { tenantId, tenantSlug, staffId } = getTenantContext(req);
+    if (!tenantId || !tenantSlug) return res.status(400).json({ message: "Missing tenant context" });
 
-  const [lessee] = await db
-    .select()
-    .from(lessees)
-    .where(and(eq(lessees.id, lesseeId), eq(lessees.tenantId, tenantId)))
-    .limit(1);
-  if (!lessee) return res.status(404).json({ message: "Lessee not found" });
+    const { lesseeId, filename, mimeType, base64 } = req.body ?? {};
+    if (typeof lesseeId !== "string" || typeof filename !== "string" || typeof base64 !== "string") {
+      return res.status(400).json({ message: "lesseeId, filename, and base64 required" });
+    }
+    if (typeof mimeType !== "string" || !ALLOWED_UPLOAD_MIME.has(mimeType)) {
+      return res.status(400).json({ message: "Unsupported mimeType" });
+    }
 
-  let buffer: Buffer;
-  try {
-    buffer = Buffer.from(base64, "base64");
-  } catch {
-    return res.status(400).json({ message: "Invalid base64 payload" });
-  }
+    const [lessee] = await db
+      .select()
+      .from(lessees)
+      .where(and(eq(lessees.id, lesseeId), eq(lessees.tenantId, tenantId)))
+      .limit(1);
+    if (!lessee) return res.status(404).json({ message: "Lessee not found" });
 
-  const store = getBlobStore();
-  const blob = await store.put({
-    tenantSlug,
-    kind: "credit-documents",
-    filename,
-    mimeType: typeof mimeType === "string" ? mimeType : undefined,
-    data: buffer,
-  });
+    let buffer: Buffer;
+    try {
+      buffer = Buffer.from(base64, "base64");
+    } catch {
+      return res.status(400).json({ message: "Invalid base64 payload" });
+    }
+    if (buffer.length === 0 || buffer.length > MAX_UPLOAD_BYTES) {
+      return res.status(413).json({ message: "Payload too small or too large" });
+    }
 
-  const [row] = await db
-    .insert(creditDocuments)
-    .values({
+    const sha256 = createHash("sha256").update(buffer).digest("hex");
+    const [existing] = await db
+      .select()
+      .from(creditDocuments)
+      .where(and(
+        eq(creditDocuments.tenantId, tenantId),
+        eq(creditDocuments.lesseeId, lesseeId),
+        eq(creditDocuments.sha256, sha256),
+      ))
+      .limit(1);
+    if (existing) {
+      return res.status(200).json({ document: existing, dedup: true });
+    }
+
+    const store = getBlobStore();
+    const blob = await store.put({
+      tenantSlug,
+      kind: "credit-documents",
+      filename,
+      mimeType,
+      data: buffer,
+    });
+
+    const [row] = await db
+      .insert(creditDocuments)
+      .values({
+        tenantId,
+        lesseeId,
+        uploadedByStaffId: staffId ?? null,
+        blobUrl: blob.blobUrl,
+        sha256: blob.sha256,
+        mimeType: blob.mimeType,
+      })
+      .returning();
+
+    await appendArchive({
       tenantId,
-      lesseeId,
-      uploadedByStaffId: staffId ?? null,
-      blobUrl: blob.blobUrl,
-      sha256: blob.sha256,
-      mimeType: blob.mimeType,
-      pageCount: null,
-      classification: null,
-      classificationConfidence: null,
-      periodStart: null,
-      periodEnd: null,
-    })
-    .returning();
+      subjectType: "credit_document",
+      subjectId: row.id,
+      actorStaffId: staffId ?? null,
+      eventType: "document.uploaded",
+      payload: { id: row.id, sha256: blob.sha256, size: blob.size, mimeType: blob.mimeType },
+    });
 
-  await appendArchive({
-    tenantId,
-    subjectType: "credit_document",
-    subjectId: row.id,
-    actorStaffId: staffId ?? null,
-    eventType: "document.uploaded",
-    payload: { id: row.id, sha256: blob.sha256, size: blob.size, mimeType: blob.mimeType },
-  });
-
-  return res.status(201).json({ document: row });
-});
+    return res.status(201).json({ document: row });
+  },
+);
 
 router.get("/lessees/:lesseeId/extractions", async (req: Request, res: Response) => {
   const { tenantId } = getTenantContext(req);
