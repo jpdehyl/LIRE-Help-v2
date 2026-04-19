@@ -158,6 +158,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<express.E
   const { default: metricsRoutes } = await import("./metrics-routes.js");
   const { default: leasingRoutes } = await import("./pilots/leasing/routes.js");
   const { default: creditRoutes } = await import("./pilots/credit/routes.js");
+  const { default: twilioRoutes } = await import("./channels/twilio-routes.js");
 
   app.use("/api/auth", authRoutes);
   app.use("/api/properties", propertiesRoutes);
@@ -169,6 +170,9 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<express.E
   app.use("/api/admin/metrics", metricsRoutes);
   app.use("/api/pilots/leasing", leasingRoutes);
   app.use("/api/pilots/credit", creditRoutes);
+  // Twilio posts form-encoded, not JSON — the route mounts its own
+  // urlencoded parser so we don't widen the global one.
+  app.use("/webhooks/twilio", twilioRoutes);
 
   // ─── /api/public/brand ────────────────────────────────────────────────────
 
