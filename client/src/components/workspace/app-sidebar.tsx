@@ -7,7 +7,6 @@ import {
   Ticket,
   Users,
   Shield,
-  Settings2,
   LogOut,
   type LucideIcon,
 } from "lucide-react";
@@ -34,7 +33,6 @@ const pilotItems: readonly NavItem[] = [
 ];
 
 const adminItems: readonly NavItem[] = [
-  { href: "/settings", label: "Settings", icon: Settings2 },
   { href: "/platform-dashboard", label: "Platform admin", icon: Shield },
 ];
 
