@@ -70,23 +70,52 @@ interface HelpdeskContext {
   tickets: HelpTicket[];
   messages: HelpMessage[];
   conversationTags: HelpConversationTag[];
+  properties: Property[];
 }
 
 const viewDefinitionsBase: Record<InboxViewKey, Omit<InboxViewDefinition, "count">> = {
-  all: { key: "all", label: "All conversations", section: "default_views", description: "Every open thread across inboxes" },
-  assigned: { key: "assigned", label: "Assigned to me", section: "default_views", description: "Work currently owned by you" },
+  priority: { key: "priority", label: "Priority", section: "default_views", description: "Urgent threads or SLA-at-risk work that should be handled first" },
   unassigned: { key: "unassigned", label: "Unassigned", section: "default_views", description: "Needs triage and ownership" },
-  awaiting_reply: { key: "awaiting_reply", label: "Awaiting reply", section: "default_views", description: "Customer needs a response" },
-  sla_at_risk: { key: "sla_at_risk", label: "SLA at risk", section: "default_views", description: "Response or resolution target is slipping" },
-  closed_recently: { key: "closed_recently", label: "Closed recently", section: "default_views", description: "Recently resolved conversations" },
-  support: { key: "support", label: "Support", section: "team_inboxes", description: "Core support queue" },
-  escalations: { key: "escalations", label: "Escalations", section: "team_inboxes", description: "Manager or specialist attention" },
-  billing: { key: "billing", label: "Billing", section: "team_inboxes", description: "Invoices, credits, renewals" },
-  vip: { key: "vip", label: "VIP / strategic", section: "team_inboxes", description: "High-touch accounts and renewals" },
-  high_priority: { key: "high_priority", label: "High priority", section: "saved_views", description: "Urgent or high-impact issues" },
-  bugs: { key: "bugs", label: "Bugs / product issues", section: "saved_views", description: "Product-linked incidents" },
-  renewals: { key: "renewals", label: "Renewal / pricing", section: "saved_views", description: "Commercial coordination" },
+  escalations: { key: "escalations", label: "Escalations", section: "default_views", description: "SLA-breached or flagged for human review" },
+  all: { key: "all", label: "All open", section: "default_views", description: "Every thread that is not yet resolved" },
+  email: { key: "email", label: "Email", section: "channels", description: "Inbound email conversations" },
+  whatsapp: { key: "whatsapp", label: "WhatsApp", section: "channels", description: "WhatsApp Business conversations" },
+  sms: { key: "sms", label: "SMS (Twilio)", section: "channels", description: "SMS conversations over Twilio" },
+  zoom: { key: "zoom", label: "Zoom", section: "channels", description: "Zoom phone and meeting transcripts" },
+  slack: { key: "slack", label: "Slack", section: "channels", description: "Slack messages routed into the helpdesk" },
+  messenger: { key: "messenger", label: "Messenger", section: "channels", description: "Facebook Messenger conversations" },
+  maintenance: { key: "maintenance", label: "Maintenance", section: "team_inboxes", description: "Work orders and facility tickets" },
+  lease_compliance: { key: "lease_compliance", label: "Lease & Compliance", section: "team_inboxes", description: "Lease, legal, and compliance coordination" },
+  after_hours: { key: "after_hours", label: "After-hours", section: "team_inboxes", description: "Off-hours triage and escalations" },
+  resolved_today: { key: "resolved_today", label: "Resolved today", section: "saved_views", description: "Conversations closed in the last 24 hours" },
 };
+
+const channelAliases: Record<string, string[]> = {
+  email: ["email", "mail", "e-mail"],
+  whatsapp: ["whatsapp", "wa"],
+  sms: ["sms", "twilio", "text"],
+  zoom: ["zoom", "phone", "voice"],
+  slack: ["slack"],
+  messenger: ["messenger", "facebook", "fb"],
+};
+
+function conversationMatchesChannel(row: ConversationRow, channelKey: string): boolean {
+  const aliases = channelAliases[channelKey] ?? [channelKey];
+  const channel = (row.channel ?? "").toLowerCase();
+  return aliases.includes(channel);
+}
+
+function inboxMatchesTeam(row: ConversationRow, teamKey: "maintenance" | "lease_compliance" | "after_hours"): boolean {
+  const label = row.inboxLabel.toLowerCase();
+  switch (teamKey) {
+    case "maintenance":
+      return label.includes("maintenance");
+    case "lease_compliance":
+      return label.includes("lease") || label.includes("compliance");
+    case "after_hours":
+      return label.includes("after-hours") || label.includes("after hours");
+  }
+}
 
 const priorityOrder: PriorityLevel[] = ["urgent", "high", "medium", "low"];
 const statusOrder: ConversationStatus[] = ["open", "pending", "waiting_on_customer", "resolved"];
@@ -415,35 +444,32 @@ function deriveSuggestedActions(row: ConversationRow): SuggestionItem[] {
   return items.slice(0, 3);
 }
 
-function matchesInboxView(conversation: ConversationRow, viewKey: InboxViewKey, currentStaffName?: string | null): boolean {
+function matchesInboxView(conversation: ConversationRow, viewKey: InboxViewKey, _currentStaffName?: string | null): boolean {
+  const isOpen = conversation.status !== "resolved";
   switch (viewKey) {
-    case "assigned":
-      return currentStaffName ? conversation.assignee === currentStaffName : conversation.assignmentState === "assigned";
+    case "priority":
+      return isOpen && (conversation.priority === "urgent" || conversation.slaState === "at_risk" || conversation.slaState === "breached");
     case "unassigned":
-      return conversation.assignmentState === "unassigned";
-    case "awaiting_reply":
-      return conversation.status === "open" || conversation.status === "pending";
-    case "sla_at_risk":
-      return conversation.slaState === "at_risk" || conversation.slaState === "breached";
-    case "closed_recently":
-      return conversation.status === "resolved";
-    case "support":
-      return conversation.inboxLabel === "Support";
+      return isOpen && conversation.assignmentState === "unassigned";
     case "escalations":
-      return conversation.inboxLabel === "Escalations";
-    case "billing":
-      return conversation.inboxLabel === "Billing";
-    case "vip":
-      return conversation.inboxLabel === "VIP";
-    case "high_priority":
-      return conversation.priority === "high" || conversation.priority === "urgent";
-    case "bugs":
-      return conversation.tags.includes("bug");
-    case "renewals":
-      return conversation.tags.includes("renewal") || conversation.tags.includes("pricing");
+      return isOpen && (conversation.slaState === "breached" || conversation.slaState === "at_risk");
     case "all":
+      return isOpen;
+    case "email":
+    case "whatsapp":
+    case "sms":
+    case "zoom":
+    case "slack":
+    case "messenger":
+      return isOpen && conversationMatchesChannel(conversation, viewKey);
+    case "maintenance":
+    case "lease_compliance":
+    case "after_hours":
+      return isOpen && inboxMatchesTeam(conversation, viewKey);
+    case "resolved_today":
+      return conversation.status === "resolved";
     default:
-      return true;
+      return isOpen;
   }
 }
 
@@ -451,7 +477,7 @@ async function loadHelpdeskContext(tenantId?: string | null, propertyId?: string
   const scope = await resolveHelpdeskScope(tenantId, propertyId, staffId);
   if (!scope) return null;
 
-  const [staff, inboxes, customers, tags, conversations, tickets, messages, conversationTags] = await Promise.all([
+  const [staff, inboxes, customers, tags, conversations, tickets, messages, conversationTags, tenantProperties] = await Promise.all([
     db.select().from(staffUsers).where(and(eq(staffUsers.tenantId, scope.tenantId), eq(staffUsers.isActive, true))).orderBy(asc(staffUsers.name)),
     db.select().from(helpInboxes).where(eq(helpInboxes.tenantId, scope.tenantId)).orderBy(asc(helpInboxes.name)),
     db.select().from(helpCustomers).where(eq(helpCustomers.tenantId, scope.tenantId)).orderBy(asc(helpCustomers.name)),
@@ -460,6 +486,7 @@ async function loadHelpdeskContext(tenantId?: string | null, propertyId?: string
     db.select().from(helpTickets).where(eq(helpTickets.tenantId, scope.tenantId)).orderBy(desc(helpTickets.updatedAt)),
     db.select().from(helpMessages).where(eq(helpMessages.tenantId, scope.tenantId)).orderBy(asc(helpMessages.createdAt)),
     db.select().from(helpConversationTags).where(eq(helpConversationTags.tenantId, scope.tenantId)),
+    db.select().from(properties).where(eq(properties.tenantId, scope.tenantId)).orderBy(asc(properties.name)),
   ]);
 
   return {
@@ -472,6 +499,7 @@ async function loadHelpdeskContext(tenantId?: string | null, propertyId?: string
     tickets: withinScope(tickets, scope.propertyId),
     messages: withinScope(messages, scope.propertyId),
     conversationTags: withinScope(conversationTags, scope.propertyId),
+    properties: tenantProperties,
   };
 }
 
@@ -486,6 +514,10 @@ function buildConversationRows(context: HelpdeskContext): ConversationRow[] {
   const staffById = new Map(context.staff.map((staffMember) => [staffMember.id, staffMember]));
   const tagById = new Map(context.tags.map((tag) => [tag.id, tag]));
   const tagsByConversationId = new Map<string, string[]>();
+  const propertyCodeById = new Map<string, string>();
+  context.properties.forEach((property, index) => {
+    propertyCodeById.set(property.id, derivePropertyCode(property.slug, property.name, index));
+  });
 
   for (const relation of context.conversationTags) {
     const tag = tagById.get(relation.tagId);
@@ -495,7 +527,7 @@ function buildConversationRows(context: HelpdeskContext): ConversationRow[] {
     tagsByConversationId.set(relation.conversationId, existing);
   }
 
-  return context.conversations.map((conversation) => {
+  return context.conversations.map((conversation, index) => {
     const inbox = conversation.inboxId ? inboxById.get(conversation.inboxId) : undefined;
     const customer = conversation.customerId ? customerById.get(conversation.customerId) : undefined;
     const ticket = ticketByConversationId.get(conversation.id);
@@ -510,6 +542,18 @@ function buildConversationRows(context: HelpdeskContext): ConversationRow[] {
       : conversation.assignmentState === "team"
         ? "team"
         : "unassigned";
+    const channel = (conversation.channel || inbox?.channel || "email").toLowerCase();
+    // "AI handling" = no human owner yet and the conversation isn't done.
+    // Concierge messages inherit this flag visually; once a teammate picks it
+    // up the tag disappears.
+    const aiHandling = !assigneeStaff && status !== "resolved";
+    // LIRE-#### format for the row-level identifier. Reuses the help-ticket
+    // number when present and converts its T- prefix; otherwise derives a
+    // synthetic index so the UI stays consistent even before a ticket row
+    // exists.
+    const displayTicketId = ticket?.ticketNumber
+      ? ticket.ticketNumber.replace(/^T-/, "LIRE-")
+      : `LIRE-${String(4000 + index + 1).padStart(4, "0")}`;
 
     return {
       id: conversation.id,
@@ -518,6 +562,7 @@ function buildConversationRows(context: HelpdeskContext): ConversationRow[] {
       requesterEmail: customer?.email ?? "",
       company: customer?.company ?? "—",
       inboxLabel: inbox?.name ?? ticket?.team ?? "Support",
+      channel,
       preview: conversation.preview ?? "No preview available.",
       status,
       priority,
@@ -531,7 +576,7 @@ function buildConversationRows(context: HelpdeskContext): ConversationRow[] {
       slaCountdownLabel: deriveSlaCountdownLabel(conversation, slaState),
       tags,
       ticket: {
-        id: ticket?.ticketNumber ?? `T-${conversation.id.slice(0, 8)}`,
+        id: displayTicketId,
         status,
         priority,
         assignee: assigneeStaff?.name ?? null,
@@ -549,6 +594,8 @@ function buildConversationRows(context: HelpdeskContext): ConversationRow[] {
         lastSeenLabel: customer?.lastSeenAt ? formatAbsolute(customer.lastSeenAt) : "Unknown",
       },
       propertyId: conversation.propertyId ?? null,
+      propertyCode: conversation.propertyId ? propertyCodeById.get(conversation.propertyId) ?? null : null,
+      aiHandling,
     };
   });
 }

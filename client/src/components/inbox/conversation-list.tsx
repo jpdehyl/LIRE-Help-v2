@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
-import { Inbox } from "lucide-react";
-import type { ConversationRow } from "./types";
-import { EmptyState, PriorityBadge, SlaBadge, StatusBadge } from "../ui";
+import { Inbox, Paperclip, Sparkles } from "lucide-react";
+import type { ConversationRow, SlaState } from "./types";
+import { EmptyState, PriorityBadge } from "../ui";
 
 interface ConversationListProps {
   title: string;
@@ -63,13 +63,16 @@ export function ConversationList({
               ].join(" ")}
             >
               {active ? <span className="absolute inset-y-0 left-0 w-[2px] bg-accent" /> : null}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 {conversation.unread ? (
                   <span className="h-[6px] w-[6px] rounded-full bg-accent" aria-label="Unread conversation" />
                 ) : null}
                 <span className="font-mono text-[11px] tracking-[0.02em] text-fg-subtle">
-                  {conversation.id.slice(0, 8).toUpperCase()}
+                  {conversation.ticket.id}
                 </span>
+                {conversation.messageCount > 1 ? (
+                  <Paperclip className="h-3 w-3 text-fg-subtle" aria-label="Has attachments" />
+                ) : null}
                 <span className="flex-1" />
                 <span className="font-mono text-[11px] text-fg-muted">{conversation.lastActivityLabel}</span>
               </div>
@@ -84,14 +87,16 @@ export function ConversationList({
               <div className="mt-1 line-clamp-2 font-body text-[12px] leading-[1.45] text-fg-muted">
                 {conversation.preview}
               </div>
-              <div className="mt-2 flex items-center gap-1.5">
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 <PriorityBadge priority={conversation.priority} />
-                {conversation.slaState !== "healthy" ? <SlaBadge sla={conversation.slaState} /> : null}
-                <StatusBadge status={conversation.status} />
+                {conversation.slaCountdownLabel && conversation.slaState !== "healthy" ? (
+                  <SlaCountdownPill state={conversation.slaState} label={conversation.slaCountdownLabel} />
+                ) : null}
+                {conversation.aiHandling ? <AiHandlingPill /> : null}
                 <span className="flex-1" />
-                <span className="font-mono text-[10px] text-fg-subtle">
-                  {conversation.inboxLabel}
-                </span>
+                {conversation.propertyCode ? (
+                  <span className="font-mono text-[10px] text-fg-subtle">{conversation.propertyCode}</span>
+                ) : null}
               </div>
             </button>
           );
@@ -107,6 +112,34 @@ export function ConversationList({
         <span>jump</span>
       </div>
     </section>
+  );
+}
+
+function SlaCountdownPill({ state, label }: { state: SlaState; label: string }) {
+  const tone =
+    state === "breached"
+      ? "border-[rgba(220,38,38,0.35)] bg-[rgba(220,38,38,0.08)] text-error"
+      : "border-[rgba(180,83,9,0.35)] bg-[rgba(180,83,9,0.08)] text-[rgb(180,83,9)]";
+  const dot = state === "breached" ? "bg-error" : "bg-[rgb(180,83,9)]";
+  return (
+    <span
+      className={[
+        "inline-flex items-center gap-1 rounded-xs border px-1.5 py-[1px] font-mono text-[10px] font-semibold uppercase tracking-eyebrow",
+        tone,
+      ].join(" ")}
+    >
+      <span className={["h-[5px] w-[5px] rounded-full", dot].join(" ")} />
+      {label}
+    </span>
+  );
+}
+
+function AiHandlingPill() {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-xs bg-[rgba(255,77,0,0.1)] px-1.5 py-[1px] font-mono text-[10px] font-semibold uppercase tracking-eyebrow text-[var(--accent-press,#ff4d00)]">
+      <Sparkles className="h-2.5 w-2.5" />
+      AI · Handling
+    </span>
   );
 }
 
