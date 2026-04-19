@@ -70,10 +70,33 @@ export interface ConciergeTryResponse {
   toolCalls: ConciergeTryToolCall[];
 }
 
+export interface ConciergeKnowledgeEntry {
+  id: string;
+  title: string;
+  contentChars: number;
+  updatedAtLabel: string;
+}
+
+export interface ConciergeKnowledgeSection {
+  section: string;
+  entryCount: number;
+  totalCharCount: number;
+  entries: ConciergeKnowledgeEntry[];
+}
+
+export interface ConciergeKnowledgeSummary {
+  totalEntries: number;
+  totalCharCount: number;
+  sectionCount: number;
+  sections: ConciergeKnowledgeSection[];
+  editUrl: string;
+}
+
 export const conciergeApi = {
   getAgent: () => api.get<ConciergeAgentSummary>("/api/concierge/agent"),
   tryMessage: (body: { message: string; sessionId?: string }) =>
     api.post<ConciergeTryResponse>("/api/concierge/try", body),
+  getKnowledge: () => api.get<ConciergeKnowledgeSummary>("/api/concierge/knowledge"),
 };
 
 export interface PropertySummaryItem {
