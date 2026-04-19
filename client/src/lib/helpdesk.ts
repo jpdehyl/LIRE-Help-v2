@@ -41,6 +41,7 @@ export const helpdeskApi = {
 
 export interface PropertySummaryItem {
   id: string;
+  code: string;
   name: string;
   location: string | null;
   unitCount: number;

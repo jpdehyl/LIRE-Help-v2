@@ -137,13 +137,25 @@ export interface HelpdeskRecentActivityItem {
   createdAtLabel: string;
 }
 
+export interface ChannelMetric {
+  channel: string;
+  label: string;
+  status: "live" | "offline";
+  count24h: number;
+  hourlyBuckets: number[];
+}
+
 export interface HelpdeskDashboardMetrics {
   summary: {
     openConversations: number;
     unassigned: number;
     slaAtRisk: number;
+    slaBreached: number;
+    resolvedToday: number;
     waitingOnCustomer: number;
   };
+  afterHoursHandled: number;
+  channels: ChannelMetric[];
   byStatus: HelpdeskStatusCount[];
   byInbox: HelpdeskInboxMetric[];
   recentActivity: HelpdeskRecentActivityItem[];
