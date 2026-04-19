@@ -55,8 +55,11 @@ export default function InboxPage({ viewId }: InboxPageProps) {
     </button>
   );
 
+  const selectedViewLabel =
+    navigationQuery.data?.views.find((view) => view.key === selectedView)?.label ?? "Inbox";
+
   return (
-    <WorkspaceShell title="Inbox" eyebrow="Operations" actions={actions}>
+    <WorkspaceShell title={selectedViewLabel} eyebrow="Operations / Inbox" actions={actions}>
       <InboxShell
         views={navigationQuery.data?.views ?? []}
         navigationLoading={navigationQuery.isLoading}
