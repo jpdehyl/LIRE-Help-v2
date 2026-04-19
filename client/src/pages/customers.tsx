@@ -10,7 +10,7 @@ const customerCards = [
 
 export default function CustomersPage() {
   return (
-    <WorkspaceShell title="Customers" eyebrow="Workspace">
+    <WorkspaceShell title="Customers" eyebrow="Operations">
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
         <Card padding="md">
           <div className="flex items-center gap-2.5">

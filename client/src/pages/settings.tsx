@@ -19,7 +19,7 @@ const settingsGroups = [
 
 export default function SettingsPage() {
   return (
-    <WorkspaceShell title="Settings" eyebrow="Workspace">
+    <WorkspaceShell title="Settings" eyebrow="Operations">
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
         <Card padding="md">
           <div className="flex items-center gap-2.5">
