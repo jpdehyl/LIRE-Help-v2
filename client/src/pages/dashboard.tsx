@@ -153,6 +153,16 @@ function PriorityNow({
                       <p className="truncate font-body text-[13px] font-semibold text-fg">{t.subject}</p>
                       <div className="mt-1 flex flex-wrap items-center gap-1.5">
                         <PriorityBadge priority={t.priority} size="sm" />
+                        {t.slaCountdownLabel ? (
+                          <span
+                            className={[
+                              "font-mono text-[10px] font-semibold uppercase tracking-eyebrow",
+                              t.slaState === "breached" ? "text-[var(--error)]" : "text-[var(--warning)]",
+                            ].join(" ")}
+                          >
+                            {t.slaCountdownLabel}
+                          </span>
+                        ) : null}
                         <span className="font-body text-[11px] text-fg-muted">{t.lastActivityLabel}</span>
                       </div>
                     </div>
@@ -297,7 +307,7 @@ function SecondaryKpis({
     },
     {
       label: "Tenants · units",
-      value: `${properties.length} · ${totalUnits}`,
+      value: `${metrics.tenantCount} · ${totalUnits}`,
       subtitle: "under management",
       href: "/customers",
     },

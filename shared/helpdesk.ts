@@ -78,6 +78,7 @@ export interface ConversationRow {
   waitingSinceLabel: string;
   messageCount: number;
   slaState: SlaState;
+  slaCountdownLabel?: string | null;
   tags: string[];
   ticket: TicketSummary;
   customer: CustomerSummary;
@@ -155,6 +156,7 @@ export interface HelpdeskDashboardMetrics {
     waitingOnCustomer: number;
   };
   afterHoursHandled: number;
+  tenantCount: number;
   channels: ChannelMetric[];
   byStatus: HelpdeskStatusCount[];
   byInbox: HelpdeskInboxMetric[];

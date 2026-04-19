@@ -1,13 +1,16 @@
 import {
+  BookOpen,
   Briefcase,
+  Building2,
+  Hash,
   LayoutDashboard,
   Inbox as InboxIcon,
   Settings,
-  ShieldAlert,
-  Ticket,
-  Users,
   Shield,
+  ShieldCheck,
+  Sparkles,
   LogOut,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
@@ -19,19 +22,23 @@ type NavItem = {
   href: string;
   label: string;
   icon: LucideIcon;
-  badge?: string;
+  badgeKey?: "openConversations" | "slaAtRisk" | "resolvedToday";
+  disabled?: boolean;
 };
 
 const primaryItems: readonly NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/inbox", label: "Inbox", icon: InboxIcon },
-  { href: "/tickets", label: "Tickets", icon: Ticket },
-  { href: "/customers", label: "Customers", icon: Users },
+  { href: "/inbox", label: "Inbox", icon: InboxIcon, badgeKey: "openConversations" },
+  { href: "/settings/inboxes", label: "Channels", icon: Hash },
+  { href: "/concierge", label: "Concierge", icon: Sparkles, disabled: true },
+  { href: "/customers", label: "Properties", icon: Building2 },
+  { href: "/credit-review", label: "Compliance", icon: ShieldCheck, badgeKey: "slaAtRisk" },
+  { href: "/vendors", label: "Vendors", icon: Wrench, disabled: true },
+  { href: "/library", label: "Library", icon: BookOpen, disabled: true },
 ];
 
 const pilotItems: readonly NavItem[] = [
   { href: "/leasing", label: "Leasing", icon: Briefcase },
-  { href: "/credit-review", label: "Credit review", icon: ShieldAlert },
 ];
 
 const adminItems: readonly NavItem[] = [
@@ -55,7 +62,17 @@ export function AppSidebar({ embedded = false, onNavigate }: AppSidebarProps = {
     queryFn: helpdeskApi.getPropertiesSummary,
     staleTime: 60_000,
   });
+  const metricsQuery = useQuery({
+    queryKey: ["helpdesk", "dashboard", "metrics"],
+    queryFn: helpdeskApi.getDashboardMetrics,
+    staleTime: 60_000,
+  });
   const properties = propertiesQuery.data?.properties ?? [];
+  const badges = {
+    openConversations: metricsQuery.data?.summary.openConversations ?? 0,
+    slaAtRisk: metricsQuery.data?.summary.slaAtRisk ?? 0,
+    resolvedToday: metricsQuery.data?.summary.resolvedToday ?? 0,
+  };
 
   const asideClass = embedded
     ? "flex h-full w-full flex-col bg-surface"
@@ -67,8 +84,6 @@ export function AppSidebar({ embedded = false, onNavigate }: AppSidebarProps = {
     .slice(0, 2)
     .map((p) => p[0]?.toUpperCase() ?? "")
     .join("") || "·";
-
-  const propertyCode = (id: string) => id.slice(0, 6).toUpperCase();
 
   return (
     <aside className={asideClass}>
@@ -87,15 +102,15 @@ export function AppSidebar({ embedded = false, onNavigate }: AppSidebarProps = {
 
       {/* Nav */}
       <nav className="min-h-0 flex-1 overflow-y-auto px-2 py-3">
-        <SectionItems items={primaryItems} location={location} onNavigate={onNavigate} />
+        <SectionItems items={primaryItems} location={location} badges={badges} onNavigate={onNavigate} />
 
         <Divider />
         <SectionLabel>Pilots</SectionLabel>
-        <SectionItems items={pilotItems} location={location} onNavigate={onNavigate} />
+        <SectionItems items={pilotItems} location={location} badges={badges} onNavigate={onNavigate} />
 
         <Divider />
         <SectionLabel>Admin</SectionLabel>
-        <SectionItems items={adminItems} location={location} onNavigate={onNavigate} />
+        <SectionItems items={adminItems} location={location} badges={badges} onNavigate={onNavigate} />
 
         {properties.length > 0 ? (
           <>
@@ -109,7 +124,7 @@ export function AppSidebar({ embedded = false, onNavigate }: AppSidebarProps = {
                     className="flex items-center gap-2.5 rounded-sm px-2.5 py-1.5 font-body text-[12px] text-fg-muted transition-colors ease-ds duration-fast hover:bg-surface-2 hover:text-fg"
                     title={p.name}
                   >
-                    <span className="font-mono text-[10px] text-fg-subtle shrink-0">{propertyCode(p.id)}</span>
+                    <span className="font-mono text-[10px] text-fg-subtle shrink-0">{p.code}</span>
                     <span className="flex-1 truncate">{p.name}</span>
                   </a>
                 </Link>
@@ -167,36 +182,54 @@ function Divider() {
 function SectionItems({
   items,
   location,
+  badges,
   onNavigate,
 }: {
   items: readonly NavItem[];
   location: string;
+  badges: { openConversations: number; slaAtRisk: number; resolvedToday: number };
   onNavigate?: () => void;
 }) {
   return (
     <div className="space-y-0.5">
       {items.map((item) => {
-        const active = isItemActive(location, item.href);
+        const active = !item.disabled && isItemActive(location, item.href);
         const Icon = item.icon;
-        return (
-          <Link key={item.href} href={item.href}>
-            <a
-              onClick={() => onNavigate?.()}
-              className={[
-                "flex items-center gap-2.5 rounded-sm px-2.5 py-2 font-body text-[13px] font-medium transition-colors ease-ds duration-fast",
-                active
+        const badgeValue = item.badgeKey ? badges[item.badgeKey] : 0;
+        const showBadge = !item.disabled && item.badgeKey && badgeValue > 0;
+
+        const row = (
+          <div
+            className={[
+              "flex items-center gap-2.5 rounded-sm px-2.5 py-2 font-body text-[13px] font-medium transition-colors ease-ds duration-fast",
+              item.disabled
+                ? "cursor-not-allowed text-fg-subtle"
+                : active
                   ? "bg-fg text-surface"
                   : "text-fg-muted hover:bg-surface-2 hover:text-fg",
-              ].join(" ")}
-            >
-              <Icon className={["h-4 w-4 shrink-0", active ? "text-accent" : ""].join(" ")} />
-              <span className="flex-1 truncate">{item.label}</span>
-              {item.badge ? (
-                <span className="rounded-xs bg-surface-2 px-1.5 py-[1px] font-body text-[10px] font-semibold uppercase tracking-eyebrow text-fg-muted">
-                  {item.badge}
-                </span>
-              ) : null}
-            </a>
+            ].join(" ")}
+          >
+            <Icon className={["h-4 w-4 shrink-0", active ? "text-accent" : ""].join(" ")} />
+            <span className="flex-1 truncate">{item.label}</span>
+            {showBadge ? (
+              <span className="rounded-xs bg-surface-2 px-1.5 py-[1px] font-mono text-[10px] font-semibold text-fg-muted">
+                {badgeValue}
+              </span>
+            ) : item.disabled ? (
+              <span className="rounded-xs border border-border px-1.5 py-[1px] font-mono text-[9px] font-semibold uppercase tracking-eyebrow text-fg-subtle">
+                soon
+              </span>
+            ) : null}
+          </div>
+        );
+
+        return item.disabled ? (
+          <div key={item.href} aria-disabled="true" title={`${item.label} — coming soon`}>
+            {row}
+          </div>
+        ) : (
+          <Link key={item.href} href={item.href}>
+            <a onClick={() => onNavigate?.()}>{row}</a>
           </Link>
         );
       })}

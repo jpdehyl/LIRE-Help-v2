@@ -340,6 +340,26 @@ function deriveSlaState(conversation: HelpConversation): SlaState {
   return "healthy";
 }
 
+function deriveSlaCountdownLabel(conversation: HelpConversation, state: SlaState): string | null {
+  if (state === "healthy") return null;
+  const checkpoints = [conversation.firstResponseDueAt, conversation.nextResponseDueAt, conversation.resolutionDueAt]
+    .filter((value): value is Date => value instanceof Date)
+    .sort((a, b) => a.getTime() - b.getTime());
+  if (checkpoints.length === 0) return null;
+  const nextDue = checkpoints[0]!;
+  const diffMinutes = Math.round((nextDue.getTime() - Date.now()) / 60000);
+
+  if (diffMinutes > 0) {
+    if (diffMinutes < 60) return `${diffMinutes} MIN TO BREACH`;
+    const hours = Math.round(diffMinutes / 60);
+    return `${hours}H TO BREACH`;
+  }
+  const overdue = Math.abs(diffMinutes);
+  if (overdue < 60) return `${overdue} MIN OVERDUE`;
+  const hours = Math.round(overdue / 60);
+  return `${hours}H OVERDUE`;
+}
+
 function deriveNextMilestone(ticket: HelpTicket | undefined, conversation: HelpConversation): string {
   if (ticket?.nextMilestone) return ticket.nextMilestone;
   if (conversation.status === "resolved") return "Resolved";
@@ -508,6 +528,7 @@ function buildConversationRows(context: HelpdeskContext): ConversationRow[] {
       waitingSinceLabel: deriveWaitingSinceLabel(conversation),
       messageCount: conversation.messageCount,
       slaState,
+      slaCountdownLabel: deriveSlaCountdownLabel(conversation, slaState),
       tags,
       ticket: {
         id: ticket?.ticketNumber ?? `T-${conversation.id.slice(0, 8)}`,
@@ -846,6 +867,7 @@ export async function getHelpdeskDashboardMetrics(
     return {
       summary: { openConversations: 0, unassigned: 0, slaAtRisk: 0, slaBreached: 0, resolvedToday: 0, waitingOnCustomer: 0 },
       afterHoursHandled: 0,
+      tenantCount: 0,
       channels: [],
       byStatus: statusOrder.map((status) => ({ status, count: 0 })),
       byInbox: [],
@@ -912,6 +934,7 @@ export async function getHelpdeskDashboardMetrics(
       waitingOnCustomer: openRows.filter((row) => row.status === "waiting_on_customer").length,
     },
     afterHoursHandled,
+    tenantCount: new Set(context.customers.map((c) => c.company ?? c.id)).size,
     channels,
     byStatus,
     byInbox: [...inboxMap.values()].sort((a, b) => b.count - a.count),
