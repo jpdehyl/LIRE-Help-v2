@@ -19,6 +19,7 @@ import type { ConciergeToolName } from "./custom-tools.js";
 import type { ToolCall, ToolHandler } from "./session-runner.js";
 import { sendSms } from "../channels/twilio-sms.js";
 import { sendEmail } from "../channels/postmark-email.js";
+import { sendWhatsapp } from "../channels/whatsapp-meta.js";
 import { sendZoomChat } from "../channels/zoom-chat.js";
 
 // Reply sender per channel. Adding WhatsApp / Zoom later is a matter of
@@ -53,6 +54,13 @@ async function sendToChannel(
       return {
         providerMessageId: result.messageId,
         providerMetadata: { provider: "zoom", sentAt: result.sentAt },
+      };
+    }
+    case "whatsapp": {
+      const result = await sendWhatsapp({ to, body });
+      return {
+        providerMessageId: result.messageId,
+        providerMetadata: { provider: "meta-whatsapp", to: result.to },
       };
     }
     default:
