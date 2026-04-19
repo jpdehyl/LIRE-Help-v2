@@ -39,4 +39,8 @@ export interface ConversationBrief {
   propertyCode: string | null;
   subject: string;
   latestMessage: string;
+  // Concierge run mode. "paused" never reaches the runner — the orchestrator
+  // short-circuits. "shadow" runs the agent but every send_reply is forced
+  // to low confidence so the reply queues as a draft instead of going out.
+  runState?: "live" | "shadow";
 }

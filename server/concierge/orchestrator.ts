@@ -63,20 +63,26 @@ export async function runConciergeForInbound(args: RunArgs): Promise<void> {
     return;
   }
 
-  // Channel gate: consult the tenant's concierge settings before invoking
-  // the agent. If the operator toggled this channel off in Settings, we
-  // stop here — the inbound message is already on helpMessages so a human
-  // can pick it up from the inbox; the concierge just doesn't auto-reply.
+  // Run-state + channel gate: consult the tenant's concierge settings
+  // before invoking the agent.
+  // - paused: drop the turn entirely.
+  // - channel toggled off: drop the turn.
+  // - shadow: still run the agent, but the tool handler downgrades every
+  //   send_reply to a draft so no outbound traffic leaves LIRE.
+  const settings = await getConciergeSettings(conversation.tenantId);
+  if (settings.runState === "paused") {
+    console.log("[concierge] run state is paused — skipping turn", {
+      conversationId: args.conversationId,
+    });
+    return;
+  }
   const settingsKey = channelSettingsKey(conversation.channel);
-  if (settingsKey !== null) {
-    const settings = await getConciergeSettings(conversation.tenantId);
-    if (!settings.channels[settingsKey]) {
-      console.log("[concierge] channel disabled in settings — skipping turn", {
-        conversationId: args.conversationId,
-        channel: conversation.channel,
-      });
-      return;
-    }
+  if (settingsKey !== null && !settings.channels[settingsKey]) {
+    console.log("[concierge] channel disabled in settings — skipping turn", {
+      conversationId: args.conversationId,
+      channel: conversation.channel,
+    });
+    return;
   }
 
   const [customer] = conversation.customerId
@@ -98,6 +104,7 @@ export async function runConciergeForInbound(args: RunArgs): Promise<void> {
     propertyCode: property ? derivePropertyCode(property.slug, property.name) : null,
     subject: conversation.subject,
     latestMessage: args.inboundBody,
+    runState: settings.runState === "shadow" ? "shadow" : "live",
   };
 
   const client = new Anthropic();

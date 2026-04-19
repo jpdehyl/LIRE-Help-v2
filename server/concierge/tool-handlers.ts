@@ -132,7 +132,11 @@ async function recordOutboundReply(
 
 async function sendReplyHandler(input: Record<string, unknown>, brief: ConversationBrief): Promise<string> {
   const body = typeof input.body === "string" ? input.body.trim() : "";
-  const confidence = typeof input.confidence === "string" ? input.confidence : "medium";
+  const rawConfidence = typeof input.confidence === "string" ? input.confidence : "medium";
+  // Shadow mode: downgrade every reply to low so it queues as a draft
+  // instead of being delivered. Operator can flip runState back to "live"
+  // in Settings once they're satisfied with the drafts.
+  const confidence = brief.runState === "shadow" ? "low" : rawConfidence;
   if (!body) return "send_reply failed: empty body.";
 
   if (confidence === "low") {

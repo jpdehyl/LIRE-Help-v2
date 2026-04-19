@@ -149,6 +149,7 @@ export async function getConciergeSettings(tenantId: string): Promise<ConciergeS
 }
 
 export type ConciergeSettingsPatch = {
+  runState?: ConciergeSettings["runState"];
   autonomyCeilingPct?: number;
   channels?: Partial<ConciergeSettings["channels"]>;
 };
@@ -159,6 +160,7 @@ export async function upsertConciergeSettings(
 ): Promise<ConciergeSettings> {
   const current = await getConciergeSettings(tenantId);
   const next: ConciergeSettings = {
+    runState: isRunState(patch.runState) ? patch.runState : current.runState,
     autonomyCeilingPct:
       typeof patch.autonomyCeilingPct === "number"
         ? clampPct(patch.autonomyCeilingPct)
@@ -175,12 +177,17 @@ export async function upsertConciergeSettings(
 function mergeConciergeSettings(raw: Partial<ConciergeSettings> | null | undefined): ConciergeSettings {
   if (!raw || typeof raw !== "object") return DEFAULT_CONCIERGE_SETTINGS;
   return {
+    runState: isRunState(raw.runState) ? raw.runState : DEFAULT_CONCIERGE_SETTINGS.runState,
     autonomyCeilingPct:
       typeof raw.autonomyCeilingPct === "number"
         ? clampPct(raw.autonomyCeilingPct)
         : DEFAULT_CONCIERGE_SETTINGS.autonomyCeilingPct,
     channels: { ...DEFAULT_CONCIERGE_SETTINGS.channels, ...(raw.channels ?? {}) },
   };
+}
+
+function isRunState(value: unknown): value is ConciergeSettings["runState"] {
+  return value === "live" || value === "shadow" || value === "paused";
 }
 
 function clampPct(n: number): number {
