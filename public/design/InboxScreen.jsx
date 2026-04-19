@@ -371,7 +371,24 @@ function RailTab({ icon, label, active, badge, onClick }) {
 }
 
 // ---------- Detail pane (Option D: center is pure conversation; right rail hosts Reply, AI, Details, Tenant, Property) ----------
-function DetailPane({ ticket, property, timeline, aiPanelVisible, onSend, onTriage, onSuggest, user }) {
+const FALLBACK_DRAFTS = {
+  "LIRE-4184": {
+    summary: "Confirm vendor ETA with tenant and post the 4:30 AM arrival window in the shared channel. Ready to draft.",
+    draft: "Quick update — Sentinel tech Rafael is on the way, ETA 4:30 AM. We'll keep your SLA protected for the 5 AM inbound. I'll confirm the moment he's on site.",
+  },
+  "LIRE-4181": {
+    summary: "Send final pricing confirmation with the ADA repaint scope attached. Draft is ready.",
+    draft: "Maya — final pricing grid attached with the 3.2% escalation. ADA repaint is confirmed inside our CapEx scope, scheduled for the week of May 5. Good to sign Friday.",
+  },
+  _default: {
+    summary: "Acknowledge and route to preferred vendor. Draft is ready.",
+    draft: "Confirmed — routing to preferred vendor now. I'll follow up with ETA shortly.",
+  },
+};
+const draftFor = (t) => (t && FALLBACK_DRAFTS[t.id]) || FALLBACK_DRAFTS._default;
+const channelLabel = (c) => c ? c.charAt(0).toUpperCase() + c.slice(1) : "WhatsApp";
+
+function DetailPane({ ticket, property, timeline, aiPanelVisible, onSend, onTriage, user }) {
   const scrollRef = useRefI(null);
   const [rail, setRail] = useStateI(() => localStorage.getItem("lire.rail") || "reply");
   useEffectI(() => { localStorage.setItem("lire.rail", rail || ""); }, [rail]);
@@ -380,6 +397,62 @@ function DetailPane({ ticket, property, timeline, aiPanelVisible, onSend, onTria
   }, [timeline?.length]);
 
   const toggleTab = (k) => setRail(prev => prev === k ? null : k);
+
+  // Live AI draft state (per ticket). Starts with the seeded fallback, can be regenerated from /api/chat.
+  const [aiDraft,    setAiDraft]    = useStateI(() => draftFor(ticket).draft);
+  const [aiSummary,  setAiSummary]  = useStateI(() => draftFor(ticket).summary);
+  const [aiLoading,  setAiLoading]  = useStateI(false);
+  const [aiError,    setAiError]    = useStateI(null);
+  const [aiEscalate, setAiEscalate] = useStateI(false);
+  const [aiLive,     setAiLive]     = useStateI(false);
+
+  useEffectI(() => {
+    const d = draftFor(ticket);
+    setAiDraft(d.draft);
+    setAiSummary(d.summary);
+    setAiError(null);
+    setAiEscalate(false);
+    setAiLive(false);
+  }, [ticket?.id]);
+
+  const regenerateDraft = async () => {
+    if (!ticket || aiLoading) return;
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const tenant = ticket.requester?.name || "A tenant";
+      const company = ticket.requester?.company ? ` from ${ticket.requester.company}` : "";
+      const siteLabel = ticket.property ? ` at ${ticket.property}` : "";
+      const ask = ticket.preview || ticket.subject || "requesting assistance";
+      const userMsg = `I'm ${tenant}${company}${siteLabel}. ${ask}`;
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [{ role: "user", content: userMsg }],
+          sessionId: `inbox-${ticket.id}`,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((data && data.error) || `Request failed (${res.status})`);
+      setAiDraft((data.response || "").trim() || aiDraft);
+      setAiEscalate(!!data.escalate);
+      setAiSummary(data.escalate
+        ? "Concierge flagged this for human escalation. Review draft before sending."
+        : "Drafted live from the platform knowledge base.");
+      setAiLive(true);
+    } catch (err) {
+      setAiError(err && err.message ? err.message : "Draft request failed.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const useDraft = () => {
+    if (!ticket || !aiDraft.trim()) return;
+    onSend("reply", aiDraft.trim(), channelLabel(ticket.channel));
+    setRail("reply");
+  };
 
   if (!ticket) {
     return (
@@ -442,17 +515,34 @@ function DetailPane({ ticket, property, timeline, aiPanelVisible, onSend, onTria
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <Icon.Sparkles size={14} color="var(--accent)"/>
                     <Eyebrow style={{ color: "#FAFAFA" }}>Suggested next step</Eyebrow>
+                    <span style={{ flex: 1 }}/>
+                    {aiLive && <Chip tone="success" size="sm">LIVE · CLAUDE</Chip>}
+                    {aiEscalate && <Chip tone="warning" size="sm">ESCALATE</Chip>}
                   </div>
-                  <div style={{ marginTop: 10, fontFamily: "var(--font-body)", fontSize: 13, lineHeight: 1.5 }}>
-                    {ticket.id === "LIRE-4184"
-                      ? "Confirm vendor ETA with tenant and post the 4:30 AM arrival window in the shared channel. Ready to draft."
-                      : ticket.id === "LIRE-4181"
-                      ? "Send final pricing confirmation with the ADA repaint scope attached. Draft is ready."
-                      : "Acknowledge and route to preferred vendor. Draft is ready."}
+                  <div style={{ marginTop: 10, fontFamily: "var(--font-body)", fontSize: 12, color: "rgba(255,255,255,0.72)", lineHeight: 1.5 }}>
+                    {aiSummary}
                   </div>
-                  <div style={{ marginTop: 12, display: "flex", gap: 6 }}>
-                    <Btn size="sm" variant="primary" onClick={() => { onSuggest(); setRail("reply"); }}>Use draft</Btn>
-                    <Btn size="sm" variant="ghost" style={{ color: "#FAFAFA", borderColor: "rgba(255,255,255,0.15)" }}>Edit</Btn>
+                  <div style={{
+                    marginTop: 10, padding: "10px 12px", borderRadius: 3,
+                    background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)",
+                    fontFamily: "var(--font-body)", fontSize: 13, lineHeight: 1.5,
+                    whiteSpace: "pre-wrap",
+                  }}>
+                    {aiLoading ? "Drafting from the live knowledge base…" : aiDraft}
+                  </div>
+                  {aiError && (
+                    <div style={{
+                      marginTop: 8, padding: "6px 10px", borderRadius: 3,
+                      background: "rgba(220,38,38,0.18)", border: "1px solid rgba(220,38,38,0.45)",
+                      fontFamily: "var(--font-body)", fontSize: 11, color: "#FEE2E2",
+                    }}>{aiError}</div>
+                  )}
+                  <div style={{ marginTop: 12, display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    <Btn size="sm" variant="primary" onClick={useDraft} disabled={aiLoading || !aiDraft.trim()}>Use draft</Btn>
+                    <Btn size="sm" variant="ghost" style={{ color: "#FAFAFA", borderColor: "rgba(255,255,255,0.15)" }}
+                      onClick={regenerateDraft} disabled={aiLoading} icon={<Icon.Sparkles size={12}/>}>
+                      {aiLoading ? "Drafting…" : aiLive ? "Regenerate" : "Draft with Claude"}
+                    </Btn>
                   </div>
                 </section>
               )}
@@ -637,15 +727,7 @@ function InboxScreen({ viewKey, onViewChange, tickets, properties, selectedId, o
         onSelect={onSelect} density={density} viewLabel={viewLabel}/>
       <DetailPane ticket={selectedTicket} property={property} timeline={timeline}
         aiPanelVisible={aiPanelVisible} user={user}
-        onSend={onSend} onTriage={onTriage}
-        onSuggest={() => onSend("reply",
-          selectedTicket?.id === "LIRE-4184"
-            ? "Quick update — Sentinel tech Rafael is on the way, ETA 4:30 AM. We'll keep your SLA protected for the 5 AM inbound. I'll confirm the moment he's on site."
-            : selectedTicket?.id === "LIRE-4181"
-            ? "Maya — final pricing grid attached with the 3.2% escalation. ADA repaint is confirmed inside our CapEx scope, scheduled for the week of May 5. Good to sign Friday."
-            : "Confirmed — routing to preferred vendor now. I'll follow up with ETA shortly.",
-          "WhatsApp"
-        )}/>
+        onSend={onSend} onTriage={onTriage}/>
     </div>
   );
 }

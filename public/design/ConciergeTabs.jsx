@@ -1,6 +1,6 @@
-// LIRE Help — Concierge tabs: Knowledge · Learning · Guardrails · Activity
+// LIRE Help — Concierge tabs: Knowledge · Learning · Guardrails · Activity · Try it
 
-const { useState: useStateCT } = React;
+const { useState: useStateCT, useEffect: useEffectCT, useRef: useRefCT, useCallback: useCallbackCT } = React;
 
 function iconByName(n) {
   return { FileText: Icon.FileText, Hammer: Icon.Hammer, Inbox: Icon.Inbox,
@@ -317,6 +317,223 @@ function ActivityTab({ config }) {
   );
 }
 
+// ---------- Try it (live chat against /api/chat) ----------
+function ChatBubble({ role, content, escalate, muted }) {
+  const isUser = role === "user";
+  return (
+    <div style={{ display: "flex", justifyContent: isUser ? "flex-end" : "flex-start" }}>
+      <div style={{
+        maxWidth: "82%", padding: "10px 14px", borderRadius: 6,
+        background: isUser ? "var(--accent)" : "var(--surface-2)",
+        color: isUser ? "#fff" : "var(--fg)",
+        fontFamily: "var(--font-body)", fontSize: 13, lineHeight: 1.55,
+        whiteSpace: "pre-wrap", wordBreak: "break-word",
+        opacity: muted ? 0.6 : 1,
+        border: isUser ? "none" : "1px solid var(--border)",
+      }}>
+        {content}
+        {escalate && (
+          <div style={{ marginTop: 8 }}>
+            <Chip tone="warning" size="sm">ESCALATION FLAGGED</Chip>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TryItTab({ config }) {
+  const [messages, setMessages] = useStateCT([]);
+  const [input, setInput] = useStateCT("");
+  const [sending, setSending] = useStateCT(false);
+  const [error, setError] = useStateCT(null);
+  const listRef = useRefCT(null);
+  const sessionIdRef = useRefCT(`concierge-demo-${Math.random().toString(36).slice(2, 10)}`);
+
+  useEffectCT(() => {
+    if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
+  }, [messages, sending]);
+
+  const send = useCallbackCT(async (override) => {
+    const body = (override != null ? override : input).trim();
+    if (!body || sending) return;
+    const next = [...messages, { role: "user", content: body }];
+    setMessages(next);
+    setInput("");
+    setSending(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: next.map(m => ({ role: m.role, content: m.content })),
+          sessionId: sessionIdRef.current,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg = data && data.error ? String(data.error) : `Request failed (${res.status})`;
+        throw new Error(msg);
+      }
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        content: data.response || "(empty response)",
+        escalate: !!data.escalate,
+      }]);
+    } catch (err) {
+      setError(err && err.message ? err.message : "Something broke — try again.");
+    } finally {
+      setSending(false);
+    }
+  }, [input, messages, sending]);
+
+  const onKey = (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      e.preventDefault();
+      send();
+    }
+  };
+
+  const suggestions = [
+    "What are the dock hours at Oakland Distribution Center?",
+    "Freezer temp alert just came in — who gets dispatched?",
+    "When does CAM get reconciled and how do late fees work?",
+    "Is Unit 11 at Fremont Flex available to tour this week?",
+  ];
+
+  return (
+    <div>
+      <SectionHeader
+        eyebrow="Try it · live"
+        title="Talk to the Concierge as a tenant would"
+        desc="Live connection to Claude Haiku 4.5, grounded in the platform knowledge base. Responses are real — escalation flags and access-control prompts behave the same way they would in the Inbox."
+      />
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 300px", gap: 16, alignItems: "start" }}>
+        <div style={{
+          background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 4,
+          display: "flex", flexDirection: "column", height: 620, minWidth: 0,
+        }}>
+          <div style={{
+            padding: "12px 16px", borderBottom: "1px solid var(--border)",
+            display: "flex", alignItems: "center", gap: 10,
+          }}>
+            <div style={{
+              width: 28, height: 28, borderRadius: 3, background: "var(--fg)",
+              display: "grid", placeItems: "center", color: "#FAFAFA",
+            }}><Icon.Bot size={14}/></div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 600, color: "var(--fg)" }}>
+                LIRE Concierge
+              </div>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.04em", color: "var(--fg-subtle)" }}>
+                {config.state.toUpperCase()} · AUTONOMY {config.autonomyPct}% · {messages.length} MSG
+              </div>
+            </div>
+            {messages.length > 0 && (
+              <Btn size="sm" variant="ghost" onClick={() => { setMessages([]); setError(null); }}>
+                Clear
+              </Btn>
+            )}
+          </div>
+
+          <div ref={listRef} style={{
+            flex: 1, overflowY: "auto", padding: "16px 18px",
+            display: "flex", flexDirection: "column", gap: 10,
+          }}>
+            {messages.length === 0 && !sending && (
+              <div style={{ margin: "auto", textAlign: "center", maxWidth: 360 }}>
+                <Icon.Sparkles size={20} color="var(--accent)"/>
+                <div style={{
+                  marginTop: 10, fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600, color: "var(--fg)",
+                }}>Start a conversation</div>
+                <div style={{
+                  marginTop: 6, fontFamily: "var(--font-body)", fontSize: 12, color: "var(--fg-muted)", lineHeight: 1.55,
+                }}>
+                  Type anything a tenant might ask — dock logistics, vendor escalations, lease questions. Or tap a suggestion on the right.
+                </div>
+              </div>
+            )}
+            {messages.map((m, i) => (
+              <ChatBubble key={i} role={m.role} content={m.content} escalate={m.escalate}/>
+            ))}
+            {sending && <ChatBubble role="assistant" content="Drafting…" muted/>}
+            {error && (
+              <div style={{
+                padding: "8px 12px", border: "1px solid var(--error)",
+                background: "rgba(220,38,38,0.08)", borderRadius: 3,
+                fontFamily: "var(--font-body)", fontSize: 12, color: "var(--error)",
+              }}>{error}</div>
+            )}
+          </div>
+
+          <div style={{
+            borderTop: "1px solid var(--border)", padding: "10px 12px",
+            display: "flex", gap: 8, alignItems: "flex-end",
+          }}>
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={onKey}
+              placeholder="Message the Concierge…  (⌘+Enter to send)"
+              rows={2}
+              style={{
+                flex: 1, resize: "none", minWidth: 0,
+                background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 3,
+                padding: "8px 10px", outline: "none",
+                fontFamily: "var(--font-body)", fontSize: 13, color: "var(--fg)",
+                lineHeight: 1.5,
+              }}
+            />
+            <Btn
+              variant="primary"
+              size="md"
+              icon={<Icon.Send size={12}/>}
+              onClick={() => send()}
+              disabled={sending || !input.trim()}
+            >
+              Send
+            </Btn>
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gap: 12 }}>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 4, padding: "14px 16px" }}>
+            <Eyebrow>Try one of these</Eyebrow>
+            <div style={{ display: "grid", gap: 6, marginTop: 10 }}>
+              {suggestions.map((s, i) => (
+                <button
+                  key={i}
+                  onClick={() => send(s)}
+                  disabled={sending}
+                  style={{
+                    textAlign: "left", padding: "9px 11px",
+                    border: "1px solid var(--border)", background: "var(--bg)",
+                    borderRadius: 3, cursor: sending ? "not-allowed" : "pointer",
+                    fontFamily: "var(--font-body)", fontSize: 12, color: "var(--fg)",
+                    lineHeight: 1.45,
+                  }}
+                >{s}</button>
+              ))}
+            </div>
+          </div>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 4, padding: "14px 16px" }}>
+            <Eyebrow>How it works</Eyebrow>
+            <div style={{ marginTop: 8, fontFamily: "var(--font-body)", fontSize: 12, color: "var(--fg-muted)", lineHeight: 1.55 }}>
+              The same agent that handles live tenant threads in the Inbox. It's grounded in uploaded leases, manuals, vendor SLAs, and past resolved tickets — and will ask for unit verification before sharing sensitive details.
+            </div>
+            <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--border)", fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.04em", color: "var(--fg-subtle)" }}>
+              MODEL · CLAUDE HAIKU 4.5<br/>
+              KB · PLATFORM KNOWLEDGE TABLE<br/>
+              ESCALATION · [ESCALATE] TAG
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ---------- Main screen ----------
 function ConciergeScreen({ heroVariant = "A", onNavLibrary }) {
   const [config, setConfig] = useStateCT(LIRE_DATA.concierge);
@@ -325,6 +542,7 @@ function ConciergeScreen({ heroVariant = "A", onNavLibrary }) {
 
   const tabs = [
     { k: "overview",   label: "Overview" },
+    { k: "tryit",      label: "Try it" },
     { k: "knowledge",  label: "Knowledge" },
     { k: "learning",   label: "Learning" },
     { k: "guardrails", label: "Guardrails" },
@@ -354,6 +572,7 @@ function ConciergeScreen({ heroVariant = "A", onNavLibrary }) {
       </div>
 
       {tab === "overview"   && <OverviewBody config={config} onState={onState}/>}
+      {tab === "tryit"      && <TryItTab config={config}/>}
       {tab === "knowledge"  && <KnowledgeTab config={config} onNavLibrary={onNavLibrary}/>}
       {tab === "learning"   && <LearningTab config={config}/>}
       {tab === "guardrails" && <GuardrailsTab config={config}/>}
@@ -362,4 +581,4 @@ function ConciergeScreen({ heroVariant = "A", onNavLibrary }) {
   );
 }
 
-Object.assign(window, { ConciergeScreen, KnowledgeTab, LearningTab, GuardrailsTab, ActivityTab });
+Object.assign(window, { ConciergeScreen, KnowledgeTab, LearningTab, GuardrailsTab, ActivityTab, TryItTab });
