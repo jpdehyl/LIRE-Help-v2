@@ -1,5 +1,5 @@
 import {
-  pgTable, text, integer, boolean, timestamp, varchar, jsonb, doublePrecision, uniqueIndex,
+  pgTable, text, integer, boolean, timestamp, varchar, json, jsonb, doublePrecision, index, uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -536,6 +536,22 @@ export const tokenUsage = pgTable("token_usage", {
 
 export type TokenUsage = typeof tokenUsage.$inferSelect;
 export type InsertTokenUsage = typeof tokenUsage.$inferInsert;
+
+// ─── Staff Sessions ─────────────────────────────────────────────────────────
+//
+// Session store for express-session + connect-pg-simple. The table is also
+// created at runtime in server/app-factory.ts so the app can boot against a
+// fresh DB without a migration. It is declared here so `drizzle-kit push`
+// recognizes it and leaves it alone — without this row, push sees drift and
+// tries to drop the live table.
+
+export const staffSessions = pgTable("staff_sessions", {
+  sid: varchar("sid").primaryKey(),
+  sess: json("sess").notNull(),
+  expire: timestamp("expire", { precision: 6 }).notNull(),
+}, (table) => ({
+  expireIdx: index("idx_staff_sessions_expire").on(table.expire),
+}));
 
 // ─── Channel Configs ────────────────────────────────────────────────────────
 //
