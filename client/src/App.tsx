@@ -6,7 +6,6 @@ import InboxPage from "./pages/inbox";
 import LandingPage from "./pages/landing";
 import LoginPage from "./pages/login";
 import PlatformDashboard from "./pages/platform-dashboard";
-import TicketsPage from "./pages/tickets";
 import CustomersPage from "./pages/customers";
 import SettingsPage from "./pages/settings";
 import SettingsGeneralPage from "./pages/settings-general";
@@ -195,11 +194,6 @@ function AppRoutes() {
       <Route path="/inbox">
         <RequireAuth>
           <InboxPage />
-        </RequireAuth>
-      </Route>
-      <Route path="/tickets">
-        <RequireAuth>
-          <TicketsPage />
         </RequireAuth>
       </Route>
       <Route path="/customers">

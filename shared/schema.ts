@@ -279,6 +279,10 @@ export const helpTickets = pgTable("help_tickets", {
   assigneeStaffId: varchar("assignee_staff_id").references(() => staffUsers.id),
   nextMilestone: text("next_milestone"),
   firstResponseAt: timestamp("first_response_at"),
+  // Latency in milliseconds between conversation open (or latest customer
+  // message) and the first reply. Populated when the concierge agent or a
+  // human sends a reply; used to compute dashboard "avg response".
+  responseLatencyMs: integer("response_latency_ms"),
   resolvedAt: timestamp("resolved_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -292,6 +296,9 @@ export const helpMessages = pgTable("help_messages", {
   authorStaffId: varchar("author_staff_id").references(() => staffUsers.id),
   externalMessageId: text("external_message_id"),
   messageType: text("message_type").notNull().default("customer"),
+  // "human" | "ai" | "system" — lets the dashboard compute % autonomous
+  // without brittle string-matching on authorLabel.
+  messageSource: text("message_source").notNull().default("human"),
   authorLabel: text("author_label"),
   body: text("body").notNull(),
   metadataJson: jsonb("metadata_json").default({}),
