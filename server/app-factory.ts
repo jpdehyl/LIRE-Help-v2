@@ -174,6 +174,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<express.E
   const { default: twilioRoutes } = await import("./channels/twilio-routes.js");
   const { default: postmarkRoutes } = await import("./channels/postmark-routes.js");
   const { default: zoomRoutes } = await import("./channels/zoom-routes.js");
+  const { default: zoomOauthRoutes } = await import("./channels/zoom-oauth-routes.js");
   const { default: whatsappRoutes } = await import("./channels/whatsapp-routes.js");
 
   app.use("/api/auth", authRoutes);
@@ -196,6 +197,10 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<express.E
   // Zoom webhook verification requires the raw body bytes, so the route
   // mounts express.raw instead of the global JSON parser.
   app.use("/webhooks/zoom", zoomRoutes);
+  // Zoom user-OAuth flow (General app) — operator visits /auth/zoom/start
+  // once to grant the concierge a refresh token. Tokens are persisted in
+  // channel_oauth_tokens and refreshed on demand.
+  app.use("/auth/zoom", zoomOauthRoutes);
   // Meta's WhatsApp webhook signs the raw body with X-Hub-Signature-256,
   // so this route also needs express.raw. GET requests (Meta's
   // verification handshake) have no body — they're handled separately.

@@ -323,6 +323,29 @@ export type HelpTicket = typeof helpTickets.$inferSelect;
 export type HelpMessage = typeof helpMessages.$inferSelect;
 export type HelpConversationTag = typeof helpConversationTags.$inferSelect;
 
+// ─── Channel OAuth tokens ───────────────────────────────────────────────
+//
+// For channels whose API requires user-OAuth (notably Zoom Team Chat —
+// Server-to-Server apps don't expose the chat-write scopes), we persist
+// the resulting access + refresh tokens here and refresh on demand.
+// One row per (tenant, provider); the unique index enforces that.
+
+export const channelOauthTokens = pgTable("channel_oauth_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id).notNull(),
+  provider: text("provider").notNull(),
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token"),
+  expiresAt: timestamp("expires_at"),
+  scope: text("scope"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  tenantProviderUq: uniqueIndex("channel_oauth_tokens_tenant_provider_uq").on(table.tenantId, table.provider),
+}));
+
+export type ChannelOauthToken = typeof channelOauthTokens.$inferSelect;
+
 // ─── Leasing Pilot (Pilot A) ────────────────────────────────────────────────
 //
 // Units, deals, tours, unit sheets — the VTS-lite leasing workspace layered on

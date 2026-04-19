@@ -1,76 +1,90 @@
 # Zoom Team Chat setup (Phase 5)
 
-One-time setup to route inbound Zoom Team Chat messages through the concierge, and to send replies back as the same Zoom user.
+Zoom Team Chat write scopes are only available on a **General (OAuth) app**, not a Server-to-Server app. We run the OAuth consent flow once, store the refresh token, and refresh automatically from there.
 
-## 1. Create a Zoom Server-to-Server OAuth app
+## 1. Create a General app with OAuth
 
 1. Go to [marketplace.zoom.us](https://marketplace.zoom.us) → **Develop** → **Build App**
-2. Pick **Server-to-Server OAuth** (simpler than a user-OAuth app — no install flow)
-3. Name it `LIRE Help Concierge` or similar
-4. Under **App Credentials**, note down:
-   - **Account ID**
-   - **Client ID**
-   - **Client Secret**
+2. Pick **General**
+3. App Type = **User-managed app**
+4. Under **App Credentials**, note **Client ID** and **Client Secret**
 
-## 2. Scopes
+## 2. Set the Redirect URL
 
-Under **Scopes**, add:
+Under **App Credentials → Redirect URL for OAuth**:
 
-- `chat_message:read` (or `chat_message:read:admin`) — receive message events
-- `chat_message:write` (or `chat_message:write:admin`) — send replies
-- `imchat:read`, `imchat:write` — fallbacks some accounts require
+```
+https://lire-help-v2-web-production.up.railway.app/auth/zoom/callback
+```
 
-Scope names vary slightly between Zoom account tiers. If an API call returns `4711` "Invalid access token, does not contain scopes", add the suggested scope from the error and re-activate.
+Also add the same URL to **OAuth allow list**.
 
-## 3. Event subscription (the webhook)
+## 3. Scopes — you must have at least one write scope
 
-Under **Feature** → **Event Subscriptions**:
+Under **Scopes**, add BOTH read and write Team Chat scopes. Zoom's scope catalog is granular; the exact names depend on whether your Zoom account has "Advanced Chat" tier:
 
-1. Enable event subscriptions
-2. Add a subscription named `concierge-inbound`
-3. **Event notification endpoint URL**:
-   ```
-   https://lire-help-v2-web-production.up.railway.app/webhooks/zoom/chat
-   ```
-4. Add event types:
-   - `Chat Message` → `Chat Message Sent`
-5. Zoom will display a **Secret Token** for this subscription. Copy it.
-6. Click **Validate** — Zoom will POST a challenge to the endpoint; the app responds automatically.
+**Read (for webhooks to fire):**
+- `team_chat:read:list_user_messages` or `team_chat:read:user_message`
+- `team_chat:read:channel` (if you want channel messages)
 
-The Secret Token is what signs every subsequent webhook.
+**Write (for the concierge to reply):**
+- `team_chat:write:message:user` or `chat_message:write`
+- `team_chat:write:channel_message` (if replying into channels)
 
-## 4. Environment variables (Railway)
+If Zoom displays write scopes as `imchat:write:admin` or `chat_message:write:admin`, add those instead — Zoom periodically renames scope IDs.
 
-| Var | Source |
+**If the only write scope you see is `admin`-suffixed**, your account needs admin privileges to grant it. Use your own user for the concierge identity.
+
+## 4. Event subscription (the webhook)
+
+Under **Feature → Event Subscriptions → Add Event Subscription**:
+
+- **Event notification endpoint URL**:
+  ```
+  https://lire-help-v2-web-production.up.railway.app/webhooks/zoom/chat
+  ```
+- Add event: **Chat Message → Chat Message Sent**
+- Zoom displays a **Secret Token** for this subscription — copy it.
+- Click **Validate**. Zoom POSTs a challenge; our handler answers it automatically.
+
+## 5. Environment variables (Railway)
+
+| Var | Value |
 |---|---|
-| `ZOOM_ACCOUNT_ID` | App Credentials |
 | `ZOOM_CLIENT_ID` | App Credentials |
 | `ZOOM_CLIENT_SECRET` | App Credentials |
-| `ZOOM_WEBHOOK_SECRET_TOKEN` | Secret Token from step 3 |
-| `ZOOM_SENDER_USER_ID` | The Zoom user that sends replies. Use the app owner's email (e.g. `jp@dehyl.ca`). |
+| `ZOOM_REDIRECT_URI` | `https://lire-help-v2-web-production.up.railway.app/auth/zoom/callback` (must match step 2 byte-for-byte) |
+| `ZOOM_WEBHOOK_SECRET_TOKEN` | Secret Token from step 4 |
+| `ZOOM_SENDER_USER_ID` | Email of the Zoom user whose consent backs the OAuth tokens. This is the user the concierge sends replies "as". |
 
 Redeploy after setting.
 
-## 5. Activate + test
+## 6. Authorize the app (grant OAuth consent)
 
-1. In the Zoom Marketplace app, click **Activate** (top right). The app is now live in your account.
-2. Open Zoom (desktop or web) → Team Chat
-3. DM the account owner (`ZOOM_SENDER_USER_ID`) — or invite them to a group chat — from another user in your Zoom workspace and send a message like "Hey, what's the HVAC status at 123 Main St?"
-4. Watch Railway logs for:
-   ```
-   [concierge] turn complete { channel: 'zoom', stopReason: 'end_turn', ... }
-   ```
-5. The concierge replies in the same DM / channel.
+Once Railway is live with the env vars above:
+
+1. Open `https://lire-help-v2-web-production.up.railway.app/auth/zoom/start` in a browser. You'll need to be signed in as a staff user.
+2. Zoom's consent screen appears. Review the scopes. Click **Authorize**.
+3. You land on `/auth/zoom/callback` → you should see a "Zoom connected" page.
+
+The server now has an access token (1h) and a refresh token in `channel_oauth_tokens`. Refresh is transparent.
+
+If you see "Invalid OAuth callback" on the callback page, your session cookie was lost (incognito? cleared cookies?). Retry by visiting `/auth/zoom/start` again.
+
+## 7. Test
+
+1. In Zoom Team Chat, DM the `ZOOM_SENDER_USER_ID` account from any other Zoom user in your workspace and send a message.
+2. Railway logs should show: `[concierge] turn complete { channel: 'zoom', ... }`
+3. The concierge replies in the same DM.
 
 ## Troubleshooting
 
-- **Webhook validation fails in Zoom UI**: `ZOOM_WEBHOOK_SECRET_TOKEN` on Railway doesn't match the Secret Token in the Zoom app UI. They must be identical.
-- **Inbound arrives, no reply sent**: usually missing `ZOOM_SENDER_USER_ID` or scope mismatch. Check Railway logs for `Zoom chat send failed`.
-- **"Invalid access token"** (4711 or similar): add the scope Zoom names in the error to the Server-to-Server app, then re-activate.
-- **Sending to a non-Zoom email**: Zoom Chat only delivers to users in your own account. Replies to external senders will 400; Phase 6 adds a fallback route (e.g. forward to email).
+- **Validation handshake fails in the Zoom UI**: `ZOOM_WEBHOOK_SECRET_TOKEN` mismatch, OR the deploy hasn't finished picking up the var.
+- **OAuth consent screen lists no scopes / fewer than expected**: the app hasn't saved the scopes you added; go back to Scopes, re-save, then retry `/auth/zoom/start`.
+- **"Zoom not connected" when replying**: OAuth flow hasn't been run yet. Visit `/auth/zoom/start` once.
+- **"Invalid access token, does not contain scopes"** on send: add the missing scope Zoom names in the error, re-save, revoke the existing install in Zoom User Profile → Apps, then re-run `/auth/zoom/start` to re-consent with the new scopes.
+- **Replies to group-channel messages DM the sender**: intentional for Phase 5. Phase 6 posts back into the channel when `channelId` is present on the inbound event.
 
-## Known limitations (Phase 5)
+## Why not Server-to-Server OAuth
 
-- Zoom Team Chat messages only — no Zoom Phone / voicemail routing (that requires a different product + TTS + transcription).
-- No file/attachment forwarding.
-- Group channels replied to as DM to the sender, not back into the channel. Fixing this is a Phase 6 improvement (use `to_channel` when `channelId` is present).
+Server-to-Server apps use the `account_credentials` grant. That grant type can't acquire `chat_message:write` / `team_chat:write:*` scopes — they require user consent. We tried this first; it's a dead end for bots that need to send messages.

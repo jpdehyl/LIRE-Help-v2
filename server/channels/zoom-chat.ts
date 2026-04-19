@@ -7,75 +7,34 @@
 // X-Zm-Signature / X-Zm-Request-Timestamp pair and we verify before
 // handing off.
 //
-// Outbound: we use Zoom's Chat API, authenticated via Server-to-Server
-// OAuth (client_credentials grant). Access tokens live ~1h; we cache one
-// in-memory per process and refresh on demand.
+// Outbound: we use Zoom's Chat API, authenticated via a user-OAuth
+// (General app) flow — Server-to-Server OAuth does not expose
+// chat_message:write scopes. Tokens are persisted in
+// channel_oauth_tokens and refreshed on demand; see zoom-oauth.ts.
 
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { Request, Response, NextFunction } from "express";
+import { getFreshZoomAccessToken, ZOOM_OAUTH_ENV } from "./zoom-oauth.js";
 
 export const ZOOM_ENV = {
-  accountId: "ZOOM_ACCOUNT_ID",
-  clientId: "ZOOM_CLIENT_ID",
-  clientSecret: "ZOOM_CLIENT_SECRET",
+  // Shared with the OAuth flow — the same app's client credentials.
+  clientId: ZOOM_OAUTH_ENV.clientId,
+  clientSecret: ZOOM_OAUTH_ENV.clientSecret,
+  redirectUri: ZOOM_OAUTH_ENV.redirectUri,
   webhookSecret: "ZOOM_WEBHOOK_SECRET_TOKEN",
-  // The Zoom user the concierge sends replies "as". In Server-to-Server
-  // OAuth world this is typically the app owner's account. Can be an
-  // email address or Zoom userId.
-  senderUserId: "ZOOM_SENDER_USER_ID",
+  // The Zoom user the concierge sends replies "as" (email or userId).
+  // This is the user whose OAuth consent is stored in
+  // channel_oauth_tokens and whose scopes back every send.
+  senderUserId: ZOOM_OAUTH_ENV.senderUserId,
 } as const;
 
 export function zoomConfigured(): boolean {
   return Boolean(
-    process.env[ZOOM_ENV.accountId] &&
-      process.env[ZOOM_ENV.clientId] &&
+    process.env[ZOOM_ENV.clientId] &&
       process.env[ZOOM_ENV.clientSecret] &&
+      process.env[ZOOM_ENV.redirectUri] &&
       process.env[ZOOM_ENV.senderUserId],
   );
-}
-
-// ─── Access-token cache ─────────────────────────────────────────────────
-
-interface CachedToken {
-  accessToken: string;
-  expiresAt: number;
-}
-let cachedToken: CachedToken | null = null;
-
-async function getZoomAccessToken(): Promise<string> {
-  const now = Date.now();
-  if (cachedToken && cachedToken.expiresAt > now + 60_000) {
-    return cachedToken.accessToken;
-  }
-
-  const accountId = process.env[ZOOM_ENV.accountId];
-  const clientId = process.env[ZOOM_ENV.clientId];
-  const clientSecret = process.env[ZOOM_ENV.clientSecret];
-  if (!accountId || !clientId || !clientSecret) {
-    throw new Error(`Zoom env not configured. Missing one of: ${Object.values(ZOOM_ENV).slice(0, 3).join(", ")}`);
-  }
-
-  const auth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-  const res = await fetch(
-    `https://zoom.us/oauth/token?grant_type=account_credentials&account_id=${encodeURIComponent(accountId)}`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${auth}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-    },
-  );
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Zoom token fetch failed: ${res.status} ${body.slice(0, 200)}`);
-  }
-  const json = (await res.json()) as { access_token: string; expires_in: number };
-  cachedToken = {
-    accessToken: json.access_token,
-    expiresAt: now + json.expires_in * 1000,
-  };
-  return cachedToken.accessToken;
 }
 
 // ─── Outbound ───────────────────────────────────────────────────────────
@@ -102,7 +61,7 @@ export async function sendZoomChat(args: SendZoomChatArgs): Promise<SendZoomChat
     throw new Error(`Zoom env not configured. Missing ${ZOOM_ENV.senderUserId}`);
   }
 
-  const accessToken = await getZoomAccessToken();
+  const accessToken = await getFreshZoomAccessToken();
   const payload: Record<string, string> = { message: args.message };
   if (args.toContact) payload.to_contact = args.toContact;
   if (args.toChannel) payload.to_channel = args.toChannel;
