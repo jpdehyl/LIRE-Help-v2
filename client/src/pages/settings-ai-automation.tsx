@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   ExternalLink,
@@ -14,7 +14,11 @@ import {
 import { SettingsLayout } from "../components/workspace/settings-layout";
 import { Badge, Card } from "../components/ui";
 import { conciergeApi } from "../lib/helpdesk";
-import type { ConciergeAgentSummary } from "../lib/helpdesk";
+import type {
+  ConciergeAgentSummary,
+  ConciergeSettings,
+  ConciergeSettingsPatch,
+} from "../lib/helpdesk";
 
 export default function SettingsAiAutomationPage() {
   return (
@@ -165,18 +169,45 @@ function SummaryStat({ label, value }: { label: string; value: string }) {
 }
 
 function LireControlsCard() {
-  // Persistence pending — these controls live in LIRE (not Claude Console),
-  // but the backend contract for autonomy/channels/audiences isn't wired yet.
-  // For now state is in-memory so operators can see the shape of the surface.
-  const [autonomyPct, setAutonomyPct] = useState(82);
-  const [channels, setChannels] = useState<Record<string, boolean>>({
-    email: true,
-    whatsapp: true,
-    sms: true,
-    zoom: false,
+  const queryClient = useQueryClient();
+  const settingsQuery = useQuery({
+    queryKey: ["concierge", "settings"],
+    queryFn: conciergeApi.getSettings,
   });
-  const activeChannels = useMemo(() => Object.values(channels).filter(Boolean).length, [channels]);
-  const toggle = (key: string) => setChannels((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  // Local draft state so the autonomy slider is responsive without debouncing
+  // every drag tick to the backend. The slider commits on release (onPointerUp
+  // / onKeyUp); channel pills commit immediately since they're discrete.
+  const [draft, setDraft] = useState<ConciergeSettings | null>(null);
+  useEffect(() => {
+    if (settingsQuery.data) setDraft(settingsQuery.data);
+  }, [settingsQuery.data]);
+
+  const mutation = useMutation({
+    mutationFn: (patch: ConciergeSettingsPatch) => conciergeApi.updateSettings(patch),
+    onSuccess: (next) => {
+      queryClient.setQueryData(["concierge", "settings"], next);
+      setDraft(next);
+    },
+  });
+
+  const working = draft ?? settingsQuery.data ?? null;
+  const activeChannels = useMemo(() => {
+    if (!working) return 0;
+    return Object.values(working.channels).filter(Boolean).length;
+  }, [working]);
+
+  const commitAutonomy = (pct: number) => {
+    if (!working || pct === working.autonomyCeilingPct) return;
+    mutation.mutate({ autonomyCeilingPct: pct });
+  };
+
+  const toggleChannel = (key: keyof ConciergeSettings["channels"]) => {
+    if (!working) return;
+    const next = !working.channels[key];
+    setDraft({ ...working, channels: { ...working.channels, [key]: next } });
+    mutation.mutate({ channels: { [key]: next } });
+  };
 
   return (
     <Card padding="md">
@@ -184,58 +215,83 @@ function LireControlsCard() {
         <span className="grid h-8 w-8 place-items-center rounded-xs bg-surface-2 text-fg-muted">
           <ShieldCheck className="h-4 w-4" />
         </span>
-        <div>
+        <div className="flex-1">
           <div className="eyebrow">LIRE controls</div>
           <div className="mt-0.5 font-display text-[18px] font-semibold tracking-tight text-fg">
             How the Concierge connects with your world
           </div>
         </div>
+        {mutation.isPending ? (
+          <span className="font-mono text-[10px] uppercase tracking-eyebrow text-fg-subtle">Saving…</span>
+        ) : mutation.isSuccess ? (
+          <span className="font-mono text-[10px] uppercase tracking-eyebrow text-success">Saved</span>
+        ) : null}
       </div>
 
-      <div className="mt-5">
-        <div className="flex items-center justify-between">
-          <div className="eyebrow text-fg-subtle">Autonomy ceiling</div>
-          <span className="font-mono text-[13px] font-semibold text-fg">{autonomyPct}%</span>
-        </div>
-        <input
-          type="range"
-          min={0}
-          max={100}
-          value={autonomyPct}
-          onChange={(event) => setAutonomyPct(Number(event.target.value))}
-          className="mt-2 w-full accent-[var(--accent,#ff4d00)]"
-        />
-        <p className="mt-1.5 font-body text-[12px] text-fg-muted">
-          Above this threshold, Concierge acts. Below, it drafts for human review.
-        </p>
-      </div>
+      {settingsQuery.isLoading || !working ? (
+        <p className="mt-4 font-body text-[13px] text-fg-muted">Loading settings…</p>
+      ) : (
+        <>
+          <div className="mt-5">
+            <div className="flex items-center justify-between">
+              <div className="eyebrow text-fg-subtle">Autonomy ceiling</div>
+              <span className="font-mono text-[13px] font-semibold text-fg">{working.autonomyCeilingPct}%</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={working.autonomyCeilingPct}
+              onChange={(event) =>
+                setDraft({ ...working, autonomyCeilingPct: Number(event.target.value) })
+              }
+              onPointerUp={() => commitAutonomy(working.autonomyCeilingPct)}
+              onKeyUp={(event) => {
+                if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+                  commitAutonomy(working.autonomyCeilingPct);
+                }
+              }}
+              className="mt-2 w-full accent-[var(--accent,#ff4d00)]"
+            />
+            <p className="mt-1.5 font-body text-[12px] text-fg-muted">
+              Above this threshold, Concierge acts. Below, it drafts for human review.
+            </p>
+          </div>
 
-      <div className="mt-5">
-        <div className="eyebrow text-fg-subtle">Channels it can speak on</div>
-        <div className="mt-2 grid grid-cols-2 gap-2 md:grid-cols-4">
-          <ChannelPill icon={Mail} label="Email" enabled={channels.email} onClick={() => toggle("email")} />
-          <ChannelPill icon={MessageCircle} label="WhatsApp" enabled={channels.whatsapp} onClick={() => toggle("whatsapp")} />
-          <ChannelPill icon={Phone} label="SMS" enabled={channels.sms} onClick={() => toggle("sms")} />
-          <ChannelPill icon={Video} label="Zoom" enabled={channels.zoom} onClick={() => toggle("zoom")} />
-        </div>
-        <p className="mt-2 font-body text-[12px] text-fg-muted">
-          Currently active on <span className="font-semibold text-fg">{activeChannels}</span> channel
-          {activeChannels === 1 ? "" : "s"}.
-        </p>
-      </div>
+          <div className="mt-5">
+            <div className="eyebrow text-fg-subtle">Channels it can speak on</div>
+            <div className="mt-2 grid grid-cols-2 gap-2 md:grid-cols-4">
+              <ChannelPill icon={Mail} label="Email" enabled={working.channels.email} onClick={() => toggleChannel("email")} />
+              <ChannelPill icon={MessageCircle} label="WhatsApp" enabled={working.channels.whatsapp} onClick={() => toggleChannel("whatsapp")} />
+              <ChannelPill icon={Phone} label="SMS" enabled={working.channels.sms} onClick={() => toggleChannel("sms")} />
+              <ChannelPill icon={Video} label="Zoom" enabled={working.channels.zoom} onClick={() => toggleChannel("zoom")} />
+            </div>
+            <p className="mt-2 font-body text-[12px] text-fg-muted">
+              Currently active on <span className="font-semibold text-fg">{activeChannels}</span> channel
+              {activeChannels === 1 ? "" : "s"}.
+            </p>
+            {mutation.error instanceof Error ? (
+              <p className="mt-2 font-body text-[12px] text-error">{mutation.error.message}</p>
+            ) : null}
+          </div>
 
-      <div className="mt-5">
-        <div className="eyebrow text-fg-subtle">Who can reach it directly</div>
-        <div className="mt-2 divide-y divide-border">
-          <ReachRow name="All tenants" description="Can reach Concierge directly via any channel" tone="direct" />
-          <ReachRow name="Atlas Cold Storage · After-hours only" description="" tone="direct" />
-          <ReachRow
-            name="Northstar Logistics · VP contacts"
-            description="Always route to a human first"
-            tone="human_first"
-          />
-        </div>
-      </div>
+          <div className="mt-5">
+            <div className="eyebrow text-fg-subtle">Who can reach it directly</div>
+            <div className="mt-2 divide-y divide-border">
+              <ReachRow name="All tenants" description="Can reach Concierge directly via any channel" tone="direct" />
+              <ReachRow name="Atlas Cold Storage · After-hours only" description="" tone="direct" />
+              <ReachRow
+                name="Northstar Logistics · VP contacts"
+                description="Always route to a human first"
+                tone="human_first"
+              />
+            </div>
+            <p className="mt-2 font-body text-[11.5px] italic text-fg-muted">
+              Audience rules are design-only for now — persistence lands in the next phase.
+            </p>
+          </div>
+        </>
+      )}
     </Card>
   );
 }

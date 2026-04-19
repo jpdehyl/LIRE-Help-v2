@@ -10,9 +10,62 @@ import { requireStaff } from "../middleware/auth.js";
 import { loadConciergeIdentity, runConciergeTurn } from "./session-runner.js";
 import type { ToolCall } from "./session-runner.js";
 import type { ConversationBrief } from "./types.js";
+import type { ConciergeSettingsPatch } from "../storage.js";
+import { getConciergeSettings, upsertConciergeSettings } from "../storage.js";
 
 const router = Router();
 router.use(requireStaff);
+
+const SettingsPatchSchema = z.object({
+  autonomyCeilingPct: z.number().int().min(0).max(100).optional(),
+  channels: z
+    .object({
+      email: z.boolean().optional(),
+      whatsapp: z.boolean().optional(),
+      sms: z.boolean().optional(),
+      zoom: z.boolean().optional(),
+      slack: z.boolean().optional(),
+      messenger: z.boolean().optional(),
+    })
+    .partial()
+    .optional(),
+});
+
+router.get("/settings", async (req, res) => {
+  const sess = req.session as { staffTenantId?: string | null } | undefined;
+  const tenantId = sess?.staffTenantId;
+  if (!tenantId) return res.status(400).json({ message: "Session is missing a tenant" });
+  try {
+    const settings = await getConciergeSettings(tenantId);
+    res.json(settings);
+  } catch (err) {
+    console.error("[concierge settings get]", err);
+    res.status(500).json({ message: "Unable to load concierge settings" });
+  }
+});
+
+router.patch("/settings", async (req, res) => {
+  const sess = req.session as { staffTenantId?: string | null } | undefined;
+  const tenantId = sess?.staffTenantId;
+  if (!tenantId) return res.status(400).json({ message: "Session is missing a tenant" });
+
+  const parse = SettingsPatchSchema.safeParse(req.body);
+  if (!parse.success) {
+    return res.status(400).json({ message: parse.error.issues[0]?.message ?? "Invalid patch" });
+  }
+
+  try {
+    const patch: ConciergeSettingsPatch = {
+      autonomyCeilingPct: parse.data.autonomyCeilingPct,
+      channels: parse.data.channels,
+    };
+    const settings = await upsertConciergeSettings(tenantId, patch);
+    res.json(settings);
+  } catch (err) {
+    console.error("[concierge settings patch]", err);
+    res.status(500).json({ message: "Unable to save concierge settings" });
+  }
+});
 
 interface AgentSummary {
   id: string;

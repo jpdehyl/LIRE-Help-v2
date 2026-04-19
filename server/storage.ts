@@ -18,6 +18,7 @@ import {
 import { DEFAULT_INBOX_VIEW_KEY, inboxViewKeys } from "../shared/helpdesk.js";
 import { and, asc, desc, eq } from "drizzle-orm";
 import type {
+  ConciergeSettings,
   Tenant,
   InsertTenant,
   Property,
@@ -35,6 +36,7 @@ import type {
   HelpTicket,
   StaffUser,
 } from "../shared/schema.js";
+import { DEFAULT_CONCIERGE_SETTINGS } from "../shared/schema.js";
 import type {
   AssignmentState,
   ComposerMode,
@@ -129,6 +131,61 @@ export async function getTenants(): Promise<Tenant[]> {
 export async function createTenant(data: InsertTenant): Promise<Tenant> {
   const [row] = await db.insert(tenants).values(data).returning();
   return row!;
+}
+
+// ─── Concierge Settings ─────────────────────────────────────────────────────
+//
+// Stored as a partial JSONB blob on tenants.concierge_settings_json. The
+// default is applied on read (not write) so new fields added to the interface
+// automatically show up on old rows without a migration.
+
+export async function getConciergeSettings(tenantId: string): Promise<ConciergeSettings> {
+  const [row] = await db
+    .select({ config: tenants.conciergeSettingsJson })
+    .from(tenants)
+    .where(eq(tenants.id, tenantId))
+    .limit(1);
+  return mergeConciergeSettings(row?.config ?? null);
+}
+
+export type ConciergeSettingsPatch = {
+  autonomyCeilingPct?: number;
+  channels?: Partial<ConciergeSettings["channels"]>;
+};
+
+export async function upsertConciergeSettings(
+  tenantId: string,
+  patch: ConciergeSettingsPatch,
+): Promise<ConciergeSettings> {
+  const current = await getConciergeSettings(tenantId);
+  const next: ConciergeSettings = {
+    autonomyCeilingPct:
+      typeof patch.autonomyCeilingPct === "number"
+        ? clampPct(patch.autonomyCeilingPct)
+        : current.autonomyCeilingPct,
+    channels: { ...current.channels, ...(patch.channels ?? {}) },
+  };
+  await db
+    .update(tenants)
+    .set({ conciergeSettingsJson: next, updatedAt: new Date() })
+    .where(eq(tenants.id, tenantId));
+  return next;
+}
+
+function mergeConciergeSettings(raw: Partial<ConciergeSettings> | null | undefined): ConciergeSettings {
+  if (!raw || typeof raw !== "object") return DEFAULT_CONCIERGE_SETTINGS;
+  return {
+    autonomyCeilingPct:
+      typeof raw.autonomyCeilingPct === "number"
+        ? clampPct(raw.autonomyCeilingPct)
+        : DEFAULT_CONCIERGE_SETTINGS.autonomyCeilingPct,
+    channels: { ...DEFAULT_CONCIERGE_SETTINGS.channels, ...(raw.channels ?? {}) },
+  };
+}
+
+function clampPct(n: number): number {
+  if (!Number.isFinite(n)) return DEFAULT_CONCIERGE_SETTINGS.autonomyCeilingPct;
+  return Math.max(0, Math.min(100, Math.round(n)));
 }
 
 // ─── Properties ──────────────────────────────────────────────────────────────
