@@ -789,10 +789,18 @@ async function ensureTicketForConversation(conversation: HelpConversation, exist
 
 export interface PropertySummaryItem {
   id: string;
+  code: string;
   name: string;
   location: string | null;
   unitCount: number;
   openTicketCount: number;
+}
+
+function derivePropertyCode(slug: string, name: string, index: number): string {
+  const source = (slug || name).replace(/[^a-zA-Z]/g, "").toUpperCase();
+  const prefix = source.slice(0, 3).padEnd(3, "X");
+  const suffix = String(index + 1).padStart(2, "0");
+  return `${prefix}-${suffix}`;
 }
 
 export async function getPropertiesSummary(tenantId?: string | null): Promise<PropertySummaryItem[]> {
@@ -818,8 +826,9 @@ export async function getPropertiesSummary(tenantId?: string | null): Promise<Pr
     openByProperty.set(conv.propertyId, (openByProperty.get(conv.propertyId) ?? 0) + 1);
   }
 
-  return allProperties.map((property) => ({
+  return allProperties.map((property, index) => ({
     id: property.id,
+    code: derivePropertyCode(property.slug, property.name, index),
     name: property.name,
     location: property.location ?? null,
     unitCount: property.name.toLowerCase().includes("flex") ? 15 : 1,
@@ -835,7 +844,9 @@ export async function getHelpdeskDashboardMetrics(
   const context = await loadHelpdeskContext(tenantId, propertyId, staffId);
   if (!context) {
     return {
-      summary: { openConversations: 0, unassigned: 0, slaAtRisk: 0, waitingOnCustomer: 0 },
+      summary: { openConversations: 0, unassigned: 0, slaAtRisk: 0, slaBreached: 0, resolvedToday: 0, waitingOnCustomer: 0 },
+      afterHoursHandled: 0,
+      channels: [],
       byStatus: statusOrder.map((status) => ({ status, count: 0 })),
       byInbox: [],
       recentActivity: [],
@@ -846,6 +857,26 @@ export async function getHelpdeskDashboardMetrics(
   const rows = sortConversationRows(buildConversationRows(context));
   const openRows = rows.filter((row) => row.status !== "resolved");
   const byStatus = statusOrder.map((status) => ({ status, count: rows.filter((row) => row.status === status).length }));
+
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const isAfterHours = (d: Date) => {
+    const h = d.getHours();
+    return h >= 18 || h < 6;
+  };
+
+  const resolvedToday = context.conversations.filter(
+    (c) => c.closedAt && c.closedAt >= todayStart,
+  ).length;
+
+  const afterHoursHandled = context.conversations.filter(
+    (c) => c.createdAt >= last24h && isAfterHours(c.createdAt),
+  ).length;
+
+  const slaBreached = openRows.filter((row) => row.slaState === "breached").length;
+
+  const channels = buildChannelMetrics(context.conversations, now);
 
   const inboxMap = new Map<string, HelpdeskInboxMetric>();
   for (const row of rows) {
@@ -876,11 +907,69 @@ export async function getHelpdeskDashboardMetrics(
       openConversations: openRows.length,
       unassigned: openRows.filter((row) => !row.assignee).length,
       slaAtRisk: openRows.filter((row) => row.slaState === "at_risk" || row.slaState === "breached").length,
+      slaBreached,
+      resolvedToday,
       waitingOnCustomer: openRows.filter((row) => row.status === "waiting_on_customer").length,
     },
+    afterHoursHandled,
+    channels,
     byStatus,
     byInbox: [...inboxMap.values()].sort((a, b) => b.count - a.count),
     recentActivity,
     openTickets: openRows.slice(0, 6),
   };
+}
+
+const CHANNEL_LABELS: Record<string, string> = {
+  email: "Email",
+  whatsapp: "WhatsApp",
+  sms: "SMS",
+  zoom: "Zoom",
+  slack: "Slack",
+  messenger: "Messenger",
+  web: "Web",
+  phone: "Phone",
+};
+
+const CHANNEL_ORDER = ["email", "whatsapp", "sms", "zoom", "slack", "messenger"];
+
+function buildChannelMetrics(conversations: HelpConversation[], now: Date): import("../shared/helpdesk").ChannelMetric[] {
+  const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const seen = new Set<string>();
+  const buckets = new Map<string, number[]>();
+  const counts = new Map<string, number>();
+
+  for (const conversation of conversations) {
+    const channel = (conversation.channel || "email").toLowerCase();
+    seen.add(channel);
+    if (conversation.lastMessageAt < last24h) continue;
+    const hoursAgo = Math.min(23, Math.floor((now.getTime() - conversation.lastMessageAt.getTime()) / (60 * 60 * 1000)));
+    const bucketIndex = 23 - hoursAgo;
+    const arr = buckets.get(channel) ?? new Array(24).fill(0);
+    arr[bucketIndex] = (arr[bucketIndex] ?? 0) + 1;
+    buckets.set(channel, arr);
+    counts.set(channel, (counts.get(channel) ?? 0) + 1);
+  }
+
+  const known = CHANNEL_ORDER.filter((c) => seen.has(c));
+  const extras = [...seen].filter((c) => !CHANNEL_ORDER.includes(c));
+  const offlineDefaults = CHANNEL_ORDER.filter((c) => !seen.has(c));
+
+  const live = [...known, ...extras].map((channel) => ({
+    channel,
+    label: CHANNEL_LABELS[channel] ?? channel.charAt(0).toUpperCase() + channel.slice(1),
+    status: "live" as const,
+    count24h: counts.get(channel) ?? 0,
+    hourlyBuckets: buckets.get(channel) ?? new Array(24).fill(0),
+  }));
+
+  const offline = offlineDefaults.slice(0, 2).map((channel) => ({
+    channel,
+    label: CHANNEL_LABELS[channel] ?? channel,
+    status: "offline" as const,
+    count24h: 0,
+    hourlyBuckets: new Array(24).fill(0),
+  }));
+
+  return [...live, ...offline];
 }
