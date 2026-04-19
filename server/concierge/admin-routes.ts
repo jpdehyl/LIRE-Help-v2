@@ -54,6 +54,9 @@ function unconfiguredResponse(): AgentSummary {
 
 const TryItBodySchema = z.object({
   message: z.string().trim().min(1, "message required").max(4000),
+  // When present, resume this session so the agent keeps context across
+  // turns. Managed-agent session IDs start with `sesn_`.
+  sessionId: z.string().trim().regex(/^sesn_[A-Za-z0-9]+$/).optional(),
 });
 
 interface TryItToolCall {
@@ -159,6 +162,7 @@ router.post("/try", async (req, res) => {
       brief,
       latestCustomerMessage: parse.data.message,
       handleTool,
+      resumeSessionId: parse.data.sessionId,
     });
 
     const response: TryItResponse = {

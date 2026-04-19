@@ -413,10 +413,13 @@ interface TryItTurn {
 function TryItTab() {
   const [draft, setDraft] = useState("");
   const [turns, setTurns] = useState<TryItTurn[]>([]);
+  // Persist the Managed Agent session id across turns so the agent keeps
+  // context. Cleared by "New conversation".
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
 
   const tryMutation = useMutation({
-    mutationFn: (message: string) => conciergeApi.tryMessage(message),
+    mutationFn: (body: { message: string; sessionId?: string }) => conciergeApi.tryMessage(body),
   });
 
   const scrollToBottom = () => {
@@ -434,26 +437,36 @@ function TryItTab() {
     setDraft("");
     scrollToBottom();
 
-    tryMutation.mutate(message, {
-      onSuccess: (response) => {
-        setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, response, pending: false } : t)));
-        scrollToBottom();
+    tryMutation.mutate(
+      { message, sessionId: sessionId ?? undefined },
+      {
+        onSuccess: (response) => {
+          if (!sessionId) setSessionId(response.sessionId);
+          setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, response, pending: false } : t)));
+          scrollToBottom();
+        },
+        onError: (err) => {
+          setTurns((prev) =>
+            prev.map((t) =>
+              t.id === id
+                ? {
+                    ...t,
+                    error: err instanceof Error ? err.message : "Agent run failed",
+                    pending: false,
+                  }
+                : t,
+            ),
+          );
+          scrollToBottom();
+        },
       },
-      onError: (err) => {
-        setTurns((prev) =>
-          prev.map((t) =>
-            t.id === id
-              ? {
-                  ...t,
-                  error: err instanceof Error ? err.message : "Agent run failed",
-                  pending: false,
-                }
-              : t,
-          ),
-        );
-        scrollToBottom();
-      },
-    });
+    );
+  };
+
+  const resetConversation = () => {
+    setTurns([]);
+    setSessionId(null);
+    setDraft("");
   };
 
   return (
@@ -462,7 +475,24 @@ function TryItTab() {
         <div className="flex items-center gap-2 border-b border-border px-4 py-3">
           <Sparkles className="h-3.5 w-3.5 text-accent" />
           <div className="eyebrow">Playground</div>
+          {sessionId ? (
+            <span
+              className="font-mono text-[10px] uppercase tracking-eyebrow text-fg-subtle"
+              title={sessionId}
+            >
+              Session · {sessionId.slice(5, 11)}
+            </span>
+          ) : null}
           <span className="flex-1" />
+          {turns.length > 0 ? (
+            <button
+              type="button"
+              onClick={resetConversation}
+              className="font-body text-[11.5px] font-medium text-fg-muted hover:text-fg"
+            >
+              New conversation
+            </button>
+          ) : null}
           <span className="font-mono text-[10px] uppercase tracking-eyebrow text-fg-subtle">
             No outbound traffic · no DB writes
           </span>

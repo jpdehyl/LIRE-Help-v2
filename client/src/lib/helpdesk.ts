@@ -72,8 +72,8 @@ export interface ConciergeTryResponse {
 
 export const conciergeApi = {
   getAgent: () => api.get<ConciergeAgentSummary>("/api/concierge/agent"),
-  tryMessage: (message: string) =>
-    api.post<ConciergeTryResponse>("/api/concierge/try", { message }),
+  tryMessage: (body: { message: string; sessionId?: string }) =>
+    api.post<ConciergeTryResponse>("/api/concierge/try", body),
 };
 
 export interface PropertySummaryItem {
