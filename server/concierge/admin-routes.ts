@@ -10,6 +10,7 @@ import { requireStaff } from "../middleware/auth.js";
 import { loadConciergeIdentity, runConciergeTurn } from "./session-runner.js";
 import type { ToolCall } from "./session-runner.js";
 import type { ConversationBrief } from "./types.js";
+import { getPlatformKnowledge } from "../storage.js";
 
 const router = Router();
 router.use(requireStaff);
@@ -217,5 +218,71 @@ router.get("/agent", async (_req, res) => {
     res.status(502).json({ message: "Unable to load concierge agent from Anthropic" });
   }
 });
+
+interface KnowledgeSection {
+  section: string;
+  entryCount: number;
+  totalCharCount: number;
+  entries: { id: string; title: string; contentChars: number; updatedAtLabel: string }[];
+}
+
+interface ConciergeKnowledgeResponse {
+  totalEntries: number;
+  totalCharCount: number;
+  sectionCount: number;
+  sections: KnowledgeSection[];
+  editUrl: string;
+}
+
+// Read-only knowledge surface for /concierge. Mirrors /api/knowledge/platform
+// but is scoped to requireStaff (anyone on the team) and groups by section
+// with per-entry summaries — full content is still edited elsewhere.
+router.get("/knowledge", async (req, res) => {
+  const sess = req.session as { staffTenantId?: string | null } | undefined;
+  const tenantId = sess?.staffTenantId;
+  if (!tenantId) return res.status(400).json({ message: "Session is missing a tenant" });
+
+  try {
+    const entries = await getPlatformKnowledge(tenantId);
+    const bySection = new Map<string, KnowledgeSection>();
+    for (const entry of entries) {
+      const contentChars = entry.content?.length ?? 0;
+      const current = bySection.get(entry.section) ?? {
+        section: entry.section,
+        entryCount: 0,
+        totalCharCount: 0,
+        entries: [],
+      };
+      current.entryCount += 1;
+      current.totalCharCount += contentChars;
+      current.entries.push({
+        id: entry.id,
+        title: entry.title,
+        contentChars,
+        updatedAtLabel: formatIsoDate(entry.updatedAt),
+      });
+      bySection.set(entry.section, current);
+    }
+
+    const response: ConciergeKnowledgeResponse = {
+      totalEntries: entries.length,
+      totalCharCount: entries.reduce((sum, e) => sum + (e.content?.length ?? 0), 0),
+      sectionCount: bySection.size,
+      sections: [...bySection.values()].sort((a, b) => a.section.localeCompare(b.section)),
+      editUrl: "/settings/workspace", // knowledge editor lives in workspace settings today
+    };
+    res.json(response);
+  } catch (err) {
+    console.error("[concierge knowledge]", err);
+    res.status(500).json({ message: "Unable to load concierge knowledge" });
+  }
+});
+
+function formatIsoDate(date: Date | string | null): string {
+  if (!date) return "—";
+  const d = typeof date === "string" ? new Date(date) : date;
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toISOString().slice(0, 10);
+}
 
 export default router;
