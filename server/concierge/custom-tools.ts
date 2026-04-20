@@ -85,7 +85,7 @@ export const CONCIERGE_CUSTOM_TOOLS = [
     type: "custom" as const,
     name: "lookup_knowledge",
     description:
-      "Search the operator's knowledge base for policies, procedures, and FAQs (pet rules, rent due dates, parking, maintenance SLAs, etc.). Call this BEFORE answering any policy/procedure question — the KB is the source of truth. Returns up to 10 entries matching the filters; use an empty call to browse all entries if nothing specific matches.",
+      "Search the operator's knowledge base for policies, procedures, FAQs, AND uploaded documents (lease templates, policy PDFs, drawings, vendor SOWs). Call this BEFORE answering any policy/procedure or document-specific question — the KB is the source of truth. Returns two sections: `entries` (text-KB rows matching section/substring) and `documents` (semantically-similar chunks from uploaded files, with `title`, `kind`, `page_label`, and `similarity` score 0-1). When quoting document content, cite the document title in your reply so the tenant can ask follow-ups. If `documents_reason` is set, semantic search was unavailable — fall back to `entries` only.",
     input_schema: {
       type: "object" as const,
       properties: {

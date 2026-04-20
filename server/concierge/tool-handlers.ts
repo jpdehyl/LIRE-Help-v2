@@ -22,8 +22,15 @@ import { sendEmail } from "../channels/postmark-email.js";
 import { sendWhatsapp } from "../channels/whatsapp-meta.js";
 import { sendZoomChat } from "../channels/zoom-chat.js";
 import { getPlatformKnowledge } from "../storage.js";
+import { searchChunksByEmbedding } from "../kb-documents/storage-db.js";
+import { embedQuery, embeddingsConfigured } from "../kb-documents/embed.js";
 
 const KB_LOOKUP_MAX_RESULTS = 10;
+const KB_LOOKUP_DOCUMENT_CHUNKS = 5;
+// Chunks beyond this distance are noise. Voyage cosine distance is roughly
+// 0.0 (identical) → 1.0 (orthogonal); tuned empirically, revisit once we
+// have real tenant queries.
+const KB_LOOKUP_DISTANCE_CUTOFF = 0.55;
 
 // Reply sender per channel. Adding WhatsApp / Zoom later is a matter of
 // one more case and one more adapter — the rest of the flow is
@@ -280,7 +287,8 @@ async function lookupKnowledgeHandler(
   brief: ConversationBrief,
 ): Promise<string> {
   const section = typeof input.section === "string" ? input.section.trim().toLowerCase() : null;
-  const query = typeof input.query === "string" ? input.query.trim().toLowerCase() : null;
+  const rawQuery = typeof input.query === "string" ? input.query.trim() : null;
+  const query = rawQuery ? rawQuery.toLowerCase() : null;
 
   const all = await getPlatformKnowledge(brief.tenantId);
   const filtered = all.filter((entry) => {
@@ -299,10 +307,54 @@ async function lookupKnowledgeHandler(
     content: entry.content,
   }));
 
+  // Document chunks via pgvector. Only fire when we have a free-text query
+  // — a bare section filter is a text-table navigation, not a semantic
+  // search, and embeddings would add latency with no payoff. Failures here
+  // degrade gracefully to "no document hits" so a Voyage outage doesn't
+  // strip the agent of its text-KB entries.
+  let documents: Array<{
+    document_id: string;
+    title: string;
+    kind: string;
+    page_label: string | null;
+    content: string;
+    similarity: number;
+  }> = [];
+  let documentLookupReason: string | undefined;
+
+  if (rawQuery && embeddingsConfigured()) {
+    try {
+      const queryVec = await embedQuery(rawQuery);
+      const chunks = await searchChunksByEmbedding(
+        brief.tenantId,
+        queryVec,
+        KB_LOOKUP_DOCUMENT_CHUNKS,
+      );
+      documents = chunks
+        .filter((c) => c.distance <= KB_LOOKUP_DISTANCE_CUTOFF)
+        .map((c) => ({
+          document_id: c.documentId,
+          title: c.documentTitle,
+          kind: c.documentKind,
+          page_label: c.pageLabel,
+          content: c.content,
+          // Convert cosine distance → similarity (0..1) for the agent.
+          similarity: Math.max(0, 1 - c.distance),
+        }));
+    } catch (err) {
+      documentLookupReason = err instanceof Error ? err.message : String(err);
+      console.error("[lookup_knowledge documents]", documentLookupReason);
+    }
+  } else if (rawQuery && !embeddingsConfigured()) {
+    documentLookupReason = "VOYAGE_API_KEY not configured on this deployment";
+  }
+
   return JSON.stringify({
     total_matched: filtered.length,
     returned: hits.length,
     entries: hits,
+    documents,
+    documents_reason: documentLookupReason ?? null,
   });
 }
 
