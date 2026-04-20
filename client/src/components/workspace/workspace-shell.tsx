@@ -10,11 +10,12 @@ import {
   Menu,
   Monitor,
   Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
   Search,
   Settings,
   Shield,
   Sun,
-  Ticket,
   Users,
 } from "lucide-react";
 import { useAuth } from "../../lib/auth";
@@ -33,14 +34,23 @@ const navigationCommands: CommandItem[] = [
   { id: "go-dashboard", label: "Go to Dashboard", href: "/dashboard", icon: LayoutDashboard, group: "Navigation", keywords: "home overview metrics" },
   { id: "go-inbox", label: "Go to Inbox", href: "/inbox/all", icon: InboxIcon, group: "Navigation", keywords: "queue conversations support" },
   { id: "go-inbox-unassigned", label: "Unassigned inbox", href: "/inbox/unassigned", icon: InboxIcon, group: "Navigation", keywords: "unassigned triage" },
-  { id: "go-inbox-sla", label: "SLA at risk", href: "/inbox/sla_at_risk", icon: InboxIcon, group: "Navigation", keywords: "sla breached at risk" },
-  { id: "go-tickets", label: "Go to Tickets", href: "/tickets", icon: Ticket, group: "Navigation" },
+  { id: "go-inbox-sla", label: "SLA at risk", href: "/inbox/escalations", icon: InboxIcon, group: "Navigation", keywords: "sla breached at risk escalations" },
   { id: "go-customers", label: "Go to Customers", href: "/customers", icon: Users, group: "Navigation", keywords: "companies accounts" },
   { id: "go-settings", label: "Go to Settings", href: "/settings", icon: Settings, group: "Navigation", keywords: "preferences config admin" },
   { id: "go-platform", label: "Platform admin", href: "/platform-dashboard", icon: Shield, group: "Navigation", keywords: "admin platform internal" },
 ];
 
 const FOCUS_STORAGE_KEY = "workspace:focus";
+const NAV_COLLAPSED_STORAGE_KEY = "workspace:nav-collapsed";
+
+function readNavCollapsedPreference(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(NAV_COLLAPSED_STORAGE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 function readFocusPreference(): boolean {
   if (typeof window === "undefined") return false;
@@ -57,6 +67,15 @@ export function WorkspaceShell({ title, children, eyebrow = "Operations", action
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const [focusMode, setFocusMode] = useState<boolean>(() => readFocusPreference());
+  const [navCollapsed, setNavCollapsed] = useState<boolean>(() => readNavCollapsedPreference());
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(NAV_COLLAPSED_STORAGE_KEY, navCollapsed ? "1" : "0");
+    } catch {
+      // ignore quota / privacy-mode errors
+    }
+  }, [navCollapsed]);
 
   useEffect(() => {
     try {
@@ -135,7 +154,7 @@ export function WorkspaceShell({ title, children, eyebrow = "Operations", action
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-bg text-fg">
-      {focusMode ? null : <AppSidebar />}
+      {focusMode || navCollapsed ? null : <AppSidebar />}
 
       <Sheet open={navOpen} onClose={() => setNavOpen(false)} ariaLabel="Workspace navigation">
         <AppSidebar embedded onNavigate={() => setNavOpen(false)} />
@@ -152,6 +171,18 @@ export function WorkspaceShell({ title, children, eyebrow = "Operations", action
             aria-label="Open workspace navigation"
           >
             <Menu className="h-4 w-4" />
+          </button>
+          {/* Desktop collapse toggle — hides/shows the left nav without
+              the full Focus-mode take-over. Hidden on mobile (the hamburger
+              above handles that size class). */}
+          <button
+            type="button"
+            onClick={() => setNavCollapsed((value) => !value)}
+            aria-pressed={navCollapsed}
+            title={navCollapsed ? "Show navigation" : "Hide navigation"}
+            className="hidden h-8 w-8 place-items-center rounded-sm text-fg-muted transition-colors ease-ds duration-fast hover:bg-surface-2 hover:text-fg lg:grid"
+          >
+            {navCollapsed ? <PanelLeftOpen className="h-3.5 w-3.5" /> : <PanelLeftClose className="h-3.5 w-3.5" />}
           </button>
 
           <nav

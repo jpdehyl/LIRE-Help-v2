@@ -61,8 +61,93 @@ export const helpdeskApi = {
   getPropertiesSummary: () => api.get<{ properties: PropertySummaryItem[] }>("/api/helpdesk/properties-summary"),
 };
 
+export interface ConciergeAgentSummary {
+  id: string;
+  name: string;
+  model: string;
+  version: string;
+  systemPromptPreview: string;
+  systemPromptFull: string;
+  toolsCount: number;
+  skillsCount: number;
+  consoleUrl: string | null;
+  lastUpdatedLabel: string | null;
+  configured: boolean;
+}
+
+export interface ConciergeTryToolCall {
+  id: string;
+  name: string;
+  input: Record<string, unknown>;
+  result: string;
+}
+
+export interface ConciergeTryResponse {
+  sessionId: string;
+  reply: string | null;
+  confidence: "high" | "medium" | "low" | null;
+  escalated: boolean;
+  escalationReason: string | null;
+  stopReason: string;
+  toolCalls: ConciergeTryToolCall[];
+}
+
+export interface ConciergeKnowledgeEntry {
+  id: string;
+  title: string;
+  contentChars: number;
+  updatedAtLabel: string;
+}
+
+export interface ConciergeKnowledgeSection {
+  section: string;
+  entryCount: number;
+  totalCharCount: number;
+  entries: ConciergeKnowledgeEntry[];
+}
+
+export interface ConciergeKnowledgeSummary {
+  totalEntries: number;
+  totalCharCount: number;
+  sectionCount: number;
+  sections: ConciergeKnowledgeSection[];
+  editUrl: string;
+}
+
+export type ConciergeRunState = "live" | "shadow" | "paused";
+
+export interface ConciergeSettings {
+  runState: ConciergeRunState;
+  autonomyCeilingPct: number;
+  channels: {
+    email: boolean;
+    whatsapp: boolean;
+    sms: boolean;
+    zoom: boolean;
+    slack: boolean;
+    messenger: boolean;
+  };
+}
+
+export type ConciergeSettingsPatch = {
+  runState?: ConciergeRunState;
+  autonomyCeilingPct?: number;
+  channels?: Partial<ConciergeSettings["channels"]>;
+};
+
+export const conciergeApi = {
+  getAgent: () => api.get<ConciergeAgentSummary>("/api/concierge/agent"),
+  tryMessage: (body: { message: string; sessionId?: string }) =>
+    api.post<ConciergeTryResponse>("/api/concierge/try", body),
+  getKnowledge: () => api.get<ConciergeKnowledgeSummary>("/api/concierge/knowledge"),
+  getSettings: () => api.get<ConciergeSettings>("/api/concierge/settings"),
+  updateSettings: (patch: ConciergeSettingsPatch) =>
+    api.patch<ConciergeSettings>("/api/concierge/settings", patch),
+};
+
 export interface PropertySummaryItem {
   id: string;
+  code: string;
   name: string;
   location: string | null;
   unitCount: number;

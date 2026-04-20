@@ -4,3 +4,6 @@ dist/
 .env.test
 .dev.vars
 .wrangler/
+.DS_Store
+.blobs/
+.claude/

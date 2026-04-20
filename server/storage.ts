@@ -18,6 +18,7 @@ import {
 import { DEFAULT_INBOX_VIEW_KEY, inboxViewKeys } from "../shared/helpdesk.js";
 import { and, asc, desc, eq } from "drizzle-orm";
 import type {
+  ConciergeSettings,
   Tenant,
   InsertTenant,
   Property,
@@ -35,6 +36,7 @@ import type {
   HelpTicket,
   StaffUser,
 } from "../shared/schema.js";
+import { DEFAULT_CONCIERGE_SETTINGS } from "../shared/schema.js";
 import type {
   AssignmentState,
   ComposerMode,
@@ -72,27 +74,65 @@ interface HelpdeskContext {
   tickets: HelpTicket[];
   messages: HelpMessage[];
   conversationTags: HelpConversationTag[];
+  properties: Property[];
 }
 
 const viewDefinitionsBase: Record<InboxViewKey, Omit<InboxViewDefinition, "count">> = {
-  all: { key: "all", label: "All conversations", section: "default_views", description: "Every open thread across inboxes" },
-  assigned: { key: "assigned", label: "Assigned to me", section: "default_views", description: "Work currently owned by you" },
+  priority: { key: "priority", label: "Priority", section: "default_views", description: "Urgent threads or SLA-at-risk work that should be handled first" },
   unassigned: { key: "unassigned", label: "Unassigned", section: "default_views", description: "Needs triage and ownership" },
   awaiting_reply: { key: "awaiting_reply", label: "Awaiting reply", section: "default_views", description: "Customer needs a response" },
   sla_at_risk: { key: "sla_at_risk", label: "SLA at risk", section: "default_views", description: "Response or resolution target is slipping" },
-  closed_recently: { key: "closed_recently", label: "Closed recently", section: "default_views", description: "Recently resolved conversations" },
+  escalations: { key: "escalations", label: "Escalations", section: "default_views", description: "SLA-breached or flagged for human review" },
+  all: { key: "all", label: "All open", section: "default_views", description: "Every thread that is not yet resolved" },
+  email: { key: "email", label: "Email", section: "channels", description: "Inbound email conversations" },
+  whatsapp: { key: "whatsapp", label: "WhatsApp", section: "channels", description: "WhatsApp Business conversations" },
+  sms: { key: "sms", label: "SMS (Twilio)", section: "channels", description: "SMS conversations over Twilio" },
+  zoom: { key: "zoom", label: "Zoom", section: "channels", description: "Zoom phone and meeting transcripts" },
+  slack: { key: "slack", label: "Slack", section: "channels", description: "Slack messages routed into the helpdesk" },
+  messenger: { key: "messenger", label: "Messenger", section: "channels", description: "Facebook Messenger conversations" },
+  maintenance: { key: "maintenance", label: "Maintenance", section: "team_inboxes", description: "Work orders and facility tickets" },
+  lease_compliance: { key: "lease_compliance", label: "Lease & Compliance", section: "team_inboxes", description: "Lease, legal, and compliance coordination" },
+  after_hours: { key: "after_hours", label: "After-hours", section: "team_inboxes", description: "Off-hours triage and escalations" },
+  resolved_today: { key: "resolved_today", label: "Resolved today", section: "saved_views", description: "Conversations closed in the last 24 hours" },
+  support: { key: "support", label: "Support", section: "team_inboxes", description: "Core support queue" },
+  billing: { key: "billing", label: "Billing", section: "team_inboxes", description: "Invoices, credits, renewals" },
+  vip: { key: "vip", label: "VIP / strategic", section: "team_inboxes", description: "High-touch accounts and renewals" },
+  closed_recently: { key: "closed_recently", label: "Closed recently", section: "saved_views", description: "Recently resolved conversations" },
   snoozed: { key: "snoozed", label: "Snoozed", section: "saved_views", description: "Active conversations waiting for their snooze window to end" },
   archived: { key: "archived", label: "Archived", section: "saved_views", description: "Conversations removed from active queues but retained for review" },
   spam: { key: "spam", label: "Spam", section: "saved_views", description: "Messages marked as spam and hidden from active queues" },
   trash: { key: "trash", label: "Trash", section: "saved_views", description: "Soft-deleted conversations recoverable by admins" },
-  support: { key: "support", label: "Support", section: "team_inboxes", description: "Core support queue" },
-  escalations: { key: "escalations", label: "Escalations", section: "team_inboxes", description: "Manager or specialist attention" },
-  billing: { key: "billing", label: "Billing", section: "team_inboxes", description: "Invoices, credits, renewals" },
-  vip: { key: "vip", label: "VIP / strategic", section: "team_inboxes", description: "High-touch accounts and renewals" },
   high_priority: { key: "high_priority", label: "High priority", section: "saved_views", description: "Urgent or high-impact issues" },
   bugs: { key: "bugs", label: "Bugs / product issues", section: "saved_views", description: "Product-linked incidents" },
   renewals: { key: "renewals", label: "Renewal / pricing", section: "saved_views", description: "Commercial coordination" },
 };
+
+const channelAliases: Record<string, string[]> = {
+  email: ["email", "mail", "e-mail"],
+  whatsapp: ["whatsapp", "wa"],
+  sms: ["sms", "twilio", "text"],
+  zoom: ["zoom", "phone", "voice"],
+  slack: ["slack"],
+  messenger: ["messenger", "facebook", "fb"],
+};
+
+function conversationMatchesChannel(row: ConversationRow, channelKey: string): boolean {
+  const aliases = channelAliases[channelKey] ?? [channelKey];
+  const channel = (row.channel ?? "").toLowerCase();
+  return aliases.includes(channel);
+}
+
+function inboxMatchesTeam(row: ConversationRow, teamKey: "maintenance" | "lease_compliance" | "after_hours"): boolean {
+  const label = row.inboxLabel.toLowerCase();
+  switch (teamKey) {
+    case "maintenance":
+      return label.includes("maintenance");
+    case "lease_compliance":
+      return label.includes("lease") || label.includes("compliance");
+    case "after_hours":
+      return label.includes("after-hours") || label.includes("after hours");
+  }
+}
 
 const priorityOrder: PriorityLevel[] = ["urgent", "high", "medium", "low"];
 const statusOrder: ConversationStatus[] = ["open", "pending", "waiting_on_customer", "resolved"];
@@ -106,6 +146,68 @@ export async function getTenants(): Promise<Tenant[]> {
 export async function createTenant(data: InsertTenant): Promise<Tenant> {
   const [row] = await db.insert(tenants).values(data).returning();
   return row!;
+}
+
+// ─── Concierge Settings ─────────────────────────────────────────────────────
+//
+// Stored as a partial JSONB blob on tenants.concierge_settings_json. The
+// default is applied on read (not write) so new fields added to the interface
+// automatically show up on old rows without a migration.
+
+export async function getConciergeSettings(tenantId: string): Promise<ConciergeSettings> {
+  const [row] = await db
+    .select({ config: tenants.conciergeSettingsJson })
+    .from(tenants)
+    .where(eq(tenants.id, tenantId))
+    .limit(1);
+  return mergeConciergeSettings(row?.config ?? null);
+}
+
+export type ConciergeSettingsPatch = {
+  runState?: ConciergeSettings["runState"];
+  autonomyCeilingPct?: number;
+  channels?: Partial<ConciergeSettings["channels"]>;
+};
+
+export async function upsertConciergeSettings(
+  tenantId: string,
+  patch: ConciergeSettingsPatch,
+): Promise<ConciergeSettings> {
+  const current = await getConciergeSettings(tenantId);
+  const next: ConciergeSettings = {
+    runState: isRunState(patch.runState) ? patch.runState : current.runState,
+    autonomyCeilingPct:
+      typeof patch.autonomyCeilingPct === "number"
+        ? clampPct(patch.autonomyCeilingPct)
+        : current.autonomyCeilingPct,
+    channels: { ...current.channels, ...(patch.channels ?? {}) },
+  };
+  await db
+    .update(tenants)
+    .set({ conciergeSettingsJson: next, updatedAt: new Date() })
+    .where(eq(tenants.id, tenantId));
+  return next;
+}
+
+function mergeConciergeSettings(raw: Partial<ConciergeSettings> | null | undefined): ConciergeSettings {
+  if (!raw || typeof raw !== "object") return DEFAULT_CONCIERGE_SETTINGS;
+  return {
+    runState: isRunState(raw.runState) ? raw.runState : DEFAULT_CONCIERGE_SETTINGS.runState,
+    autonomyCeilingPct:
+      typeof raw.autonomyCeilingPct === "number"
+        ? clampPct(raw.autonomyCeilingPct)
+        : DEFAULT_CONCIERGE_SETTINGS.autonomyCeilingPct,
+    channels: { ...DEFAULT_CONCIERGE_SETTINGS.channels, ...(raw.channels ?? {}) },
+  };
+}
+
+function isRunState(value: unknown): value is ConciergeSettings["runState"] {
+  return value === "live" || value === "shadow" || value === "paused";
+}
+
+function clampPct(n: number): number {
+  if (!Number.isFinite(n)) return DEFAULT_CONCIERGE_SETTINGS.autonomyCeilingPct;
+  return Math.max(0, Math.min(100, Math.round(n)));
 }
 
 // ─── Properties ──────────────────────────────────────────────────────────────
@@ -346,6 +448,26 @@ function deriveSlaState(conversation: HelpConversation): SlaState {
   return "healthy";
 }
 
+function deriveSlaCountdownLabel(conversation: HelpConversation, state: SlaState): string | null {
+  if (state === "healthy") return null;
+  const checkpoints = [conversation.firstResponseDueAt, conversation.nextResponseDueAt, conversation.resolutionDueAt]
+    .filter((value): value is Date => value instanceof Date)
+    .sort((a, b) => a.getTime() - b.getTime());
+  if (checkpoints.length === 0) return null;
+  const nextDue = checkpoints[0]!;
+  const diffMinutes = Math.round((nextDue.getTime() - Date.now()) / 60000);
+
+  if (diffMinutes > 0) {
+    if (diffMinutes < 60) return `${diffMinutes} MIN TO BREACH`;
+    const hours = Math.round(diffMinutes / 60);
+    return `${hours}H TO BREACH`;
+  }
+  const overdue = Math.abs(diffMinutes);
+  if (overdue < 60) return `${overdue} MIN OVERDUE`;
+  const hours = Math.round(overdue / 60);
+  return `${hours}H OVERDUE`;
+}
+
 function deriveNextMilestone(ticket: HelpTicket | undefined, conversation: HelpConversation): string {
   if (ticket?.nextMilestone) return ticket.nextMilestone;
   if (conversation.status === "resolved") return "Resolved";
@@ -424,7 +546,14 @@ function canMutateMailboxVisibility(conversation: HelpConversation): boolean {
 }
 
 function matchesInboxView(conversation: ConversationRow, viewKey: InboxViewKey, currentStaffName?: string | null): boolean {
+  const isOpen = conversation.status !== "resolved";
   switch (viewKey) {
+    case "priority":
+      return isOperationalConversation(conversation)
+        && isOpen
+        && (conversation.priority === "urgent" || conversation.slaState === "at_risk" || conversation.slaState === "breached");
+    case "all":
+      return isOperationalConversation(conversation) && isOpen;
     case "snoozed":
       return conversation.visibilityStatus === "active" && Boolean(conversation.snoozedUntil);
     case "archived":
@@ -433,43 +562,46 @@ function matchesInboxView(conversation: ConversationRow, viewKey: InboxViewKey, 
       return conversation.visibilityStatus === "spam";
     case "trash":
       return conversation.visibilityStatus === "deleted";
-    case "assigned":
-      if (!isOperationalConversation(conversation)) return false;
-      return currentStaffName ? conversation.assignee === currentStaffName : conversation.assignmentState === "assigned";
     case "unassigned":
-      if (!isOperationalConversation(conversation)) return false;
-      return conversation.assignmentState === "unassigned";
+      return isOperationalConversation(conversation) && isOpen && conversation.assignmentState === "unassigned";
     case "awaiting_reply":
-      if (!isOperationalConversation(conversation)) return false;
-      return conversation.status === "open" || conversation.status === "pending";
+      return isOperationalConversation(conversation) && (conversation.status === "open" || conversation.status === "pending");
     case "sla_at_risk":
-      if (!isOperationalConversation(conversation)) return false;
-      return conversation.slaState === "at_risk" || conversation.slaState === "breached";
+      return isOperationalConversation(conversation) && (conversation.slaState === "at_risk" || conversation.slaState === "breached");
     case "closed_recently":
-      if (!isOperationalConversation(conversation)) return false;
-      return conversation.status === "resolved";
-    case "support":
-      if (!isOperationalConversation(conversation)) return false;
-      return conversation.inboxLabel === "Support";
+    case "resolved_today":
+      return conversation.visibilityStatus === "active" && conversation.status === "resolved";
     case "escalations":
-      if (!isOperationalConversation(conversation)) return false;
-      return conversation.inboxLabel === "Escalations";
+      return isOperationalConversation(conversation)
+        && isOpen
+        && (
+          conversation.slaState === "breached"
+          || conversation.slaState === "at_risk"
+          || conversation.inboxLabel === "Escalations"
+        );
+    case "support":
+      return isOperationalConversation(conversation) && isOpen && conversation.inboxLabel === "Support";
     case "billing":
-      if (!isOperationalConversation(conversation)) return false;
-      return conversation.inboxLabel === "Billing";
+      return isOperationalConversation(conversation) && isOpen && conversation.inboxLabel === "Billing";
     case "vip":
-      if (!isOperationalConversation(conversation)) return false;
-      return conversation.inboxLabel === "VIP";
+      return isOperationalConversation(conversation) && isOpen && conversation.inboxLabel === "VIP";
     case "high_priority":
-      if (!isOperationalConversation(conversation)) return false;
-      return conversation.priority === "high" || conversation.priority === "urgent";
+      return isOperationalConversation(conversation) && isOpen && (conversation.priority === "high" || conversation.priority === "urgent");
     case "bugs":
-      if (!isOperationalConversation(conversation)) return false;
-      return conversation.tags.includes("bug");
+      return isOperationalConversation(conversation) && isOpen && conversation.tags.includes("bug");
     case "renewals":
-      if (!isOperationalConversation(conversation)) return false;
-      return conversation.tags.includes("renewal") || conversation.tags.includes("pricing");
-    case "all":
+      return isOperationalConversation(conversation) && isOpen && (conversation.tags.includes("renewal") || conversation.tags.includes("pricing"));
+    case "email":
+    case "whatsapp":
+    case "sms":
+    case "zoom":
+    case "slack":
+    case "messenger":
+      return isOperationalConversation(conversation) && isOpen && conversationMatchesChannel(conversation, viewKey);
+    case "maintenance":
+    case "lease_compliance":
+    case "after_hours":
+      return isOperationalConversation(conversation) && isOpen && inboxMatchesTeam(conversation, viewKey);
     default:
       return isOperationalConversation(conversation);
   }
@@ -479,7 +611,7 @@ async function loadHelpdeskContext(tenantId?: string | null, propertyId?: string
   const scope = await resolveHelpdeskScope(tenantId, propertyId, staffId);
   if (!scope) return null;
 
-  const [staff, inboxes, customers, tags, conversations, tickets, messages, conversationTags] = await Promise.all([
+  const [staff, inboxes, customers, tags, conversations, tickets, messages, conversationTags, tenantProperties] = await Promise.all([
     db.select().from(staffUsers).where(and(eq(staffUsers.tenantId, scope.tenantId), eq(staffUsers.isActive, true))).orderBy(asc(staffUsers.name)),
     db.select().from(helpInboxes).where(eq(helpInboxes.tenantId, scope.tenantId)).orderBy(asc(helpInboxes.name)),
     db.select().from(helpCustomers).where(eq(helpCustomers.tenantId, scope.tenantId)).orderBy(asc(helpCustomers.name)),
@@ -488,6 +620,7 @@ async function loadHelpdeskContext(tenantId?: string | null, propertyId?: string
     db.select().from(helpTickets).where(eq(helpTickets.tenantId, scope.tenantId)).orderBy(desc(helpTickets.updatedAt)),
     db.select().from(helpMessages).where(eq(helpMessages.tenantId, scope.tenantId)).orderBy(asc(helpMessages.createdAt)),
     db.select().from(helpConversationTags).where(eq(helpConversationTags.tenantId, scope.tenantId)),
+    db.select().from(properties).where(eq(properties.tenantId, scope.tenantId)).orderBy(asc(properties.name)),
   ]);
 
   return {
@@ -500,6 +633,7 @@ async function loadHelpdeskContext(tenantId?: string | null, propertyId?: string
     tickets: withinScope(tickets, scope.propertyId),
     messages: withinScope(messages, scope.propertyId),
     conversationTags: withinScope(conversationTags, scope.propertyId),
+    properties: tenantProperties,
   };
 }
 
@@ -523,6 +657,10 @@ function buildConversationRows(context: HelpdeskContext): ConversationRow[] {
   const staffById = new Map(context.staff.map((staffMember) => [staffMember.id, staffMember]));
   const tagById = new Map(context.tags.map((tag) => [tag.id, tag]));
   const tagsByConversationId = new Map<string, string[]>();
+  const propertyCodeById = new Map<string, string>();
+  context.properties.forEach((property, index) => {
+    propertyCodeById.set(property.id, derivePropertyCode(property.slug, property.name, index));
+  });
 
   for (const relation of context.conversationTags) {
     const tag = tagById.get(relation.tagId);
@@ -532,7 +670,7 @@ function buildConversationRows(context: HelpdeskContext): ConversationRow[] {
     tagsByConversationId.set(relation.conversationId, existing);
   }
 
-  return context.conversations.map((conversation) => {
+  return context.conversations.map((conversation, index) => {
     const inbox = conversation.inboxId ? inboxById.get(conversation.inboxId) : undefined;
     const customer = conversation.customerId ? customerById.get(conversation.customerId) : undefined;
     const ticket = ticketByConversationId.get(conversation.id);
@@ -550,6 +688,18 @@ function buildConversationRows(context: HelpdeskContext): ConversationRow[] {
       : conversation.assignmentState === "team"
         ? "team"
         : "unassigned";
+    const channel = (conversation.channel || inbox?.channel || "email").toLowerCase();
+    // "AI handling" = no human owner yet and the conversation isn't done.
+    // Concierge messages inherit this flag visually; once a teammate picks it
+    // up the tag disappears.
+    const aiHandling = !assigneeStaff && status !== "resolved";
+    // LIRE-#### format for the row-level identifier. Reuses the help-ticket
+    // number when present and converts its T- prefix; otherwise derives a
+    // synthetic index so the UI stays consistent even before a ticket row
+    // exists.
+    const displayTicketId = ticket?.ticketNumber
+      ? ticket.ticketNumber.replace(/^T-/, "LIRE-")
+      : `LIRE-${String(4000 + index + 1).padStart(4, "0")}`;
 
     return {
       id: conversation.id,
@@ -558,6 +708,7 @@ function buildConversationRows(context: HelpdeskContext): ConversationRow[] {
       requesterEmail: customer?.email ?? "",
       company: customer?.company ?? "—",
       inboxLabel: inbox?.name ?? ticket?.team ?? "Support",
+      channel,
       preview: conversation.preview ?? "No preview available.",
       status,
       priority,
@@ -571,9 +722,10 @@ function buildConversationRows(context: HelpdeskContext): ConversationRow[] {
       waitingSinceLabel: deriveWaitingSinceLabel(conversation),
       messageCount: conversation.messageCount,
       slaState,
+      slaCountdownLabel: deriveSlaCountdownLabel(conversation, slaState),
       tags,
       ticket: {
-        id: ticket?.ticketNumber ?? `T-${conversation.id.slice(0, 8)}`,
+        id: displayTicketId,
         status,
         priority,
         assignee: assigneeStaff?.name ?? null,
@@ -591,6 +743,8 @@ function buildConversationRows(context: HelpdeskContext): ConversationRow[] {
         lastSeenLabel: customer?.lastSeenAt ? formatAbsolute(customer.lastSeenAt) : "Unknown",
       },
       propertyId: conversation.propertyId ?? null,
+      propertyCode: conversation.propertyId ? propertyCodeById.get(conversation.propertyId) ?? null : null,
+      aiHandling,
     };
   });
 }
@@ -1191,10 +1345,18 @@ async function ensureTicketForConversation(conversation: HelpConversation, exist
 
 export interface PropertySummaryItem {
   id: string;
+  code: string;
   name: string;
   location: string | null;
   unitCount: number;
   openTicketCount: number;
+}
+
+function derivePropertyCode(slug: string, name: string, index: number): string {
+  const source = (slug || name).replace(/[^a-zA-Z]/g, "").toUpperCase();
+  const prefix = source.slice(0, 3).padEnd(3, "X");
+  const suffix = String(index + 1).padStart(2, "0");
+  return `${prefix}-${suffix}`;
 }
 
 export async function getPropertiesSummary(tenantId?: string | null): Promise<PropertySummaryItem[]> {
@@ -1224,8 +1386,9 @@ export async function getPropertiesSummary(tenantId?: string | null): Promise<Pr
     openByProperty.set(conv.propertyId, (openByProperty.get(conv.propertyId) ?? 0) + 1);
   }
 
-  return allProperties.map((property) => ({
+  return allProperties.map((property, index) => ({
     id: property.id,
+    code: derivePropertyCode(property.slug, property.name, index),
     name: property.name,
     location: property.location ?? null,
     unitCount: property.name.toLowerCase().includes("flex") ? 15 : 1,
@@ -1241,7 +1404,13 @@ export async function getHelpdeskDashboardMetrics(
   const context = await loadHelpdeskContext(tenantId, propertyId, staffId);
   if (!context) {
     return {
-      summary: { openConversations: 0, unassigned: 0, slaAtRisk: 0, waitingOnCustomer: 0 },
+      summary: { openConversations: 0, unassigned: 0, slaAtRisk: 0, slaBreached: 0, resolvedToday: 0, waitingOnCustomer: 0 },
+      afterHoursHandled: 0,
+      tenantCount: 0,
+      autonomousSharePct: null,
+      avgFirstResponseMs: null,
+      firstResponseSampleCount: 0,
+      channels: [],
       byStatus: statusOrder.map((status) => ({ status, count: 0 })),
       byInbox: [],
       recentActivity: [],
@@ -1253,6 +1422,61 @@ export async function getHelpdeskDashboardMetrics(
   const operationalRows = rows.filter((row) => isOperationalConversation(row));
   const openRows = operationalRows.filter((row) => row.status !== "resolved");
   const byStatus = statusOrder.map((status) => ({ status, count: operationalRows.filter((row) => row.status === status).length }));
+
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const isAfterHours = (d: Date) => {
+    const h = d.getHours();
+    return h >= 18 || h < 6;
+  };
+
+  const resolvedToday = context.conversations.filter(
+    (c) => c.closedAt && c.closedAt >= todayStart,
+  ).length;
+
+  const afterHoursHandled = context.conversations.filter(
+    (c) => c.createdAt >= last24h && isAfterHours(c.createdAt),
+  ).length;
+
+  const slaBreached = openRows.filter((row) => row.slaState === "breached").length;
+
+  const channels = buildChannelMetrics(context.conversations, now);
+
+  // Concierge run quality: trailing 7 days.
+  // - autonomousSharePct: of the conversations whose first non-customer
+  //   message landed in the last 7 days, what share were sent by the AI
+  //   (messageSource === "ai") vs a human teammate.
+  // - avgFirstResponseMs: mean of helpTickets.responseLatencyMs populated
+  //   in the same window.
+  const last7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const messagesByConvo = new Map<string, typeof context.messages>();
+  for (const msg of context.messages) {
+    const arr = messagesByConvo.get(msg.conversationId) ?? [];
+    arr.push(msg);
+    messagesByConvo.set(msg.conversationId, arr);
+  }
+
+  let aiCount = 0;
+  let humanCount = 0;
+  for (const [, msgs] of messagesByConvo) {
+    const sorted = [...msgs].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    const firstResponse = sorted.find(
+      (m) => m.messageType !== "customer" && (m.messageSource === "ai" || m.messageSource === "human"),
+    );
+    if (!firstResponse || firstResponse.createdAt < last7d) continue;
+    if (firstResponse.messageSource === "ai") aiCount += 1;
+    else if (firstResponse.messageSource === "human") humanCount += 1;
+  }
+  const firstResponseSampleCount = aiCount + humanCount;
+  const autonomousSharePct =
+    firstResponseSampleCount > 0 ? Math.round((aiCount / firstResponseSampleCount) * 100) : null;
+
+  const latencies = context.tickets
+    .filter((t) => t.responseLatencyMs != null && t.updatedAt >= last7d)
+    .map((t) => t.responseLatencyMs as number);
+  const avgFirstResponseMs =
+    latencies.length > 0 ? Math.round(latencies.reduce((sum, v) => sum + v, 0) / latencies.length) : null;
 
   const inboxMap = new Map<string, HelpdeskInboxMetric>();
   for (const row of operationalRows) {
@@ -1283,11 +1507,73 @@ export async function getHelpdeskDashboardMetrics(
       openConversations: openRows.length,
       unassigned: openRows.filter((row) => !row.assignee).length,
       slaAtRisk: openRows.filter((row) => row.slaState === "at_risk" || row.slaState === "breached").length,
+      slaBreached,
+      resolvedToday,
       waitingOnCustomer: openRows.filter((row) => row.status === "waiting_on_customer").length,
     },
+    afterHoursHandled,
+    tenantCount: new Set(context.customers.map((c) => c.company ?? c.id)).size,
+    autonomousSharePct,
+    avgFirstResponseMs,
+    firstResponseSampleCount,
+    channels,
     byStatus,
     byInbox: [...inboxMap.values()].sort((a, b) => b.count - a.count),
     recentActivity,
     openTickets: openRows.slice(0, 6),
   };
+}
+
+const CHANNEL_LABELS: Record<string, string> = {
+  email: "Email",
+  whatsapp: "WhatsApp",
+  sms: "SMS",
+  zoom: "Zoom",
+  slack: "Slack",
+  messenger: "Messenger",
+  web: "Web",
+  phone: "Phone",
+};
+
+const CHANNEL_ORDER = ["email", "whatsapp", "sms", "zoom", "slack", "messenger"];
+
+function buildChannelMetrics(conversations: HelpConversation[], now: Date): import("../shared/helpdesk").ChannelMetric[] {
+  const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const seen = new Set<string>();
+  const buckets = new Map<string, number[]>();
+  const counts = new Map<string, number>();
+
+  for (const conversation of conversations) {
+    const channel = (conversation.channel || "email").toLowerCase();
+    seen.add(channel);
+    if (conversation.lastMessageAt < last24h) continue;
+    const hoursAgo = Math.min(23, Math.floor((now.getTime() - conversation.lastMessageAt.getTime()) / (60 * 60 * 1000)));
+    const bucketIndex = 23 - hoursAgo;
+    const arr = buckets.get(channel) ?? new Array(24).fill(0);
+    arr[bucketIndex] = (arr[bucketIndex] ?? 0) + 1;
+    buckets.set(channel, arr);
+    counts.set(channel, (counts.get(channel) ?? 0) + 1);
+  }
+
+  const known = CHANNEL_ORDER.filter((c) => seen.has(c));
+  const extras = [...seen].filter((c) => !CHANNEL_ORDER.includes(c));
+  const offlineDefaults = CHANNEL_ORDER.filter((c) => !seen.has(c));
+
+  const live = [...known, ...extras].map((channel) => ({
+    channel,
+    label: CHANNEL_LABELS[channel] ?? channel.charAt(0).toUpperCase() + channel.slice(1),
+    status: "live" as const,
+    count24h: counts.get(channel) ?? 0,
+    hourlyBuckets: buckets.get(channel) ?? new Array(24).fill(0),
+  }));
+
+  const offline = offlineDefaults.slice(0, 2).map((channel) => ({
+    channel,
+    label: CHANNEL_LABELS[channel] ?? channel,
+    status: "offline" as const,
+    count24h: 0,
+    hourlyBuckets: new Array(24).fill(0),
+  }));
+
+  return [...live, ...offline];
 }
