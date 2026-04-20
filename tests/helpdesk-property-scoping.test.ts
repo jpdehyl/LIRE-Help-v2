@@ -97,4 +97,15 @@ describe("helpdesk propertyId scoping (A5)", () => {
     const subjects = (res.body.conversations as Array<{ subject: string }>).map((c) => c.subject);
     expect(subjects).toEqual(["X convo"]);
   });
+
+  it("navigation counts honor property filters", async () => {
+    const agent = await login("mgr-tenantwide@scope.example.com");
+    const res = await agent.get(`/api/helpdesk/inbox/navigation?propertyId=${propertyX}`);
+    expect(res.status).toBe(200);
+
+    const views = res.body.views as Array<{ key: string; count: number }>;
+    expect(views.find((view) => view.key === "all")?.count).toBe(1);
+    expect(views.find((view) => view.key === "unassigned")?.count).toBe(1);
+    expect(views.find((view) => view.key === "support")?.count).toBe(1);
+  });
 });

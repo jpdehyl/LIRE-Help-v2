@@ -10,6 +10,7 @@ import CustomersPage from "./pages/customers";
 import ConciergePage from "./pages/concierge";
 import SettingsPage from "./pages/settings";
 import SettingsGeneralPage from "./pages/settings-general";
+import SettingsChannelsEmailPage from "./pages/settings-channels-email";
 import SettingsInboxesPage from "./pages/settings-inboxes";
 import SettingsWorkflowsPage from "./pages/settings-workflows";
 import SettingsPlaceholderPage from "./pages/settings-placeholder";
@@ -141,11 +142,6 @@ const settingsTileStubs: readonly SettingsStub[] = [
     description: "Install and customize your messenger on web and mobile.",
   },
   {
-    path: "/settings/channels/email",
-    title: "Email",
-    description: "Manage forwarding, domains, and customization.",
-  },
-  {
     path: "/settings/channels/phone",
     title: "Phone",
     description: "Set up and manage phone and messenger calls.",
@@ -214,6 +210,11 @@ function AppRoutes() {
       <Route path="/settings/workspace/general">
         <RequireAuth>
           <SettingsGeneralPage />
+        </RequireAuth>
+      </Route>
+      <Route path="/settings/channels/email">
+        <RequireAuth>
+          <SettingsChannelsEmailPage />
         </RequireAuth>
       </Route>
       <Route path="/settings/inboxes">

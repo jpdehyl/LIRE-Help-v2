@@ -83,6 +83,27 @@ export const CONCIERGE_CUSTOM_TOOLS = [
   },
   {
     type: "custom" as const,
+    name: "lookup_knowledge",
+    description:
+      "Search the operator's knowledge base for policies, procedures, FAQs, AND uploaded documents (lease templates, policy PDFs, drawings, vendor SOWs). Call this BEFORE answering any policy/procedure or document-specific question — the KB is the source of truth. Returns two sections: `entries` (text-KB rows matching section/substring) and `documents` (semantically-similar chunks from uploaded files, with `title`, `kind`, `page_label`, and `similarity` score 0-1). When quoting document content, cite the document title in your reply so the tenant can ask follow-ups. If `documents_reason` is set, semantic search was unavailable — fall back to `entries` only.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        section: {
+          type: "string",
+          description:
+            "Optional section filter (exact match, case-insensitive) — e.g. 'leasing', 'maintenance', 'billing'. Omit to search across sections.",
+        },
+        query: {
+          type: "string",
+          description:
+            "Optional keyword (case-insensitive substring match on title + content) — e.g. 'pet', 'late fee', 'HVAC'.",
+        },
+      },
+    },
+  },
+  {
+    type: "custom" as const,
     name: "update_ticket",
     description:
       "Update the linked ticket's status, priority, or next milestone. Call this when your reply resolves the question ('resolved') or when you need to mark urgency differently than the default.",
@@ -111,4 +132,5 @@ export type ConciergeToolName =
   | "escalate_to_human"
   | "add_internal_note"
   | "lookup_property_context"
+  | "lookup_knowledge"
   | "update_ticket";

@@ -6,6 +6,7 @@ import { ConversationList } from "./conversation-list";
 import { ConversationDetailPane } from "./conversation-detail";
 import { helpdeskApi } from "../../lib/helpdesk";
 import { ErrorState, Skeleton, SkeletonRow } from "../ui";
+import { resolveConversationSelection } from "./selection";
 
 interface InboxShellProps {
   views: InboxViewDefinition[];
@@ -15,7 +16,7 @@ interface InboxShellProps {
   selectedConversationId: string | null;
   filterPropertyId?: string | null;
   onSelectView: (view: InboxViewKey) => void;
-  onSelectConversation: (conversationId: string) => void;
+  onSelectConversation: (conversationId: string | null) => void;
 }
 
 export function InboxShell({
@@ -38,16 +39,20 @@ export function InboxShell({
   });
 
   const conversations = conversationsQuery.data?.conversations ?? [];
-  const activeConversation = useMemo(
-    () => conversations.find((conversation) => conversation.id === selectedConversationId) ?? conversations[0],
+  const resolvedConversationId = useMemo(
+    () => resolveConversationSelection(conversations, selectedConversationId),
     [conversations, selectedConversationId],
+  );
+  const activeConversation = useMemo(
+    () => conversations.find((conversation) => conversation.id === resolvedConversationId),
+    [conversations, resolvedConversationId],
   );
 
   useEffect(() => {
-    if (activeConversation && activeConversation.id !== selectedConversationId) {
-      onSelectConversation(activeConversation.id);
+    if (resolvedConversationId !== selectedConversationId) {
+      onSelectConversation(resolvedConversationId);
     }
-  }, [activeConversation, onSelectConversation, selectedConversationId]);
+  }, [onSelectConversation, resolvedConversationId, selectedConversationId]);
 
   useEffect(() => {
     if (conversations.length === 0) return;

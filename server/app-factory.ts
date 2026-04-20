@@ -167,6 +167,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<express.E
   const { default: platformSessionsRoutes } = await import("./platform-sessions-routes.js");
   const { default: helpdeskRoutes } = await import("./helpdesk-routes.js");
   const { default: conciergeAdminRoutes } = await import("./concierge/admin-routes.js");
+  const { default: channelsRoutes } = await import("./channels-routes.js");
   const { logTokenUsage } = await import("./token-logger.js");
   const { default: metricsRoutes } = await import("./metrics-routes.js");
   const { default: leasingRoutes } = await import("./pilots/leasing/routes.js");
@@ -185,6 +186,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<express.E
   app.use("/api/platform-sessions", platformSessionsRoutes);
   app.use("/api/helpdesk", helpdeskRoutes);
   app.use("/api/concierge", conciergeAdminRoutes);
+  app.use("/api/channels", channelsRoutes);
   app.use("/api/admin/metrics", metricsRoutes);
   app.use("/api/pilots/leasing", leasingRoutes);
   app.use("/api/pilots/credit", creditRoutes);

@@ -44,6 +44,11 @@ export interface RunTurnArgs {
   brief: ConversationBrief;
   latestCustomerMessage: string;
   handleTool: ToolHandler;
+  // When provided, resume the existing session rather than creating a new
+  // one. The runner only processes events whose id isn't already on the
+  // session — so prior-turn events are skipped even though the SSE stream
+  // replays from the beginning.
+  resumeSessionId?: string;
 }
 
 export interface TurnResult {
@@ -51,56 +56,77 @@ export interface TurnResult {
   stopReason: string;
   // Raw event count — useful for metrics and debugging runaway turns.
   eventCount: number;
+  resumed: boolean;
 }
 
 export async function runConciergeTurn(args: RunTurnArgs): Promise<TurnResult> {
-  const { client, identity, brief, latestCustomerMessage, handleTool } = args;
+  const { client, identity, brief, latestCustomerMessage, handleTool, resumeSessionId } = args;
 
-  const session = await client.beta.sessions.create({
-    agent: { type: "agent", id: identity.agentId, version: identity.agentVersion },
-    environment_id: identity.environmentId,
-    title: `${brief.propertyCode ?? "???"} · ${brief.subject}`.slice(0, 80),
-    metadata: {
-      conversation_id: brief.conversationId,
-      tenant_id: brief.tenantId,
-      channel: brief.channel,
-    },
-  });
+  let sessionId: string;
+  const seenEventIds = new Set<string>();
+  const resumed = Boolean(resumeSessionId);
+
+  if (resumeSessionId) {
+    sessionId = resumeSessionId;
+    // Snapshot existing events so we can skip them during the stream replay.
+    // asc order is the default; we don't need the bodies, just the ids.
+    for await (const event of client.beta.sessions.events.list(sessionId)) {
+      seenEventIds.add(event.id);
+    }
+  } else {
+    const session = await client.beta.sessions.create({
+      agent: { type: "agent", id: identity.agentId, version: identity.agentVersion },
+      environment_id: identity.environmentId,
+      title: `${brief.propertyCode ?? "???"} · ${brief.subject}`.slice(0, 80),
+      metadata: {
+        conversation_id: brief.conversationId,
+        tenant_id: brief.tenantId,
+        channel: brief.channel,
+      },
+    });
+    sessionId = session.id;
+  }
 
   // Stream-first, then send. If we send before opening the stream, the agent
   // can start processing and emit events before our consumer is attached.
-  const stream = await client.beta.sessions.events.stream(session.id);
+  const stream = await client.beta.sessions.events.stream(sessionId);
 
-  const kickoffText = [
-    `Conversation context:`,
-    `- Channel: ${brief.channel}`,
-    `- Customer: ${brief.customerName ?? "unknown"}${brief.customerCompany ? ` (${brief.customerCompany})` : ""}`,
-    `- Property: ${brief.propertyName ?? "unassigned"}${brief.propertyCode ? ` [${brief.propertyCode}]` : ""}`,
-    `- Subject: ${brief.subject}`,
-    ``,
-    `Latest message from the customer:`,
-    latestCustomerMessage,
-  ].join("\n");
+  const messageText = resumed
+    ? `Latest message from the customer:\n${latestCustomerMessage}`
+    : [
+        `Conversation context:`,
+        `- Channel: ${brief.channel}`,
+        `- Customer: ${brief.customerName ?? "unknown"}${brief.customerCompany ? ` (${brief.customerCompany})` : ""}`,
+        `- Property: ${brief.propertyName ?? "unassigned"}${brief.propertyCode ? ` [${brief.propertyCode}]` : ""}`,
+        `- Subject: ${brief.subject}`,
+        ``,
+        `Latest message from the customer:`,
+        latestCustomerMessage,
+      ].join("\n");
 
-  await client.beta.sessions.events.send(session.id, {
-    events: [{ type: "user.message", content: [{ type: "text", text: kickoffText }] }],
+  await client.beta.sessions.events.send(sessionId, {
+    events: [{ type: "user.message", content: [{ type: "text", text: messageText }] }],
   });
 
   let eventCount = 0;
   let stopReason = "unknown";
 
   for await (const event of stream) {
+    // Skip pre-existing events when resuming. For new sessions seenEventIds
+    // is empty so this is a no-op.
+    if ("id" in event && typeof event.id === "string" && seenEventIds.has(event.id)) {
+      continue;
+    }
     eventCount++;
 
     if (event.type === "agent.custom_tool_use") {
-      // The SDK types the event field as `name`, not `tool_name`.
       const call: ToolCall = {
         id: event.id,
         name: (event as { name: string }).name as ConciergeToolName,
         input: ((event as { input?: unknown }).input ?? {}) as Record<string, unknown>,
       };
       const result = await handleTool(call, brief);
-      await client.beta.sessions.events.send(session.id, {
+      await client.beta.sessions.events.send(sessionId, {
         events: [{
           type: "user.custom_tool_result",
           custom_tool_use_id: call.id,
@@ -123,5 +149,5 @@ export async function runConciergeTurn(args: RunTurnArgs): Promise<TurnResult> {
     }
   }
 
-  return { sessionId: session.id, stopReason, eventCount };
+  return { sessionId, stopReason, eventCount, resumed };
 }

@@ -25,14 +25,27 @@ interface ZoomOauthSession {
 const router = Router();
 
 router.get("/start", (req: Request, res: Response) => {
-  const state = randomBytes(16).toString("hex");
-  (req.session as unknown as ZoomOauthSession).zoomOauthState = state;
+  let url: string;
   try {
-    res.redirect(buildAuthorizeUrl(state));
+    const state = randomBytes(16).toString("hex");
+    (req.session as unknown as ZoomOauthSession).zoomOauthState = state;
+    url = buildAuthorizeUrl(state);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     res.status(500).type("text/plain").send(`Zoom OAuth not configured: ${msg}`);
+    return;
   }
+  // express-session doesn't commit the session cookie before a redirect
+  // unless we call save() explicitly. Without this, the state we just
+  // stored doesn't make it back to /callback.
+  req.session.save((err) => {
+    if (err) {
+      console.error("[zoom-oauth] session save failed", err);
+      res.status(500).type("text/plain").send("Failed to persist OAuth state — retry.");
+      return;
+    }
+    res.redirect(url);
+  });
 });
 
 router.get("/callback", async (req: Request, res: Response) => {
@@ -40,8 +53,17 @@ router.get("/callback", async (req: Request, res: Response) => {
   const state = typeof req.query.state === "string" ? req.query.state : null;
   const sessionState = (req.session as unknown as ZoomOauthSession).zoomOauthState ?? null;
 
-  if (!code || !state || !sessionState || sessionState !== state) {
-    res.status(400).type("text/plain").send("Invalid OAuth callback (missing code or state mismatch).");
+  if (!code) {
+    res.status(400).type("text/plain").send("Invalid OAuth callback (missing code).");
+    return;
+  }
+  // When the request came through /auth/zoom/start, both state and
+  // sessionState are populated and must match (CSRF protection). When
+  // it came through Zoom's Marketplace "Install" button, neither is
+  // present — that path is still trusted because the code itself is a
+  // Zoom-signed capability.
+  if (state && sessionState && state !== sessionState) {
+    res.status(400).type("text/plain").send("OAuth state mismatch — restart at /auth/zoom/start.");
     return;
   }
   delete (req.session as unknown as ZoomOauthSession).zoomOauthState;

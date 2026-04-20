@@ -1,5 +1,5 @@
 import {
-  pgTable, text, integer, boolean, timestamp, varchar, jsonb, doublePrecision, uniqueIndex,
+  pgTable, text, integer, boolean, timestamp, varchar, json, jsonb, doublePrecision, index, uniqueIndex, vector,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -10,7 +10,14 @@ import { z } from "zod";
 // Concierge configuration stored per tenant. Migrated to a JSONB column on
 // tenants rather than a dedicated table because the shape evolves during
 // dogfooding and we want additive rollouts without constant migrations.
+export type ConciergeRunState = "live" | "shadow" | "paused";
+
 export interface ConciergeSettings {
+  // live: the agent auto-replies per confidence. shadow: the agent runs
+  // but every send_reply is downgraded to a draft for human review — no
+  // outbound traffic. paused: the orchestrator skips dispatch entirely,
+  // leaving inbound messages in the inbox for a human.
+  runState: ConciergeRunState;
   autonomyCeilingPct: number;
   channels: {
     email: boolean;
@@ -25,6 +32,7 @@ export interface ConciergeSettings {
 }
 
 export const DEFAULT_CONCIERGE_SETTINGS: ConciergeSettings = {
+  runState: "live",
   autonomyCeilingPct: 80,
   channels: { email: true, whatsapp: true, sms: true, zoom: false, slack: false, messenger: false },
 };
@@ -183,6 +191,65 @@ export const platformKnowledge = pgTable("platform_knowledge", {
 
 export type PlatformKnowledgeEntry = typeof platformKnowledge.$inferSelect;
 
+// ─── KB Documents ────────────────────────────────────────────────────────────
+// Uploaded files (leases, drawings, policy PDFs) that supplement
+// platformKnowledge. Phase 1 stores bytes on a Railway volume and extracted
+// plaintext in extractedText; Phase 2 will add chunked embeddings for
+// retrieval via lookup_knowledge. propertyId nullable so a file can apply
+// operator-wide (e.g. standard lease template) or to one building.
+
+export const kbDocumentKinds = [
+  "lease",
+  "drawing",
+  "policy",
+  "sow",
+  "other",
+] as const;
+export type KbDocumentKind = (typeof kbDocumentKinds)[number];
+
+export const kbDocumentExtractStatuses = ["pending", "done", "failed"] as const;
+export type KbDocumentExtractStatus = (typeof kbDocumentExtractStatuses)[number];
+
+export const kbDocuments = pgTable("kb_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id).notNull(),
+  propertyId: varchar("property_id"),
+  kind: text("kind").notNull(),
+  title: text("title").notNull(),
+  originalName: text("original_name").notNull(),
+  mimeType: text("mime_type").notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  storagePath: text("storage_path").notNull(),
+  extractStatus: text("extract_status").default("pending").notNull(),
+  extractError: text("extract_error"),
+  extractedText: text("extracted_text"),
+  uploadedByStaffId: varchar("uploaded_by_staff_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type KbDocument = typeof kbDocuments.$inferSelect;
+
+// ─── KB Document Chunks ──────────────────────────────────────────────────────
+// Retrievable units of a document. Populated after extraction by chunking
+// extractedText into ~800-char slices (with 100-char overlap) and embedding
+// each slice with Voyage (voyage-3-large, 1024 dims). Queried via pgvector
+// cosine similarity at tool-call time through lookup_knowledge.
+
+export const kbDocumentChunks = pgTable("kb_document_chunks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  documentId: varchar("document_id").references(() => kbDocuments.id, { onDelete: "cascade" }).notNull(),
+  tenantId: varchar("tenant_id").references(() => tenants.id).notNull(),
+  chunkIndex: integer("chunk_index").notNull(),
+  content: text("content").notNull(),
+  charCount: integer("char_count").notNull(),
+  pageLabel: text("page_label"),
+  embedding: vector("embedding", { dimensions: 1024 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type KbDocumentChunk = typeof kbDocumentChunks.$inferSelect;
+
 // ─── Platform Sessions ───────────────────────────────────────────────────────
 
 export const platformSessions = pgTable("platform_sessions", {
@@ -260,7 +327,9 @@ export const helpTags = pgTable("help_tags", {
   description: text("description"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  tenantPropertySlugUq: uniqueIndex("help_tags_tenant_property_slug_uq").on(table.tenantId, table.propertyId, table.slug),
+}));
 
 export const helpConversations = pgTable("help_conversations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -274,6 +343,13 @@ export const helpConversations = pgTable("help_conversations", {
   priority: text("priority").notNull().default("medium"),
   assignmentState: text("assignment_state").notNull().default("unassigned"),
   assigneeStaffId: varchar("assignee_staff_id").references(() => staffUsers.id),
+  visibilityStatus: text("visibility_status").notNull().default("active"),
+  previousVisibilityStatus: text("previous_visibility_status"),
+  visibilityChangedAt: timestamp("visibility_changed_at"),
+  visibilityChangedByStaffId: varchar("visibility_changed_by_staff_id").references(() => staffUsers.id),
+  deletedAt: timestamp("deleted_at"),
+  deletedByStaffId: varchar("deleted_by_staff_id").references(() => staffUsers.id),
+  deleteReason: text("delete_reason"),
   channel: text("channel").notNull().default("email"),
   preview: text("preview"),
   unreadCount: integer("unread_count").default(0).notNull(),
@@ -284,6 +360,7 @@ export const helpConversations = pgTable("help_conversations", {
   lastCustomerMessageAt: timestamp("last_customer_message_at"),
   lastMessageAt: timestamp("last_message_at").defaultNow().notNull(),
   snoozedUntil: timestamp("snoozed_until"),
+  snoozedByStaffId: varchar("snoozed_by_staff_id").references(() => staffUsers.id),
   closedAt: timestamp("closed_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -335,7 +412,9 @@ export const helpConversationTags = pgTable("help_conversation_tags", {
   conversationId: varchar("conversation_id").references(() => helpConversations.id).notNull(),
   tagId: varchar("tag_id").references(() => helpTags.id).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  conversationTagUq: uniqueIndex("help_conversation_tags_conversation_tag_uq").on(table.conversationId, table.tagId),
+}));
 
 export type HelpInbox = typeof helpInboxes.$inferSelect;
 export type HelpCustomer = typeof helpCustomers.$inferSelect;
@@ -612,3 +691,56 @@ export const tokenUsage = pgTable("token_usage", {
 
 export type TokenUsage = typeof tokenUsage.$inferSelect;
 export type InsertTokenUsage = typeof tokenUsage.$inferInsert;
+
+// ─── Staff Sessions ─────────────────────────────────────────────────────────
+//
+// Session store for express-session + connect-pg-simple. The table is also
+// created at runtime in server/app-factory.ts so the app can boot against a
+// fresh DB without a migration. It is declared here so `drizzle-kit push`
+// recognizes it and leaves it alone — without this row, push sees drift and
+// tries to drop the live table.
+
+export const staffSessions = pgTable("staff_sessions", {
+  sid: varchar("sid").primaryKey(),
+  sess: json("sess").notNull(),
+  expire: timestamp("expire", { precision: 6 }).notNull(),
+}, (table) => ({
+  expireIdx: index("idx_staff_sessions_expire").on(table.expire),
+}));
+
+// ─── Channel Configs ────────────────────────────────────────────────────────
+//
+// Per-tenant configuration for each communication channel (email, phone,
+// whatsapp, switch, slack, messenger). One row per (tenant, channelType).
+// Provider-specific fields live in configJson so each channel can evolve its
+// schema independently without migrations. Secrets (API keys, tokens) are
+// stored encrypted at rest by the application layer before being persisted —
+// the column itself just holds opaque JSON.
+
+export const CHANNEL_TYPES = ["email", "phone", "whatsapp", "switch", "slack", "messenger"] as const;
+export type ChannelType = typeof CHANNEL_TYPES[number];
+
+export interface EmailChannelConfig {
+  provider: "sendgrid" | "smtp" | "ses" | "none";
+  fromAddress: string | null;
+  fromName: string | null;
+  replyToAddress: string | null;
+  forwardingAddress: string | null;
+  signatureHtml: string | null;
+}
+
+export const channelConfigs = pgTable("channel_configs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id, { onDelete: "cascade" }).notNull(),
+  channelType: text("channel_type").notNull(),
+  enabled: boolean("enabled").notNull().default(false),
+  configJson: jsonb("config_json").$type<Record<string, unknown>>().notNull().default({}),
+  updatedByStaffId: varchar("updated_by_staff_id").references(() => staffUsers.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  tenantChannelUq: uniqueIndex("channel_configs_tenant_channel_uq").on(table.tenantId, table.channelType),
+}));
+
+export type ChannelConfig = typeof channelConfigs.$inferSelect;
+export type InsertChannelConfig = typeof channelConfigs.$inferInsert;

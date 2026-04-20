@@ -1,10 +1,12 @@
 import { useMemo, useRef, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import {
   Activity,
   BookOpen,
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   Compass,
   FlaskConical,
   GraduationCap,
@@ -19,7 +21,14 @@ import {
 } from "lucide-react";
 import { WorkspaceShell } from "../components/workspace/workspace-shell";
 import { conciergeApi, helpdeskApi } from "../lib/helpdesk";
-import type { ConciergeTryResponse, ConciergeTryToolCall } from "../lib/helpdesk";
+import type {
+  ConciergeActivityRun,
+  ConciergeKnowledgeSection,
+  ConciergeKnowledgeSummary,
+  ConciergeSettings,
+  ConciergeTryResponse,
+  ConciergeTryToolCall,
+} from "../lib/helpdesk";
 import { Badge, Button, Textarea } from "../components/ui";
 
 type ConciergeTab = "overview" | "try" | "knowledge" | "learning" | "guardrails" | "activity";
@@ -36,7 +45,7 @@ const tabs: { key: ConciergeTab; label: string; icon: LucideIcon }[] = [
 
 export default function ConciergePage() {
   const [tab, setTab] = useState<ConciergeTab>("overview");
-  const [runState, setRunState] = useState<RunState>("live");
+  const queryClient = useQueryClient();
 
   const metricsQuery = useQuery({
     queryKey: ["helpdesk", "dashboard", "metrics"],
@@ -49,6 +58,29 @@ export default function ConciergePage() {
     queryFn: helpdeskApi.getPropertiesSummary,
     staleTime: 60_000,
   });
+
+  const settingsQuery = useQuery({
+    queryKey: ["concierge", "settings"],
+    queryFn: conciergeApi.getSettings,
+    staleTime: 30_000,
+  });
+
+  const runStateMutation = useMutation({
+    mutationFn: (runState: RunState) => conciergeApi.updateSettings({ runState }),
+    onSuccess: (next) => {
+      queryClient.setQueryData(["concierge", "settings"], next);
+    },
+  });
+
+  const runState: RunState = settingsQuery.data?.runState ?? "live";
+  const onRunStateChange = (next: RunState) => {
+    if (next === runState) return;
+    // Optimistic so the pill flips instantly; the mutation reconciles.
+    queryClient.setQueryData<ConciergeSettings | undefined>(["concierge", "settings"], (prev) =>
+      prev ? { ...prev, runState: next } : prev,
+    );
+    runStateMutation.mutate(next);
+  };
 
   const openThreads = metricsQuery.data?.summary.openConversations ?? null;
   const propertiesWithOpen = useMemo(() => {
@@ -76,7 +108,7 @@ export default function ConciergePage() {
           propertiesWithOpen={propertiesWithOpen || propertiesQuery.data?.properties.length || 0}
           loading={metricsQuery.isLoading || propertiesQuery.isLoading}
           runState={runState}
-          onRunStateChange={setRunState}
+          onRunStateChange={onRunStateChange}
           autonomousSharePct={autonomousSharePct}
           avgFirstResponseMs={avgFirstResponseMs}
           firstResponseSampleCount={firstResponseSampleCount}
@@ -88,6 +120,10 @@ export default function ConciergePage() {
           <OverviewTab />
         ) : tab === "try" ? (
           <TryItTab />
+        ) : tab === "knowledge" ? (
+          <KnowledgeTab />
+        ) : tab === "activity" ? (
+          <ActivityTab />
         ) : (
           <PlaceholderTab tab={tab} />
         )}
@@ -384,6 +420,49 @@ function formatResponseLatency(ms: number | null): string {
   return minsRemaining === 0 ? `${hours}h` : `${hours}h ${minsRemaining}m`;
 }
 
+function ActivityTab() {
+  const activityQuery = useQuery({
+    queryKey: ["concierge", "activity"],
+    queryFn: conciergeApi.getActivity,
+    refetchInterval: 5000,
+  });
+
+  if (activityQuery.isLoading) {
+    return <div className="rounded-md border border-border bg-surface p-5 font-body text-[13px] text-fg-muted">Loading activity…</div>;
+  }
+
+  if (activityQuery.error instanceof Error) {
+    return <div className="rounded-md border border-border bg-surface p-5 font-body text-[13px] text-error">Unable to load activity: {activityQuery.error.message}</div>;
+  }
+
+  const runs = activityQuery.data?.runs ?? [];
+  if (!runs.length) {
+    return <div className="rounded-md border border-border bg-surface p-5 font-body text-[13px] text-fg-muted">No concierge runs recorded yet in this server session.</div>;
+  }
+
+  return (
+    <div className="space-y-3">
+      {runs.map((run) => <ActivityRunCard key={run.id} run={run} />)}
+    </div>
+  );
+}
+
+function ActivityRunCard({ run }: { run: ConciergeActivityRun }) {
+  return (
+    <section className="rounded-md border border-border bg-surface p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge tone={run.source === "draft" ? "accent" : "muted"} size="sm">{run.source.toUpperCase()}</Badge>
+        {run.confidence ? <Badge tone={run.confidence === "low" ? "warning" : "success"} size="sm">{run.confidence.toUpperCase()}</Badge> : null}
+        {run.escalated ? <Badge tone="warning" size="sm">ESCALATED</Badge> : null}
+        <span className="font-mono text-[10px] uppercase tracking-eyebrow text-fg-subtle">{run.createdAt}</span>
+      </div>
+      <p className="mt-2 font-body text-[13px] text-fg"><span className="font-semibold">Message:</span> {run.userMessage}</p>
+      {run.reply ? <p className="mt-1 whitespace-pre-wrap font-body text-[13px] text-fg-muted"><span className="font-semibold text-fg">Reply:</span> {run.reply}</p> : null}
+      {run.toolCalls.length ? <div className="mt-3"><ToolCallList calls={run.toolCalls} /></div> : null}
+    </section>
+  );
+}
+
 function PlaceholderTab({ tab }: { tab: ConciergeTab }) {
   const entry = tabs.find((t) => t.key === tab);
   if (!entry) return null;
@@ -402,6 +481,164 @@ function PlaceholderTab({ tab }: { tab: ConciergeTab }) {
   );
 }
 
+function KnowledgeTab() {
+  const knowledgeQuery = useQuery({
+    queryKey: ["concierge", "knowledge"],
+    queryFn: conciergeApi.getKnowledge,
+    staleTime: 60_000,
+  });
+
+  if (knowledgeQuery.isLoading) {
+    return (
+      <div className="rounded-md border border-border bg-surface p-5 font-body text-[13px] text-fg-muted">
+        Loading knowledge base…
+      </div>
+    );
+  }
+
+  if (knowledgeQuery.error instanceof Error) {
+    return (
+      <div className="rounded-md border border-border bg-surface p-5 font-body text-[13px] text-error">
+        Unable to load knowledge: {knowledgeQuery.error.message}
+      </div>
+    );
+  }
+
+  const data = knowledgeQuery.data;
+  if (!data || data.totalEntries === 0) {
+    return <KnowledgeEmpty editUrl={data?.editUrl ?? "/settings/workspace"} />;
+  }
+
+  return (
+    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <KnowledgeSectionList sections={data.sections} />
+      <KnowledgeSummaryCard summary={data} />
+    </div>
+  );
+}
+
+function KnowledgeEmpty({ editUrl }: { editUrl: string }) {
+  return (
+    <div className="rounded-md border border-dashed border-border bg-surface-2 p-8 text-center">
+      <div className="mx-auto grid h-10 w-10 place-items-center rounded-sm bg-surface text-fg-muted">
+        <BookOpen className="h-5 w-5" />
+      </div>
+      <h2 className="mt-3 font-display text-[16px] font-bold tracking-tight text-fg">
+        No knowledge sources yet
+      </h2>
+      <p className="mx-auto mt-1 max-w-md font-body text-[12.5px] leading-[1.5] text-fg-muted">
+        The Concierge has no platform knowledge to draw from. Add property rules, vendor lists, and lease
+        excerpts so it can answer confidently.
+      </p>
+      <Link href={editUrl}>
+        <a className="mt-4 inline-flex h-8 items-center gap-1.5 rounded-sm bg-fg px-3 font-body text-[12px] font-medium text-surface">
+          Open workspace settings
+        </a>
+      </Link>
+    </div>
+  );
+}
+
+function KnowledgeSectionList({ sections }: { sections: ConciergeKnowledgeSection[] }) {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggle = (id: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  return (
+    <section className="space-y-3">
+      {sections.map((section) => (
+        <div key={section.section} className="rounded-md border border-border bg-surface p-4">
+          <div className="flex items-baseline justify-between gap-2">
+            <h3 className="font-display text-[15px] font-semibold tracking-tight text-fg">{section.section}</h3>
+            <div className="font-mono text-[11px] text-fg-subtle">
+              {section.entryCount} entr{section.entryCount === 1 ? "y" : "ies"} ·{" "}
+              {formatCharCount(section.totalCharCount)}
+            </div>
+          </div>
+          <ul className="mt-3 divide-y divide-border">
+            {section.entries.map((entry) => {
+              const isOpen = expanded.has(entry.id);
+              return (
+                <li key={entry.id} className="py-2.5">
+                  <button
+                    type="button"
+                    onClick={() => toggle(entry.id)}
+                    aria-expanded={isOpen}
+                    className="flex w-full items-center gap-3 text-left"
+                  >
+                    {isOpen ? (
+                      <ChevronDown className="h-3 w-3 shrink-0 text-fg-subtle" />
+                    ) : (
+                      <ChevronRight className="h-3 w-3 shrink-0 text-fg-subtle" />
+                    )}
+                    <span className="min-w-0 flex-1 truncate font-body text-[13px] text-fg">{entry.title}</span>
+                    <span className="font-mono text-[10px] text-fg-subtle">{formatCharCount(entry.contentChars)}</span>
+                    <span className="font-mono text-[10px] text-fg-subtle">{entry.updatedAtLabel}</span>
+                  </button>
+                  {isOpen && (
+                    <pre className="mt-2 ml-6 whitespace-pre-wrap rounded-sm border border-border bg-surface-2 p-3 font-mono text-[11.5px] leading-[1.55] text-fg-muted">
+                      {entry.content || "(empty)"}
+                    </pre>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function KnowledgeSummaryCard({ summary }: { summary: ConciergeKnowledgeSummary }) {
+  return (
+    <aside className="space-y-3">
+      <section className="rounded-md border border-border bg-surface p-4">
+        <div className="eyebrow">Indexed into the agent</div>
+        <div className="mt-3 space-y-2 font-body text-[12px] text-fg-muted">
+          <Stat label="Sections" value={String(summary.sectionCount)} />
+          <Stat label="Entries" value={String(summary.totalEntries)} />
+          <Stat label="Characters" value={formatCharCount(summary.totalCharCount)} />
+        </div>
+        <Link href={summary.editUrl}>
+          <a className="mt-4 inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-sm border border-border bg-surface-2 px-3 font-body text-[12px] font-medium text-fg hover:bg-surface">
+            Edit knowledge
+          </a>
+        </Link>
+      </section>
+      <section className="rounded-md border border-border bg-surface p-4">
+        <div className="eyebrow">How it&rsquo;s used</div>
+        <p className="mt-2 font-body text-[12.5px] leading-[1.5] text-fg-muted">
+          The agent reads this catalog through the
+          <code className="mx-1 rounded-xs bg-surface-2 px-1 font-mono text-[11px]">lookup_knowledge</code>
+          tool. On policy/procedure questions (rent, access, dock rules, etc.) the concierge queries this
+          catalog before drafting a reply, and escalates if nothing matches.
+        </p>
+      </section>
+    </aside>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="font-mono text-[10px] uppercase tracking-eyebrow text-fg-subtle">{label}</span>
+      <span className="font-mono text-[13px] font-medium text-fg">{value}</span>
+    </div>
+  );
+}
+
+function formatCharCount(n: number): string {
+  if (n < 1000) return `${n} chars`;
+  if (n < 10_000) return `${(n / 1000).toFixed(1)}k chars`;
+  return `${Math.round(n / 1000)}k chars`;
+}
+
 interface TryItTurn {
   id: string;
   userMessage: string;
@@ -413,10 +650,13 @@ interface TryItTurn {
 function TryItTab() {
   const [draft, setDraft] = useState("");
   const [turns, setTurns] = useState<TryItTurn[]>([]);
+  // Persist the Managed Agent session id across turns so the agent keeps
+  // context. Cleared by "New conversation".
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
 
   const tryMutation = useMutation({
-    mutationFn: (message: string) => conciergeApi.tryMessage(message),
+    mutationFn: (body: { message: string; sessionId?: string }) => conciergeApi.tryMessage(body),
   });
 
   const scrollToBottom = () => {
@@ -434,26 +674,36 @@ function TryItTab() {
     setDraft("");
     scrollToBottom();
 
-    tryMutation.mutate(message, {
-      onSuccess: (response) => {
-        setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, response, pending: false } : t)));
-        scrollToBottom();
+    tryMutation.mutate(
+      { message, sessionId: sessionId ?? undefined },
+      {
+        onSuccess: (response) => {
+          if (!sessionId) setSessionId(response.sessionId);
+          setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, response, pending: false } : t)));
+          scrollToBottom();
+        },
+        onError: (err) => {
+          setTurns((prev) =>
+            prev.map((t) =>
+              t.id === id
+                ? {
+                    ...t,
+                    error: err instanceof Error ? err.message : "Agent run failed",
+                    pending: false,
+                  }
+                : t,
+            ),
+          );
+          scrollToBottom();
+        },
       },
-      onError: (err) => {
-        setTurns((prev) =>
-          prev.map((t) =>
-            t.id === id
-              ? {
-                  ...t,
-                  error: err instanceof Error ? err.message : "Agent run failed",
-                  pending: false,
-                }
-              : t,
-          ),
-        );
-        scrollToBottom();
-      },
-    });
+    );
+  };
+
+  const resetConversation = () => {
+    setTurns([]);
+    setSessionId(null);
+    setDraft("");
   };
 
   return (
@@ -462,7 +712,24 @@ function TryItTab() {
         <div className="flex items-center gap-2 border-b border-border px-4 py-3">
           <Sparkles className="h-3.5 w-3.5 text-accent" />
           <div className="eyebrow">Playground</div>
+          {sessionId ? (
+            <span
+              className="font-mono text-[10px] uppercase tracking-eyebrow text-fg-subtle"
+              title={sessionId}
+            >
+              Session · {sessionId.slice(5, 11)}
+            </span>
+          ) : null}
           <span className="flex-1" />
+          {turns.length > 0 ? (
+            <button
+              type="button"
+              onClick={resetConversation}
+              className="font-body text-[11.5px] font-medium text-fg-muted hover:text-fg"
+            >
+              New conversation
+            </button>
+          ) : null}
           <span className="font-mono text-[10px] uppercase tracking-eyebrow text-fg-subtle">
             No outbound traffic · no DB writes
           </span>

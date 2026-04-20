@@ -2,6 +2,8 @@ export const inboxViewKeys = [
   // Default views
   "priority",
   "unassigned",
+  "awaiting_reply",
+  "sla_at_risk",
   "escalations",
   "all",
   // Channel views
@@ -15,8 +17,19 @@ export const inboxViewKeys = [
   "maintenance",
   "lease_compliance",
   "after_hours",
+  "support",
+  "billing",
+  "vip",
   // Saved views
   "resolved_today",
+  "closed_recently",
+  "snoozed",
+  "archived",
+  "spam",
+  "trash",
+  "high_priority",
+  "bugs",
+  "renewals",
 ] as const;
 
 export type InboxViewKey = (typeof inboxViewKeys)[number];
@@ -34,10 +47,12 @@ export const inboxChannelKeys: readonly InboxChannelKey[] = [
   "slack",
   "messenger",
 ];
+
 export type ConversationStatus = "open" | "pending" | "waiting_on_customer" | "resolved";
 export type PriorityLevel = "low" | "medium" | "high" | "urgent";
 export type SlaState = "healthy" | "at_risk" | "breached";
 export type AssignmentState = "assigned" | "unassigned" | "team";
+export type ConversationVisibilityStatus = "active" | "archived" | "spam" | "deleted";
 export type TimelineItemType = "customer" | "teammate" | "internal_note" | "system";
 export type ComposerMode = "reply" | "note";
 
@@ -80,6 +95,9 @@ export interface ConversationRow {
   preview: string;
   status: ConversationStatus;
   priority: PriorityLevel;
+  visibilityStatus: ConversationVisibilityStatus;
+  snoozedUntil: string | null;
+  snoozedUntilLabel: string | null;
   unread: boolean;
   assignmentState: AssignmentState;
   assignee: string | null;
@@ -116,16 +134,35 @@ export interface HelpdeskAssigneeOption {
   role: string;
 }
 
+export interface HelpdeskTagOption {
+  id: string;
+  name: string;
+  slug: string;
+  color: string | null;
+}
+
 export interface ConversationDetail {
   conversationId: string;
   title: string;
   summary: string;
   composerMode: ComposerMode;
+  mailbox: {
+    visibilityStatus: ConversationVisibilityStatus;
+    snoozedUntil: string | null;
+    snoozedUntilLabel: string | null;
+    deletedAtLabel: string | null;
+    deleteReason: string | null;
+    canReply: boolean;
+    canArchive: boolean;
+    canSpam: boolean;
+    canSoftDelete: boolean;
+  };
   ticket: TicketSummary;
   customer: CustomerSummary;
   suggestedActions: SuggestionItem[];
   timeline: ConversationTimelineItem[];
   availableAssignees?: HelpdeskAssigneeOption[];
+  availableTags?: HelpdeskTagOption[];
 }
 
 export interface HelpdeskStatusCount {
@@ -168,8 +205,6 @@ export interface HelpdeskDashboardMetrics {
   };
   afterHoursHandled: number;
   tenantCount: number;
-  // Concierge run quality in the trailing 7 days. Null when there's no data
-  // yet so the UI can render a dash instead of "0%" on a fresh deployment.
   autonomousSharePct: number | null;
   avgFirstResponseMs: number | null;
   firstResponseSampleCount: number;
@@ -179,4 +214,3 @@ export interface HelpdeskDashboardMetrics {
   recentActivity: HelpdeskRecentActivityItem[];
   openTickets: ConversationRow[];
 }
-
