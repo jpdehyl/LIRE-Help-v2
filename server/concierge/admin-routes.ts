@@ -3,14 +3,14 @@
 // prompt, model, tools, and skills lives in Claude Console, and LIRE links
 // out for edits rather than duplicating the config surface.
 
-import { Router } from "express";
+import { Router, type Response } from "express";
 import Anthropic from "@anthropic-ai/sdk";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db.js";
 import { requireStaff } from "../middleware/auth.js";
 import { loadConciergeIdentity, runConciergeTurn } from "./session-runner.js";
-import type { ToolCall } from "./session-runner.js";
+import type { ConciergeTurnProgressEvent, ToolCall } from "./session-runner.js";
 import type { ConversationBrief } from "./types.js";
 import type { ConciergeSettingsPatch } from "../storage.js";
 import { getConciergeSettings, getPlatformKnowledge, upsertConciergeSettings } from "../storage.js";
@@ -236,26 +236,78 @@ interface TryItResponse {
   toolCalls: TryItToolCall[];
 }
 
-// Interactive playground for the concierge agent. Runs a full Managed Agent
-// turn with a canned ConversationBrief and tool handlers that simulate success
-// rather than writing to helpMessages / helpTickets — so operators can exercise
-// the agent without producing real outbound replies or mutating state.
-router.post("/try", async (req, res) => {
-  const parse = TryItBodySchema.safeParse(req.body);
-  if (!parse.success) {
-    return res.status(400).json({ message: parse.error.issues[0]?.message ?? "Invalid request" });
+interface ConciergeStreamEvent {
+  type: "ack" | "milestone" | "tool" | "partial_reply" | "complete" | "error";
+  sessionId?: string;
+  milestone?: string;
+  detail?: string;
+  toolCall?: TryItToolCall & { status: "running" | "completed" };
+  reply?: string | null;
+  response?: TryItResponse;
+  message?: string;
+}
+
+function writeStreamEvent(res: Response, event: ConciergeStreamEvent) {
+  res.write(`${JSON.stringify(event)}\n`);
+}
+
+function initNdjsonStream(res: Response) {
+  res.status(200);
+  res.setHeader("Content-Type", "application/x-ndjson; charset=utf-8");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders?.();
+}
+
+function describeProgress(event: ConciergeTurnProgressEvent): { milestone?: string; detail?: string; sessionId?: string } | null {
+  if (event.type === "session") {
+    switch (event.phase) {
+      case "created":
+        return { sessionId: event.sessionId, milestone: "session_ready", detail: "Concierge session opened." };
+      case "resumed":
+        return { sessionId: event.sessionId, milestone: "session_ready", detail: "Continuing the existing concierge session." };
+      case "stream_opened":
+        return { sessionId: event.sessionId, milestone: "agent_connected", detail: "Connected to the managed agent stream." };
+      case "message_sent":
+        return { sessionId: event.sessionId, milestone: "message_sent", detail: "Delivered the latest message to concierge." };
+      case "completed":
+        return { sessionId: event.sessionId, milestone: "completed", detail: `Turn finished with ${event.stopReason}.` };
+    }
   }
 
+  if (event.type === "agent") {
+    switch (event.eventType) {
+      case "agent.message_delta":
+      case "agent.message":
+        return { milestone: "drafting", detail: "Concierge is drafting a reply." };
+      case "agent.custom_tool_use":
+        return { milestone: "tool_requested", detail: "Concierge requested a tool." };
+      case "session.status_active":
+        return { milestone: "thinking", detail: "Concierge is reviewing the conversation context." };
+      case "session.status_idle":
+        return { milestone: "wrapping_up", detail: "Concierge is wrapping up this turn." };
+      default:
+        return null;
+    }
+  }
+
+  return null;
+}
+
+async function executeTryItRun(
+  body: z.infer<typeof TryItBodySchema>,
+  tenantId: string,
+  streamRes?: Response,
+): Promise<TryItResponse> {
   const identity = loadConciergeIdentity();
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!identity || !apiKey) {
-    return res.status(503).json({ message: "Concierge agent is not configured on this deployment." });
+    throw new Error("Concierge agent is not configured on this deployment.");
   }
 
-  const sess = req.session as { staffTenantId?: string | null } | undefined;
   const brief: ConversationBrief = {
     conversationId: `try-${Date.now().toString(36)}`,
-    tenantId: sess?.staffTenantId ?? "playground",
+    tenantId,
     propertyId: null,
     channel: "web",
     customerName: "Playground operator",
@@ -263,7 +315,7 @@ router.post("/try", async (req, res) => {
     propertyName: null,
     propertyCode: null,
     subject: "Operator try-it playground",
-    latestMessage: parse.data.message,
+    latestMessage: body.message,
   };
 
   const toolCalls: TryItToolCall[] = [];
@@ -271,6 +323,38 @@ router.post("/try", async (req, res) => {
   let capturedConfidence: "high" | "medium" | "low" | null = null;
   let escalated = false;
   let escalationReason: string | null = null;
+
+  const emitProgress = async (event: ConciergeTurnProgressEvent) => {
+    if (!streamRes) return;
+    const described = describeProgress(event);
+    if (described) {
+      writeStreamEvent(streamRes, { type: "milestone", ...described });
+    }
+    if (event.type === "tool" && event.phase === "started") {
+      writeStreamEvent(streamRes, {
+        type: "tool",
+        toolCall: {
+          id: event.call.id,
+          name: event.call.name,
+          input: event.call.input,
+          result: "",
+          status: "running",
+        },
+      });
+    }
+    if (event.type === "tool" && event.phase === "completed") {
+      writeStreamEvent(streamRes, {
+        type: "tool",
+        toolCall: {
+          id: event.call.id,
+          name: event.call.name,
+          input: event.call.input,
+          result: event.result,
+          status: "completed",
+        },
+      });
+    }
+  };
 
   const handleTool = async (call: ToolCall): Promise<string> => {
     const input = call.input;
@@ -282,12 +366,26 @@ router.post("/try", async (req, res) => {
         const c = typeof input.confidence === "string" ? input.confidence : "";
         if (c === "high" || c === "medium" || c === "low") capturedConfidence = c;
         result = "Reply captured for playground (not delivered to any channel).";
+        if (streamRes) {
+          writeStreamEvent(streamRes, {
+            type: "partial_reply",
+            detail: "Concierge prepared a reply draft.",
+            reply: capturedReply,
+          });
+        }
         break;
       }
       case "escalate_to_human": {
         escalated = true;
         escalationReason = typeof input.reason === "string" ? input.reason : null;
         result = "Escalation recorded for playground (no one was paged).";
+        if (streamRes) {
+          writeStreamEvent(streamRes, {
+            type: "milestone",
+            milestone: "escalation_flagged",
+            detail: escalationReason ?? "Concierge requested human escalation.",
+          });
+        }
         break;
       }
       case "add_internal_note": {
@@ -309,70 +407,105 @@ router.post("/try", async (req, res) => {
       }
     }
 
-    toolCalls.push({
-      id: call.id,
-      name: call.name,
-      input: input as Record<string, unknown>,
-      result,
-    });
+    toolCalls.push({ id: call.id, name: call.name, input: input as Record<string, unknown>, result });
     return result;
   };
 
-  try {
-    const client = new Anthropic({ apiKey });
-    const turn = await runConciergeTurn({
-      client,
-      identity,
-      brief,
-      latestCustomerMessage: parse.data.message,
-      handleTool,
-      resumeSessionId: parse.data.sessionId,
-    });
+  const client = new Anthropic({ apiKey });
+  const turn = await runConciergeTurn({
+    client,
+    identity,
+    brief,
+    latestCustomerMessage: body.message,
+    handleTool,
+    onProgress: emitProgress,
+    resumeSessionId: body.sessionId,
+  });
 
-    const response: TryItResponse = {
-      sessionId: turn.sessionId,
-      reply: capturedReply,
-      confidence: capturedConfidence,
-      escalated,
-      escalationReason,
-      stopReason: turn.stopReason,
-      toolCalls,
-    };
-    pushActivity({
-      id: `${Date.now()}-try`,
-      source: "try",
-      createdAt: new Date().toISOString(),
-      conversationId: null,
-      userMessage: parse.data.message,
-      reply: capturedReply,
-      confidence: capturedConfidence,
-      escalated,
-      escalationReason,
-      stopReason: turn.stopReason,
-      toolCalls,
-    });
-    return res.json(response);
-  } catch (err) {
-    console.error("[concierge try]", err);
-    return res.status(502).json({ message: err instanceof Error ? err.message : "Agent run failed" });
-  }
-});
+  const response: TryItResponse = {
+    sessionId: turn.sessionId,
+    reply: capturedReply,
+    confidence: capturedConfidence,
+    escalated,
+    escalationReason,
+    stopReason: turn.stopReason,
+    toolCalls,
+  };
+  pushActivity({
+    id: `${Date.now()}-try`,
+    source: "try",
+    createdAt: new Date().toISOString(),
+    conversationId: null,
+    userMessage: body.message,
+    reply: capturedReply,
+    confidence: capturedConfidence,
+    escalated,
+    escalationReason,
+    stopReason: turn.stopReason,
+    toolCalls,
+  });
+  return response;
+}
 
-router.post("/draft", async (req, res) => {
-  const parse = DraftBodySchema.safeParse(req.body);
+// Interactive playground for the concierge agent. Runs a full Managed Agent
+// turn with a canned ConversationBrief and tool handlers that simulate success
+// rather than writing to helpMessages / helpTickets — so operators can exercise
+// the agent without producing real outbound replies or mutating state.
+router.post("/try", async (req, res) => {
+  const parse = TryItBodySchema.safeParse(req.body);
   if (!parse.success) {
     return res.status(400).json({ message: parse.error.issues[0]?.message ?? "Invalid request" });
   }
 
+  const sess = req.session as { staffTenantId?: string | null } | undefined;
+  try {
+    const response = await executeTryItRun(parse.data, sess?.staffTenantId ?? "playground");
+    return res.json(response);
+  } catch (err) {
+    console.error("[concierge try]", err);
+    return res.status(err instanceof Error && err.message.includes("not configured") ? 503 : 502)
+      .json({ message: err instanceof Error ? err.message : "Agent run failed" });
+  }
+});
+
+router.post("/try/stream", async (req, res) => {
+  const parse = TryItBodySchema.safeParse(req.body);
+  if (!parse.success) {
+    return res.status(400).json({ message: parse.error.issues[0]?.message ?? "Invalid request" });
+  }
+
+  const sess = req.session as { staffTenantId?: string | null } | undefined;
+  initNdjsonStream(res);
+  writeStreamEvent(res, {
+    type: "ack",
+    milestone: "accepted",
+    detail: "Concierge run accepted. Waiting for the managed agent.",
+  });
+
+  try {
+    const response = await executeTryItRun(parse.data, sess?.staffTenantId ?? "playground", res);
+    writeStreamEvent(res, { type: "complete", response, sessionId: response.sessionId, reply: response.reply });
+  } catch (err) {
+    console.error("[concierge try stream]", err);
+    writeStreamEvent(res, {
+      type: "error",
+      message: err instanceof Error ? err.message : "Agent run failed",
+    });
+  } finally {
+    res.end();
+  }
+});
+
+async function executeDraftRun(body: z.infer<typeof DraftBodySchema>, streamRes?: Response): Promise<TryItResponse> {
   const identity = loadConciergeIdentity();
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!identity || !apiKey) {
-    return res.status(503).json({ message: "Concierge agent is not configured on this deployment." });
+    throw new Error("Concierge agent is not configured on this deployment.");
   }
 
-  const brief = await buildDraftBrief(parse.data.conversationId);
+  const brief = await buildDraftBrief(body.conversationId);
   if (!brief) {
-    return res.status(404).json({ message: "Conversation not found" });
+    throw new Error("Conversation not found");
   }
 
   const toolCalls: TryItToolCall[] = [];
@@ -380,6 +513,30 @@ router.post("/draft", async (req, res) => {
   let capturedConfidence: "high" | "medium" | "low" | null = null;
   let escalated = false;
   let escalationReason: string | null = null;
+
+  const emitProgress = async (event: ConciergeTurnProgressEvent) => {
+    if (!streamRes) return;
+    const described = describeProgress(event);
+    if (described) writeStreamEvent(streamRes, { type: "milestone", ...described });
+    if (event.type === "tool" && event.phase === "started") {
+      writeStreamEvent(streamRes, {
+        type: "tool",
+        toolCall: { id: event.call.id, name: event.call.name, input: event.call.input, result: "", status: "running" },
+      });
+    }
+    if (event.type === "tool" && event.phase === "completed") {
+      writeStreamEvent(streamRes, {
+        type: "tool",
+        toolCall: {
+          id: event.call.id,
+          name: event.call.name,
+          input: event.call.input,
+          result: event.result,
+          status: "completed",
+        },
+      });
+    }
+  };
 
   const handleTool = async (call: ToolCall): Promise<string> => {
     const input = call.input;
@@ -391,12 +548,26 @@ router.post("/draft", async (req, res) => {
         const c = typeof input.confidence === "string" ? input.confidence : "";
         if (c === "high" || c === "medium" || c === "low") capturedConfidence = c;
         result = "Reply captured as inbox draft (not delivered).";
+        if (streamRes) {
+          writeStreamEvent(streamRes, {
+            type: "partial_reply",
+            detail: "Concierge drafted a reply for the inbox.",
+            reply: capturedReply,
+          });
+        }
         break;
       }
       case "escalate_to_human": {
         escalated = true;
         escalationReason = typeof input.reason === "string" ? input.reason : null;
         result = "Escalation captured for inbox draft (no one was paged).";
+        if (streamRes) {
+          writeStreamEvent(streamRes, {
+            type: "milestone",
+            milestone: "escalation_flagged",
+            detail: escalationReason ?? "Concierge requested human escalation.",
+          });
+        }
         break;
       }
       case "add_internal_note": {
@@ -428,42 +599,82 @@ router.post("/draft", async (req, res) => {
     return result;
   };
 
-  try {
-    const client = new Anthropic({ apiKey });
-    const turn = await runConciergeTurn({
-      client,
-      identity,
-      brief,
-      latestCustomerMessage: brief.latestMessage,
-      handleTool,
-    });
+  const client = new Anthropic({ apiKey });
+  const turn = await runConciergeTurn({
+    client,
+    identity,
+    brief,
+    latestCustomerMessage: brief.latestMessage,
+    handleTool,
+    onProgress: emitProgress,
+  });
 
-    const response: TryItResponse = {
-      sessionId: turn.sessionId,
-      reply: capturedReply,
-      confidence: capturedConfidence,
-      escalated,
-      escalationReason,
-      stopReason: turn.stopReason,
-      toolCalls,
-    };
-    pushActivity({
-      id: `${Date.now()}-draft`,
-      source: "draft",
-      createdAt: new Date().toISOString(),
-      conversationId: brief.conversationId,
-      userMessage: brief.latestMessage,
-      reply: capturedReply,
-      confidence: capturedConfidence,
-      escalated,
-      escalationReason,
-      stopReason: turn.stopReason,
-      toolCalls,
-    });
+  const response: TryItResponse = {
+    sessionId: turn.sessionId,
+    reply: capturedReply,
+    confidence: capturedConfidence,
+    escalated,
+    escalationReason,
+    stopReason: turn.stopReason,
+    toolCalls,
+  };
+  pushActivity({
+    id: `${Date.now()}-draft`,
+    source: "draft",
+    createdAt: new Date().toISOString(),
+    conversationId: brief.conversationId,
+    userMessage: brief.latestMessage,
+    reply: capturedReply,
+    confidence: capturedConfidence,
+    escalated,
+    escalationReason,
+    stopReason: turn.stopReason,
+    toolCalls,
+  });
+  return response;
+}
+
+router.post("/draft", async (req, res) => {
+  const parse = DraftBodySchema.safeParse(req.body);
+  if (!parse.success) {
+    return res.status(400).json({ message: parse.error.issues[0]?.message ?? "Invalid request" });
+  }
+
+  try {
+    const response = await executeDraftRun(parse.data);
     return res.json(response);
   } catch (err) {
     console.error("[concierge draft]", err);
-    return res.status(502).json({ message: err instanceof Error ? err.message : "Agent run failed" });
+    const message = err instanceof Error ? err.message : "Agent run failed";
+    const status = message === "Conversation not found" ? 404 : message.includes("not configured") ? 503 : 502;
+    return res.status(status).json({ message });
+  }
+});
+
+router.post("/draft/stream", async (req, res) => {
+  const parse = DraftBodySchema.safeParse(req.body);
+  if (!parse.success) {
+    return res.status(400).json({ message: parse.error.issues[0]?.message ?? "Invalid request" });
+  }
+
+  initNdjsonStream(res);
+  writeStreamEvent(res, {
+    type: "ack",
+    milestone: "accepted",
+    detail: "Draft request accepted. Gathering conversation context.",
+  });
+
+  try {
+    const response = await executeDraftRun(parse.data, res);
+    writeStreamEvent(res, { type: "complete", response, sessionId: response.sessionId, reply: response.reply });
+  } catch (err) {
+    console.error("[concierge draft stream]", err);
+    writeStreamEvent(res, {
+      type: "error",
+      message: err instanceof Error ? err.message : "Agent run failed",
+    });
+  } finally {
+    res.end();
   }
 });
 

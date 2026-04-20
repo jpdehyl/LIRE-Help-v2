@@ -92,6 +92,17 @@ export interface ConciergeTryResponse {
   toolCalls: ConciergeTryToolCall[];
 }
 
+export interface ConciergeStreamEvent {
+  type: "ack" | "milestone" | "tool" | "partial_reply" | "complete" | "error";
+  sessionId?: string;
+  milestone?: string;
+  detail?: string;
+  toolCall?: ConciergeTryToolCall & { status: "running" | "completed" };
+  reply?: string | null;
+  response?: ConciergeTryResponse;
+  message?: string;
+}
+
 export interface ConciergeActivityRun {
   id: string;
   source: "try" | "draft";
@@ -154,8 +165,18 @@ export const conciergeApi = {
   getAgent: () => api.get<ConciergeAgentSummary>("/api/concierge/agent"),
   tryMessage: (body: { message: string; sessionId?: string }) =>
     api.post<ConciergeTryResponse>("/api/concierge/try", body),
+  tryMessageStream: (
+    body: { message: string; sessionId?: string },
+    onEvent: (event: ConciergeStreamEvent) => void | Promise<void>,
+    signal?: AbortSignal,
+  ) => api.postStream<ConciergeStreamEvent>("/api/concierge/try/stream", body, onEvent, signal),
   draftReply: (conversationId: string) =>
     api.post<ConciergeTryResponse>("/api/concierge/draft", { conversationId }),
+  draftReplyStream: (
+    conversationId: string,
+    onEvent: (event: ConciergeStreamEvent) => void | Promise<void>,
+    signal?: AbortSignal,
+  ) => api.postStream<ConciergeStreamEvent>("/api/concierge/draft/stream", { conversationId }, onEvent, signal),
   getKnowledge: () => api.get<ConciergeKnowledgeSummary>("/api/concierge/knowledge"),
   getActivity: () => api.get<{ runs: ConciergeActivityRun[] }>("/api/concierge/activity"),
   getSettings: () => api.get<ConciergeSettings>("/api/concierge/settings"),

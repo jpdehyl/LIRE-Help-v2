@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import {
@@ -26,6 +26,7 @@ import type {
   ConciergeKnowledgeSection,
   ConciergeKnowledgeSummary,
   ConciergeSettings,
+  ConciergeStreamEvent,
   ConciergeTryResponse,
   ConciergeTryToolCall,
 } from "../lib/helpdesk";
@@ -645,19 +646,48 @@ interface TryItTurn {
   response: ConciergeTryResponse | null;
   error: string | null;
   pending: boolean;
+  sessionId: string | null;
+  milestones: { key: string; detail: string }[];
+  toolCallsLive: (ConciergeTryToolCall & { status: "running" | "completed" })[];
+  partialReply: string | null;
+  startedAt: number;
+  elapsedMs: number;
+}
+
+const streamMilestoneLabels: Record<string, string> = {
+  accepted: "Request received",
+  session_ready: "Session ready",
+  agent_connected: "Agent connected",
+  message_sent: "Message delivered",
+  thinking: "Reviewing context",
+  tool_requested: "Tool requested",
+  drafting: "Drafting reply",
+  escalation_flagged: "Escalation flagged",
+  wrapping_up: "Wrapping up",
+  completed: "Complete",
+};
+
+function formatElapsed(ms: number): string {
+  const totalSeconds = Math.max(0, Math.round(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
 }
 
 function TryItTab() {
   const [draft, setDraft] = useState("");
   const [turns, setTurns] = useState<TryItTurn[]>([]);
-  // Persist the Managed Agent session id across turns so the agent keeps
-  // context. Cleared by "New conversation".
   const [sessionId, setSessionId] = useState<string | null>(null);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const inFlightRef = useRef<AbortController | null>(null);
 
-  const tryMutation = useMutation({
-    mutationFn: (body: { message: string; sessionId?: string }) => conciergeApi.tryMessage(body),
-  });
+  useEffect(() => {
+    if (!turns.some((turn) => turn.pending)) return undefined;
+    const timer = window.setInterval(() => {
+      setTurns((prev) => prev.map((turn) => (turn.pending ? { ...turn, elapsedMs: Date.now() - turn.startedAt } : turn)));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [turns]);
 
   const scrollToBottom = () => {
     requestAnimationFrame(() => {
@@ -667,40 +697,60 @@ function TryItTab() {
 
   const onSend = () => {
     const message = draft.trim();
-    if (!message || tryMutation.isPending) return;
+    if (!message || inFlightRef.current) return;
     const id = `turn-${Date.now()}`;
-    const pendingTurn: TryItTurn = { id, userMessage: message, response: null, error: null, pending: true };
-    setTurns((prev) => [...prev, pendingTurn]);
+    const startedAt = Date.now();
+    setTurns((prev) => [...prev, {
+      id,
+      userMessage: message,
+      response: null,
+      error: null,
+      pending: true,
+      sessionId,
+      milestones: [{ key: "accepted", detail: "Concierge run accepted." }],
+      toolCallsLive: [],
+      partialReply: null,
+      startedAt,
+      elapsedMs: 0,
+    }]);
     setDraft("");
     scrollToBottom();
-
-    tryMutation.mutate(
-      { message, sessionId: sessionId ?? undefined },
-      {
-        onSuccess: (response) => {
-          if (!sessionId) setSessionId(response.sessionId);
-          setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, response, pending: false } : t)));
-          scrollToBottom();
-        },
-        onError: (err) => {
-          setTurns((prev) =>
-            prev.map((t) =>
-              t.id === id
-                ? {
-                    ...t,
-                    error: err instanceof Error ? err.message : "Agent run failed",
-                    pending: false,
-                  }
-                : t,
-            ),
-          );
-          scrollToBottom();
-        },
-      },
-    );
+    const controller = new AbortController();
+    inFlightRef.current = controller;
+    void conciergeApi.tryMessageStream({ message, sessionId: sessionId ?? undefined }, async (event: ConciergeStreamEvent) => {
+      setTurns((prev) => prev.map((turn) => {
+        if (turn.id !== id) return turn;
+        if (event.sessionId && !sessionId) setSessionId(event.sessionId);
+        if (event.type === "ack" || event.type === "milestone") {
+          const key = event.milestone ?? event.type;
+          const detail = event.detail ?? streamMilestoneLabels[key] ?? "Concierge updated its status.";
+          return turn.milestones.some((item) => item.key === key && item.detail === detail)
+            ? { ...turn, sessionId: event.sessionId ?? turn.sessionId }
+            : { ...turn, sessionId: event.sessionId ?? turn.sessionId, milestones: [...turn.milestones, { key, detail }] };
+        }
+        if (event.type === "tool" && event.toolCall) {
+          return { ...turn, toolCallsLive: [...turn.toolCallsLive.filter((item) => item.id !== event.toolCall!.id), event.toolCall] };
+        }
+        if (event.type === "partial_reply") return { ...turn, partialReply: (event.reply || "").trim() || null };
+        if (event.type === "complete" && event.response) {
+          return { ...turn, sessionId: event.response.sessionId, response: event.response, pending: false, partialReply: (event.response.reply || "").trim() || null, toolCallsLive: event.response.toolCalls.map((call) => ({ ...call, status: "completed" as const })), elapsedMs: Date.now() - turn.startedAt };
+        }
+        if (event.type === "error") return { ...turn, error: event.message || "Agent run failed", pending: false, elapsedMs: Date.now() - turn.startedAt };
+        return turn;
+      }));
+      scrollToBottom();
+    }, controller.signal).catch((err) => {
+      if (controller.signal.aborted) return;
+      setTurns((prev) => prev.map((turn) => (turn.id === id ? { ...turn, error: err instanceof Error ? err.message : "Agent run failed", pending: false, elapsedMs: Date.now() - turn.startedAt } : turn)));
+      scrollToBottom();
+    }).finally(() => {
+      if (inFlightRef.current === controller) inFlightRef.current = null;
+    });
   };
 
   const resetConversation = () => {
+    inFlightRef.current?.abort();
+    inFlightRef.current = null;
     setTurns([]);
     setSessionId(null);
     setDraft("");
@@ -712,162 +762,37 @@ function TryItTab() {
         <div className="flex items-center gap-2 border-b border-border px-4 py-3">
           <Sparkles className="h-3.5 w-3.5 text-accent" />
           <div className="eyebrow">Playground</div>
-          {sessionId ? (
-            <span
-              className="font-mono text-[10px] uppercase tracking-eyebrow text-fg-subtle"
-              title={sessionId}
-            >
-              Session · {sessionId.slice(5, 11)}
-            </span>
-          ) : null}
+          {sessionId ? <span className="font-mono text-[10px] uppercase tracking-eyebrow text-fg-subtle" title={sessionId}>Session · {sessionId.slice(5, 11)}</span> : null}
           <span className="flex-1" />
-          {turns.length > 0 ? (
-            <button
-              type="button"
-              onClick={resetConversation}
-              className="font-body text-[11.5px] font-medium text-fg-muted hover:text-fg"
-            >
-              New conversation
-            </button>
-          ) : null}
-          <span className="font-mono text-[10px] uppercase tracking-eyebrow text-fg-subtle">
-            No outbound traffic · no DB writes
-          </span>
+          {turns.length > 0 ? <button type="button" onClick={resetConversation} className="font-body text-[11.5px] font-medium text-fg-muted hover:text-fg">New conversation</button> : null}
+          <span className="font-mono text-[10px] uppercase tracking-eyebrow text-fg-subtle">No outbound traffic · no DB writes</span>
         </div>
-
-        <div ref={scrollerRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
-          {turns.length === 0 ? (
-            <TryItIntro />
-          ) : (
-            turns.map((turn) => <TryItTurnView key={turn.id} turn={turn} />)
-          )}
-        </div>
-
+        <div ref={scrollerRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">{turns.length === 0 ? <TryItIntro /> : turns.map((turn) => <TryItTurnView key={turn.id} turn={turn} />)}</div>
         <div className="border-t border-border bg-surface px-4 py-3">
-          <Textarea
-            compact
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            placeholder="Type a message the way a tenant would send it…"
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-                event.preventDefault();
-                onSend();
-              }
-            }}
-            className="min-h-16"
-          />
+          <Textarea compact value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Type a message the way a tenant would send it…" onKeyDown={(event) => { if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) { event.preventDefault(); onSend(); } }} className="min-h-16" />
           <div className="mt-2 flex items-center gap-2">
-            <p className="flex-1 font-body text-[11.5px] text-fg-muted">
-              <kbd className="rounded-xs border border-border bg-surface-2 px-1 font-mono text-[10px]">⌘</kbd>
-              +
-              <kbd className="rounded-xs border border-border bg-surface-2 px-1 font-mono text-[10px]">Enter</kbd>{" "}
-              to send · runs the live Claude-managed Agent with no channel delivery.
-            </p>
-            <Button
-              size="sm"
-              variant="dark"
-              onClick={onSend}
-              disabled={!draft.trim() || tryMutation.isPending}
-              loading={tryMutation.isPending}
-            >
-              <Send className="mr-1 h-3 w-3" />
-              Send
-            </Button>
+            <p className="flex-1 font-body text-[11.5px] text-fg-muted"><kbd className="rounded-xs border border-border bg-surface-2 px-1 font-mono text-[10px]">⌘</kbd>+<kbd className="rounded-xs border border-border bg-surface-2 px-1 font-mono text-[10px]">Enter</kbd> to send · runs the live Claude-managed Agent with no channel delivery.</p>
+            <Button size="sm" variant="dark" onClick={onSend} disabled={!draft.trim() || !!inFlightRef.current} loading={!!inFlightRef.current}><Send className="mr-1 h-3 w-3" />Send</Button>
           </div>
         </div>
       </section>
-
-      <aside className="space-y-3">
-        <section className="rounded-md border border-border bg-surface p-4">
-          <div className="eyebrow">How the playground runs</div>
-          <p className="mt-2 font-body text-[12.5px] leading-[1.55] text-fg-muted">
-            Each message opens a fresh session on the Claude-managed Agent. Custom tools are intercepted:
-            <code className="mx-1 rounded-xs bg-surface-2 px-1 font-mono text-[11px]">send_reply</code>
-            is captured and shown here,
-            <code className="mx-1 rounded-xs bg-surface-2 px-1 font-mono text-[11px]">lookup_property_context</code>
-            returns a neutral stub, and nothing is written to conversations or tickets.
-          </p>
-        </section>
-      </aside>
+      <aside className="space-y-3"><section className="rounded-md border border-border bg-surface p-4"><div className="eyebrow">How the playground runs</div><p className="mt-2 font-body text-[12.5px] leading-[1.55] text-fg-muted">Each message opens a managed agent session and streams milestones, live tool status, and any draft reply that becomes available before the turn finishes.</p></section></aside>
     </div>
   );
 }
 
-function TryItIntro() {
-  return (
-    <div className="rounded-sm border border-dashed border-border bg-surface-2 p-5 text-center">
-      <div className="mx-auto grid h-9 w-9 place-items-center rounded-sm bg-surface text-accent">
-        <Sparkles className="h-4 w-4" />
-      </div>
-      <p className="mt-3 font-body text-[13px] leading-[1.5] text-fg">
-        Exercise the concierge without touching real threads.
-      </p>
-      <p className="mt-1 font-body text-[12px] leading-[1.5] text-fg-muted">
-        Try something like “Dock 4 compressor is down, perishables arriving 5 AM” or “Can I get my April invoice resent?”
-      </p>
-    </div>
-  );
-}
+function TryItIntro() { return <div className="rounded-sm border border-dashed border-border bg-surface-2 p-5 text-center"><div className="mx-auto grid h-9 w-9 place-items-center rounded-sm bg-surface text-accent"><Sparkles className="h-4 w-4" /></div><p className="mt-3 font-body text-[13px] leading-[1.5] text-fg">Exercise the concierge without touching real threads.</p><p className="mt-1 font-body text-[12px] leading-[1.5] text-fg-muted">Try something like “Dock 4 compressor is down, perishables arriving 5 AM” or “Can I get my April invoice resent?”</p></div>; }
 
 function TryItTurnView({ turn }: { turn: TryItTurn }) {
-  return (
-    <div className="space-y-2.5">
-      <div className="flex justify-end">
-        <div className="max-w-[85%] rounded-sm border border-border bg-surface-2 px-3 py-2">
-          <div className="mb-0.5 flex items-center gap-1.5">
-            <UserRound className="h-3 w-3 text-fg-subtle" />
-            <span className="font-mono text-[10px] uppercase tracking-eyebrow text-fg-subtle">You</span>
-          </div>
-          <p className="whitespace-pre-wrap font-body text-[13px] leading-[1.45] text-fg">{turn.userMessage}</p>
-        </div>
-      </div>
-
-      <div className="flex justify-start">
-        <div className="max-w-[85%] space-y-2">
-          <div className="rounded-sm border border-border bg-surface px-3 py-2">
-            <div className="mb-0.5 flex items-center gap-1.5">
-              <Sparkles className="h-3 w-3 text-accent" />
-              <span className="font-mono text-[10px] uppercase tracking-eyebrow text-fg-subtle">Concierge</span>
-              {turn.response?.confidence ? (
-                <Badge tone={turn.response.confidence === "low" ? "warning" : "success"} size="sm">
-                  {turn.response.confidence.toUpperCase()} CONFIDENCE
-                </Badge>
-              ) : null}
-              {turn.response?.escalated ? (
-                <Badge tone="warning" size="sm">
-                  Escalated
-                </Badge>
-              ) : null}
-            </div>
-            {turn.pending ? (
-              <p className="font-body text-[13px] italic text-fg-muted">Running the agent…</p>
-            ) : turn.error ? (
-              <p className="font-body text-[13px] text-error">{turn.error}</p>
-            ) : turn.response?.reply ? (
-              <p className="whitespace-pre-wrap font-body text-[13px] leading-[1.5] text-fg">{turn.response.reply}</p>
-            ) : turn.response?.escalated ? (
-              <p className="font-body text-[13px] text-fg-muted">
-                Agent escalated without sending a reply
-                {turn.response.escalationReason ? ` — "${turn.response.escalationReason}"` : ""}.
-              </p>
-            ) : (
-              <p className="font-body text-[13px] text-fg-muted">
-                Agent ended the turn without calling <code className="font-mono text-[11px]">send_reply</code>.
-              </p>
-            )}
-          </div>
-
-          {turn.response?.toolCalls.length ? (
-            <ToolCallList calls={turn.response.toolCalls} />
-          ) : null}
-        </div>
-      </div>
-    </div>
-  );
+  const visibleReply = turn.response?.reply ?? turn.partialReply;
+  return <div className="space-y-2.5"><div className="flex justify-end"><div className="max-w-[85%] rounded-sm border border-border bg-surface-2 px-3 py-2"><div className="mb-0.5 flex items-center gap-1.5"><UserRound className="h-3 w-3 text-fg-subtle" /><span className="font-mono text-[10px] uppercase tracking-eyebrow text-fg-subtle">You</span></div><p className="whitespace-pre-wrap font-body text-[13px] leading-[1.45] text-fg">{turn.userMessage}</p></div></div><div className="flex justify-start"><div className="max-w-[85%] space-y-2"><div className="rounded-sm border border-border bg-surface px-3 py-2"><div className="mb-0.5 flex items-center gap-1.5"><Sparkles className="h-3 w-3 text-accent" /><span className="font-mono text-[10px] uppercase tracking-eyebrow text-fg-subtle">Concierge</span>{turn.response?.confidence ? <Badge tone={turn.response.confidence === "low" ? "warning" : "success"} size="sm">{turn.response.confidence.toUpperCase()} CONFIDENCE</Badge> : null}{turn.response?.escalated ? <Badge tone="warning" size="sm">Escalated</Badge> : null}<Badge tone="neutral" size="sm">{formatElapsed(turn.elapsedMs)}</Badge></div>{turn.pending ? <div className="space-y-2"><p className="font-body text-[13px] italic text-fg-muted">Running the agent…</p><ol className="space-y-1 text-[12px] text-fg-muted">{turn.milestones.map((item, index) => <li key={`${item.key}-${index}`}><span className="font-medium text-fg">{streamMilestoneLabels[item.key] ?? item.key.replaceAll("_", " ")}</span><span> · {item.detail}</span></li>)}</ol></div> : turn.error ? <p className="font-body text-[13px] text-error">{turn.error}</p> : visibleReply ? <p className="whitespace-pre-wrap font-body text-[13px] leading-[1.5] text-fg">{visibleReply}</p> : turn.response?.escalated ? <p className="font-body text-[13px] text-fg-muted">Agent escalated without sending a reply{turn.response.escalationReason ? ` — "${turn.response.escalationReason}"` : ""}.</p> : <p className="font-body text-[13px] text-fg-muted">Agent ended the turn without calling <code className="font-mono text-[11px]">send_reply</code>.</p>}</div>{turn.toolCallsLive.length ? <ToolCallList calls={turn.toolCallsLive} /> : null}</div></div></div>;
 }
 
-function ToolCallList({ calls }: { calls: ConciergeTryToolCall[] }) {
+function ToolCallList({
+  calls,
+}: {
+  calls: Array<ConciergeTryToolCall & { status?: "running" | "completed" }>;
+}) {
   return (
     <details className="rounded-sm border border-border bg-surface-2 px-3 py-2 text-left">
       <summary className="cursor-pointer select-none font-mono text-[11px] uppercase tracking-eyebrow text-fg-muted">
@@ -879,6 +804,11 @@ function ToolCallList({ calls }: { calls: ConciergeTryToolCall[] }) {
             <div className="flex items-center gap-2">
               <span className="font-mono text-[10px] text-fg-subtle">{i + 1}.</span>
               <code className="font-mono text-[11.5px] font-semibold text-fg">{call.name}</code>
+              {call.status ? (
+                <Badge tone={call.status === "running" ? "warning" : "success"} size="sm">
+                  {call.status === "running" ? "Running" : "Done"}
+                </Badge>
+              ) : null}
             </div>
             <pre className="mt-1.5 overflow-x-auto whitespace-pre-wrap break-words rounded-xs bg-surface-2 px-2 py-1.5 font-mono text-[11px] leading-[1.45] text-fg-muted">
               {JSON.stringify(call.input, null, 2)}
