@@ -92,6 +92,20 @@ export interface ConciergeTryResponse {
   toolCalls: ConciergeTryToolCall[];
 }
 
+export interface ConciergeActivityRun {
+  id: string;
+  source: "try" | "draft";
+  createdAt: string;
+  conversationId: string | null;
+  userMessage: string;
+  reply: string | null;
+  confidence: "high" | "medium" | "low" | null;
+  escalated: boolean;
+  escalationReason: string | null;
+  stopReason: string;
+  toolCalls: ConciergeTryToolCall[];
+}
+
 export interface ConciergeKnowledgeEntry {
   id: string;
   title: string;
@@ -140,7 +154,10 @@ export const conciergeApi = {
   getAgent: () => api.get<ConciergeAgentSummary>("/api/concierge/agent"),
   tryMessage: (body: { message: string; sessionId?: string }) =>
     api.post<ConciergeTryResponse>("/api/concierge/try", body),
+  draftReply: (conversationId: string) =>
+    api.post<ConciergeTryResponse>("/api/concierge/draft", { conversationId }),
   getKnowledge: () => api.get<ConciergeKnowledgeSummary>("/api/concierge/knowledge"),
+  getActivity: () => api.get<{ runs: ConciergeActivityRun[] }>("/api/concierge/activity"),
   getSettings: () => api.get<ConciergeSettings>("/api/concierge/settings"),
   updateSettings: (patch: ConciergeSettingsPatch) =>
     api.patch<ConciergeSettings>("/api/concierge/settings", patch),

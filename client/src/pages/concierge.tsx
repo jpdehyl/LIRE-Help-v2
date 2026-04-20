@@ -22,6 +22,7 @@ import {
 import { WorkspaceShell } from "../components/workspace/workspace-shell";
 import { conciergeApi, helpdeskApi } from "../lib/helpdesk";
 import type {
+  ConciergeActivityRun,
   ConciergeKnowledgeSection,
   ConciergeKnowledgeSummary,
   ConciergeSettings,
@@ -121,6 +122,8 @@ export default function ConciergePage() {
           <TryItTab />
         ) : tab === "knowledge" ? (
           <KnowledgeTab />
+        ) : tab === "activity" ? (
+          <ActivityTab />
         ) : (
           <PlaceholderTab tab={tab} />
         )}
@@ -415,6 +418,49 @@ function formatResponseLatency(ms: number | null): string {
   const hours = Math.floor(minutes / 60);
   const minsRemaining = minutes % 60;
   return minsRemaining === 0 ? `${hours}h` : `${hours}h ${minsRemaining}m`;
+}
+
+function ActivityTab() {
+  const activityQuery = useQuery({
+    queryKey: ["concierge", "activity"],
+    queryFn: conciergeApi.getActivity,
+    refetchInterval: 5000,
+  });
+
+  if (activityQuery.isLoading) {
+    return <div className="rounded-md border border-border bg-surface p-5 font-body text-[13px] text-fg-muted">Loading activity…</div>;
+  }
+
+  if (activityQuery.error instanceof Error) {
+    return <div className="rounded-md border border-border bg-surface p-5 font-body text-[13px] text-error">Unable to load activity: {activityQuery.error.message}</div>;
+  }
+
+  const runs = activityQuery.data?.runs ?? [];
+  if (!runs.length) {
+    return <div className="rounded-md border border-border bg-surface p-5 font-body text-[13px] text-fg-muted">No concierge runs recorded yet in this server session.</div>;
+  }
+
+  return (
+    <div className="space-y-3">
+      {runs.map((run) => <ActivityRunCard key={run.id} run={run} />)}
+    </div>
+  );
+}
+
+function ActivityRunCard({ run }: { run: ConciergeActivityRun }) {
+  return (
+    <section className="rounded-md border border-border bg-surface p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge tone={run.source === "draft" ? "accent" : "muted"} size="sm">{run.source.toUpperCase()}</Badge>
+        {run.confidence ? <Badge tone={run.confidence === "low" ? "warning" : "success"} size="sm">{run.confidence.toUpperCase()}</Badge> : null}
+        {run.escalated ? <Badge tone="warning" size="sm">ESCALATED</Badge> : null}
+        <span className="font-mono text-[10px] uppercase tracking-eyebrow text-fg-subtle">{run.createdAt}</span>
+      </div>
+      <p className="mt-2 font-body text-[13px] text-fg"><span className="font-semibold">Message:</span> {run.userMessage}</p>
+      {run.reply ? <p className="mt-1 whitespace-pre-wrap font-body text-[13px] text-fg-muted"><span className="font-semibold text-fg">Reply:</span> {run.reply}</p> : null}
+      {run.toolCalls.length ? <div className="mt-3"><ToolCallList calls={run.toolCalls} /></div> : null}
+    </section>
+  );
 }
 
 function PlaceholderTab({ tab }: { tab: ConciergeTab }) {

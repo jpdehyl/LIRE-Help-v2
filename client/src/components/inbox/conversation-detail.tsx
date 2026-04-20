@@ -10,7 +10,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { helpdeskApi } from "../../lib/helpdesk";
+import { conciergeApi, helpdeskApi } from "../../lib/helpdesk";
 import type {
   ConversationDetail,
   ConversationRow,
@@ -140,23 +140,10 @@ export function ConversationDetailPane({
     setAiLoading(true);
     setAiError(null);
     try {
-      const tenant = detail.customer?.name || "A tenant";
-      const company = detail.customer?.company ? ` from ${detail.customer.company}` : "";
-      const ask = conversation.preview || conversation.subject || "requesting assistance";
-      const userMsg = `I'm ${tenant}${company}. ${ask}`;
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [{ role: "user", content: userMsg }],
-          sessionId: `inbox-${requestId}`,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
+      const data = await conciergeApi.draftReply(requestId);
       if (activeConversationIdRef.current !== requestId) return;
-      if (!res.ok) throw new Error((data && data.error) || `Request failed (${res.status})`);
-      setAiDraft(((data.response as string) || "").trim() || null);
-      setAiEscalate(!!data.escalate);
+      setAiDraft((data.reply || "").trim() || null);
+      setAiEscalate(!!data.escalated);
     } catch (err) {
       if (activeConversationIdRef.current !== requestId) return;
       setAiError(err instanceof Error ? err.message : "Draft request failed.");

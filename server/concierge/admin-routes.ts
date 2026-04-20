@@ -5,16 +5,117 @@
 
 import { Router } from "express";
 import Anthropic from "@anthropic-ai/sdk";
+import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
+import { db } from "../db.js";
 import { requireStaff } from "../middleware/auth.js";
 import { loadConciergeIdentity, runConciergeTurn } from "./session-runner.js";
 import type { ToolCall } from "./session-runner.js";
 import type { ConversationBrief } from "./types.js";
 import type { ConciergeSettingsPatch } from "../storage.js";
 import { getConciergeSettings, getPlatformKnowledge, upsertConciergeSettings } from "../storage.js";
+import { helpConversations, helpCustomers, helpMessages, properties } from "../../shared/schema.js";
 
 const router = Router();
 router.use(requireStaff);
+
+const KB_LOOKUP_MAX_RESULTS = 10;
+const RECENT_ACTIVITY_LIMIT = 25;
+
+type ActivityRun = {
+  id: string;
+  source: "try" | "draft";
+  createdAt: string;
+  conversationId: string | null;
+  userMessage: string;
+  reply: string | null;
+  confidence: "high" | "medium" | "low" | null;
+  escalated: boolean;
+  escalationReason: string | null;
+  stopReason: string;
+  toolCalls: TryItToolCall[];
+};
+
+const recentActivityRuns: ActivityRun[] = [];
+
+function pushActivity(run: ActivityRun) {
+  recentActivityRuns.unshift(run);
+  if (recentActivityRuns.length > RECENT_ACTIVITY_LIMIT) {
+    recentActivityRuns.length = RECENT_ACTIVITY_LIMIT;
+  }
+}
+
+function derivePropertyCode(slug: string, name: string): string {
+  const source = (slug || name).replace(/[^a-zA-Z]/g, "").toUpperCase();
+  return source.slice(0, 3).padEnd(3, "X");
+}
+
+async function lookupKnowledgeResult(tenantId: string, input: Record<string, unknown>): Promise<string> {
+  const section = typeof input.section === "string" ? input.section.trim().toLowerCase() : null;
+  const query = typeof input.query === "string" ? input.query.trim().toLowerCase() : null;
+  const all = await getPlatformKnowledge(tenantId);
+  const filtered = all.filter((entry) => {
+    if (section && entry.section.toLowerCase() !== section) return false;
+    if (query) {
+      const haystack = `${entry.title}\n${entry.content}`.toLowerCase();
+      if (!haystack.includes(query)) return false;
+    }
+    return true;
+  });
+
+  return JSON.stringify({
+    total_matched: filtered.length,
+    returned: Math.min(filtered.length, KB_LOOKUP_MAX_RESULTS),
+    entries: filtered.slice(0, KB_LOOKUP_MAX_RESULTS).map((entry) => ({
+      id: entry.id,
+      section: entry.section,
+      title: entry.title,
+      content: entry.content,
+    })),
+  });
+}
+
+async function buildDraftBrief(conversationId: string): Promise<ConversationBrief | null> {
+  const [conversation] = await db
+    .select()
+    .from(helpConversations)
+    .where(eq(helpConversations.id, conversationId))
+    .limit(1);
+  if (!conversation) return null;
+
+  const [customer] = conversation.customerId
+    ? await db.select().from(helpCustomers).where(eq(helpCustomers.id, conversation.customerId)).limit(1)
+    : [undefined];
+  const [property] = conversation.propertyId
+    ? await db.select().from(properties).where(eq(properties.id, conversation.propertyId)).limit(1)
+    : [undefined];
+  const [latestCustomerMessage] = await db
+    .select({ body: helpMessages.body })
+    .from(helpMessages)
+    .where(
+      and(
+        eq(helpMessages.conversationId, conversation.id),
+        eq(helpMessages.messageType, "customer"),
+        eq(helpMessages.messageSource, "human"),
+      ),
+    )
+    .orderBy(desc(helpMessages.createdAt))
+    .limit(1);
+
+  return {
+    conversationId: conversation.id,
+    tenantId: conversation.tenantId,
+    propertyId: conversation.propertyId,
+    channel: "web",
+    customerName: customer?.name ?? null,
+    customerCompany: customer?.company ?? null,
+    propertyName: property?.name ?? null,
+    propertyCode: property ? derivePropertyCode(property.slug, property.name) : null,
+    subject: conversation.subject,
+    latestMessage: latestCustomerMessage?.body ?? conversation.preview ?? conversation.subject,
+    runState: "live",
+  };
+}
 
 const SettingsPatchSchema = z.object({
   runState: z.enum(["live", "shadow", "paused"]).optional(),
@@ -114,6 +215,10 @@ const TryItBodySchema = z.object({
   sessionId: z.string().trim().regex(/^sesn_[A-Za-z0-9]+$/).optional(),
 });
 
+const DraftBodySchema = z.object({
+  conversationId: z.string().trim().min(1, "conversationId required"),
+});
+
 interface TryItToolCall {
   id: string;
   name: string;
@@ -194,6 +299,10 @@ router.post("/try", async (req, res) => {
           "No property is linked in playground mode. Treat this as a generic tenant inquiry with no specific lease, billing, or vendor data available.";
         break;
       }
+      case "lookup_knowledge": {
+        result = await lookupKnowledgeResult(brief.tenantId, input);
+        break;
+      }
       case "update_ticket": {
         result = "Ticket update captured for playground (no ticket mutated).";
         break;
@@ -229,11 +338,137 @@ router.post("/try", async (req, res) => {
       stopReason: turn.stopReason,
       toolCalls,
     };
+    pushActivity({
+      id: `${Date.now()}-try`,
+      source: "try",
+      createdAt: new Date().toISOString(),
+      conversationId: null,
+      userMessage: parse.data.message,
+      reply: capturedReply,
+      confidence: capturedConfidence,
+      escalated,
+      escalationReason,
+      stopReason: turn.stopReason,
+      toolCalls,
+    });
     return res.json(response);
   } catch (err) {
     console.error("[concierge try]", err);
     return res.status(502).json({ message: err instanceof Error ? err.message : "Agent run failed" });
   }
+});
+
+router.post("/draft", async (req, res) => {
+  const parse = DraftBodySchema.safeParse(req.body);
+  if (!parse.success) {
+    return res.status(400).json({ message: parse.error.issues[0]?.message ?? "Invalid request" });
+  }
+
+  const identity = loadConciergeIdentity();
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!identity || !apiKey) {
+    return res.status(503).json({ message: "Concierge agent is not configured on this deployment." });
+  }
+
+  const brief = await buildDraftBrief(parse.data.conversationId);
+  if (!brief) {
+    return res.status(404).json({ message: "Conversation not found" });
+  }
+
+  const toolCalls: TryItToolCall[] = [];
+  let capturedReply: string | null = null;
+  let capturedConfidence: "high" | "medium" | "low" | null = null;
+  let escalated = false;
+  let escalationReason: string | null = null;
+
+  const handleTool = async (call: ToolCall): Promise<string> => {
+    const input = call.input;
+    let result = "ok";
+
+    switch (call.name) {
+      case "send_reply": {
+        capturedReply = typeof input.body === "string" ? input.body : "";
+        const c = typeof input.confidence === "string" ? input.confidence : "";
+        if (c === "high" || c === "medium" || c === "low") capturedConfidence = c;
+        result = "Reply captured as inbox draft (not delivered).";
+        break;
+      }
+      case "escalate_to_human": {
+        escalated = true;
+        escalationReason = typeof input.reason === "string" ? input.reason : null;
+        result = "Escalation captured for inbox draft (no one was paged).";
+        break;
+      }
+      case "add_internal_note": {
+        result = "Internal note suppressed in draft mode (not persisted).";
+        break;
+      }
+      case "lookup_property_context": {
+        if (!brief.propertyId) {
+          result = JSON.stringify({ error: "No property linked to this conversation." });
+          break;
+        }
+        const [property] = await db.select().from(properties).where(eq(properties.id, brief.propertyId)).limit(1);
+        result = property
+          ? JSON.stringify({ id: property.id, name: property.name, slug: property.slug, location: property.location })
+          : JSON.stringify({ error: `property ${brief.propertyId} not found` });
+        break;
+      }
+      case "lookup_knowledge": {
+        result = await lookupKnowledgeResult(brief.tenantId, input);
+        break;
+      }
+      case "update_ticket": {
+        result = "Ticket update suppressed in draft mode (no ticket mutated).";
+        break;
+      }
+    }
+
+    toolCalls.push({ id: call.id, name: call.name, input: input as Record<string, unknown>, result });
+    return result;
+  };
+
+  try {
+    const client = new Anthropic({ apiKey });
+    const turn = await runConciergeTurn({
+      client,
+      identity,
+      brief,
+      latestCustomerMessage: brief.latestMessage,
+      handleTool,
+    });
+
+    const response: TryItResponse = {
+      sessionId: turn.sessionId,
+      reply: capturedReply,
+      confidence: capturedConfidence,
+      escalated,
+      escalationReason,
+      stopReason: turn.stopReason,
+      toolCalls,
+    };
+    pushActivity({
+      id: `${Date.now()}-draft`,
+      source: "draft",
+      createdAt: new Date().toISOString(),
+      conversationId: brief.conversationId,
+      userMessage: brief.latestMessage,
+      reply: capturedReply,
+      confidence: capturedConfidence,
+      escalated,
+      escalationReason,
+      stopReason: turn.stopReason,
+      toolCalls,
+    });
+    return res.json(response);
+  } catch (err) {
+    console.error("[concierge draft]", err);
+    return res.status(502).json({ message: err instanceof Error ? err.message : "Agent run failed" });
+  }
+});
+
+router.get("/activity", async (_req, res) => {
+  res.json({ runs: recentActivityRuns });
 });
 
 router.get("/agent", async (_req, res) => {
