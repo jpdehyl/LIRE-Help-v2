@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { SettingsLayout } from "../components/workspace/settings-layout";
 import { Badge, Card } from "../components/ui";
+import { ErrorBoundary } from "../components/ui/error-boundary";
 import { conciergeApi } from "../lib/helpdesk";
 import type {
   ConciergeAgentSummary,
@@ -24,8 +25,12 @@ export default function SettingsAiAutomationPage() {
   return (
     <SettingsLayout title="AI & Automation" eyebrow="Workspace / Settings">
       <div className="space-y-5">
-        <ConciergeAgentCard />
-        <LireControlsCard />
+        <ErrorBoundary boundary="ConciergeAgentCard">
+          <ConciergeAgentCard />
+        </ErrorBoundary>
+        <ErrorBoundary boundary="LireControlsCard">
+          <LireControlsCard />
+        </ErrorBoundary>
       </div>
     </SettingsLayout>
   );
@@ -90,8 +95,25 @@ function UnconfiguredCard() {
   );
 }
 
+// Server types say these are strings, but the field flows through Anthropic's
+// SDK and our mapping layer — belt-and-suspenders coerce to strings at render
+// time so one shape change upstream can't crash the whole settings page.
+function asStr(value: unknown, fallback = ""): string {
+  return typeof value === "string" ? value : fallback;
+}
+
 function ConfiguredAgentCard({ agent }: { agent: ConciergeAgentSummary }) {
   const [promptOpen, setPromptOpen] = useState(false);
+  const id = asStr(agent.id);
+  const name = asStr(agent.name, "LIRE Help concierge");
+  const version = asStr(agent.version);
+  const model = asStr(agent.model);
+  const systemPromptPreview = asStr(agent.systemPromptPreview);
+  const systemPromptFull = asStr(agent.systemPromptFull);
+  const consoleUrl = typeof agent.consoleUrl === "string" ? agent.consoleUrl : null;
+  const toolsCount = typeof agent.toolsCount === "number" ? agent.toolsCount : 0;
+  const skillsCount = typeof agent.skillsCount === "number" ? agent.skillsCount : 0;
+
   return (
     <Card padding="md">
       <div className="flex items-start gap-3">
@@ -105,16 +127,16 @@ function ConfiguredAgentCard({ agent }: { agent: ConciergeAgentSummary }) {
               Active
             </Badge>
           </div>
-          <h2 className="mt-0.5 font-display text-[18px] font-semibold tracking-tight text-fg">{agent.name}</h2>
+          <h2 className="mt-0.5 font-display text-[18px] font-semibold tracking-tight text-fg">{name}</h2>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-[11px] text-fg-subtle">
-            <span>{agent.id}</span>
-            {agent.version ? <span>· v{agent.version}</span> : null}
-            {agent.model ? <span>· {agent.model}</span> : null}
+            <span>{id}</span>
+            {version ? <span>· v{version}</span> : null}
+            {model ? <span>· {model}</span> : null}
           </div>
         </div>
-        {agent.consoleUrl ? (
+        {consoleUrl ? (
           <a
-            href={agent.consoleUrl}
+            href={consoleUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-border bg-surface px-2.5 font-body text-[12px] font-medium text-fg transition-colors ease-ds duration-fast hover:bg-surface-2"
@@ -126,16 +148,16 @@ function ConfiguredAgentCard({ agent }: { agent: ConciergeAgentSummary }) {
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <SummaryStat label="Model" value={agent.model || "—"} />
-        <SummaryStat label="Version" value={agent.version ? `v${agent.version}` : "—"} />
-        <SummaryStat label="Custom tools" value={String(agent.toolsCount)} />
-        <SummaryStat label="Skills" value={String(agent.skillsCount)} />
+        <SummaryStat label="Model" value={model || "—"} />
+        <SummaryStat label="Version" value={version ? `v${version}` : "—"} />
+        <SummaryStat label="Custom tools" value={String(toolsCount)} />
+        <SummaryStat label="Skills" value={String(skillsCount)} />
       </div>
 
       <div className="mt-4 rounded-sm border border-border bg-surface-2 p-3">
         <div className="flex items-center gap-2">
           <div className="eyebrow text-fg-muted">System prompt</div>
-          {agent.systemPromptFull.length > agent.systemPromptPreview.length ? (
+          {systemPromptFull.length > systemPromptPreview.length ? (
             <button
               type="button"
               onClick={() => setPromptOpen((open) => !open)}
@@ -146,8 +168,8 @@ function ConfiguredAgentCard({ agent }: { agent: ConciergeAgentSummary }) {
           ) : null}
         </div>
         <pre className="mt-2 whitespace-pre-wrap break-words font-mono text-[12px] leading-[1.55] text-fg">
-          {promptOpen ? agent.systemPromptFull : agent.systemPromptPreview}
-          {!promptOpen && agent.systemPromptFull.length > agent.systemPromptPreview.length ? "…" : ""}
+          {promptOpen ? systemPromptFull : systemPromptPreview}
+          {!promptOpen && systemPromptFull.length > systemPromptPreview.length ? "…" : ""}
         </pre>
       </div>
 
