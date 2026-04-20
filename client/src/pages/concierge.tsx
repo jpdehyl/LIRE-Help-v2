@@ -5,6 +5,8 @@ import {
   Activity,
   BookOpen,
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   Compass,
   FlaskConical,
   GraduationCap,
@@ -492,6 +494,15 @@ function KnowledgeEmpty({ editUrl }: { editUrl: string }) {
 }
 
 function KnowledgeSectionList({ sections }: { sections: ConciergeKnowledgeSection[] }) {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggle = (id: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
   return (
     <section className="space-y-3">
       {sections.map((section) => (
@@ -504,14 +515,33 @@ function KnowledgeSectionList({ sections }: { sections: ConciergeKnowledgeSectio
             </div>
           </div>
           <ul className="mt-3 divide-y divide-border">
-            {section.entries.map((entry) => (
-              <li key={entry.id} className="flex items-center gap-3 py-2.5">
-                <BookOpen className="h-3 w-3 shrink-0 text-fg-subtle" />
-                <span className="min-w-0 flex-1 truncate font-body text-[13px] text-fg">{entry.title}</span>
-                <span className="font-mono text-[10px] text-fg-subtle">{formatCharCount(entry.contentChars)}</span>
-                <span className="font-mono text-[10px] text-fg-subtle">{entry.updatedAtLabel}</span>
-              </li>
-            ))}
+            {section.entries.map((entry) => {
+              const isOpen = expanded.has(entry.id);
+              return (
+                <li key={entry.id} className="py-2.5">
+                  <button
+                    type="button"
+                    onClick={() => toggle(entry.id)}
+                    aria-expanded={isOpen}
+                    className="flex w-full items-center gap-3 text-left"
+                  >
+                    {isOpen ? (
+                      <ChevronDown className="h-3 w-3 shrink-0 text-fg-subtle" />
+                    ) : (
+                      <ChevronRight className="h-3 w-3 shrink-0 text-fg-subtle" />
+                    )}
+                    <span className="min-w-0 flex-1 truncate font-body text-[13px] text-fg">{entry.title}</span>
+                    <span className="font-mono text-[10px] text-fg-subtle">{formatCharCount(entry.contentChars)}</span>
+                    <span className="font-mono text-[10px] text-fg-subtle">{entry.updatedAtLabel}</span>
+                  </button>
+                  {isOpen && (
+                    <pre className="mt-2 ml-6 whitespace-pre-wrap rounded-sm border border-border bg-surface-2 p-3 font-mono text-[11.5px] leading-[1.55] text-fg-muted">
+                      {entry.content || "(empty)"}
+                    </pre>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
       ))}
@@ -538,10 +568,10 @@ function KnowledgeSummaryCard({ summary }: { summary: ConciergeKnowledgeSummary 
       <section className="rounded-md border border-border bg-surface p-4">
         <div className="eyebrow">How it&rsquo;s used</div>
         <p className="mt-2 font-body text-[12.5px] leading-[1.5] text-fg-muted">
-          The agent&rsquo;s system prompt references this catalog through the
-          <code className="mx-1 rounded-xs bg-surface-2 px-1 font-mono text-[11px]">lookup_property_context</code>
-          tool. When a tenant asks a property-specific question, the concierge calls that tool before drafting
-          a reply.
+          The agent reads this catalog through the
+          <code className="mx-1 rounded-xs bg-surface-2 px-1 font-mono text-[11px]">lookup_knowledge</code>
+          tool. On policy/procedure questions (rent, access, dock rules, etc.) the concierge queries this
+          catalog before drafting a reply, and escalates if nothing matches.
         </p>
       </section>
     </aside>

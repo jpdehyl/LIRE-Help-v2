@@ -73,6 +73,7 @@ export interface ConciergeTryResponse {
 export interface ConciergeKnowledgeEntry {
   id: string;
   title: string;
+  content: string;
   contentChars: number;
   updatedAtLabel: string;
 }

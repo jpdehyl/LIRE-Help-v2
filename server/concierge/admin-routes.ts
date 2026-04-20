@@ -281,7 +281,13 @@ interface KnowledgeSection {
   section: string;
   entryCount: number;
   totalCharCount: number;
-  entries: { id: string; title: string; contentChars: number; updatedAtLabel: string }[];
+  entries: {
+    id: string;
+    title: string;
+    content: string;
+    contentChars: number;
+    updatedAtLabel: string;
+  }[];
 }
 
 interface ConciergeKnowledgeResponse {
@@ -316,6 +322,7 @@ router.get("/knowledge", async (req, res) => {
       current.entries.push({
         id: entry.id,
         title: entry.title,
+        content: entry.content ?? "",
         contentChars,
         updatedAtLabel: formatIsoDate(entry.updatedAt),
       });
@@ -327,7 +334,7 @@ router.get("/knowledge", async (req, res) => {
       totalCharCount: entries.reduce((sum, e) => sum + (e.content?.length ?? 0), 0),
       sectionCount: bySection.size,
       sections: [...bySection.values()].sort((a, b) => a.section.localeCompare(b.section)),
-      editUrl: "/settings/workspace", // knowledge editor lives in workspace settings today
+      editUrl: "/platform-dashboard", // KB CRUD lives on the platform-admin page until /settings/workspace/knowledge ships
     };
     res.json(response);
   } catch (err) {
