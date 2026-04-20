@@ -65,7 +65,7 @@ function tenantIdFromSession(req: import("express").Request): string | null {
 
 router.get("/:type/config", requireStaffRole(...READ_ROLES), async (req, res) => {
   try {
-    const channelType = parseChannelType(req.params.type);
+    const channelType = parseChannelType(typeof req.params.type === "string" ? req.params.type : undefined);
     if (!channelType) return res.status(404).json({ message: "Unknown channel" });
 
     const tenantId = tenantIdFromSession(req);
@@ -100,7 +100,7 @@ router.get("/:type/config", requireStaffRole(...READ_ROLES), async (req, res) =>
 
 router.patch("/:type/config", requireStaffRole(...WRITE_ROLES), async (req, res) => {
   try {
-    const channelType = parseChannelType(req.params.type);
+    const channelType = parseChannelType(typeof req.params.type === "string" ? req.params.type : undefined);
     if (!channelType) return res.status(404).json({ message: "Unknown channel" });
 
     const tenantId = tenantIdFromSession(req);
