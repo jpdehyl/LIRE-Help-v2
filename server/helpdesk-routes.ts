@@ -25,7 +25,7 @@ import {
 import type { ConversationStatus, InboxViewKey, PriorityLevel } from "../shared/helpdesk.js";
 
 const router = Router();
-const validStatuses = new Set<ConversationStatus>(["open", "pending", "waiting_on_customer", "resolved"]);
+const validStatuses = new Set<ConversationStatus>(["open", "pending", "waiting_on_occupant", "resolved"]);
 const validPriorities = new Set<PriorityLevel>(["low", "medium", "high", "urgent"]);
 const adminRoles = new Set(["superadmin", "owner", "manager"]);
 

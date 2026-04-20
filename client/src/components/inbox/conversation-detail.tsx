@@ -43,13 +43,13 @@ interface ConversationDetailProps {
 type RightPanelKey = "reply" | "ai" | "ticket" | "tenant" | "property";
 
 const timelineKinds = {
-  customer: { eyebrow: "Tenant", barColor: "" },
+  occupant: { eyebrow: "Tenant", barColor: "" },
   teammate: { eyebrow: "Teammate", barColor: "" },
   internal_note: { eyebrow: "Internal note", barColor: "var(--accent-press)" },
   system: { eyebrow: "System", barColor: "" },
 } as const;
 
-const statuses: ConversationStatus[] = ["open", "pending", "waiting_on_customer", "resolved"];
+const statuses: ConversationStatus[] = ["open", "pending", "waiting_on_occupant", "resolved"];
 const priorities: PriorityLevel[] = ["low", "medium", "high", "urgent"];
 const snoozePresets = [
   { value: "1h", label: "In 1 hour" },
@@ -112,7 +112,7 @@ export function ConversationDetailPane({
 }: ConversationDetailProps) {
   const [note, setNote] = useState("");
   const [replyBody, setReplyBody] = useState("");
-  const [replyStatus, setReplyStatus] = useState<ConversationStatus>("waiting_on_customer");
+  const [replyStatus, setReplyStatus] = useState<ConversationStatus>("waiting_on_occupant");
   const [composerMode, setComposerMode] = useState<"reply" | "note">("reply");
   const [activePanel, setActivePanel] = useState<RightPanelKey | null>("ai");
   const [aiDraft, setAiDraft] = useState<string | null>(null);
@@ -147,7 +147,7 @@ export function ConversationDetailPane({
     aiAbortRef.current = null;
     setNote("");
     setReplyBody("");
-    setReplyStatus("waiting_on_customer");
+    setReplyStatus("waiting_on_occupant");
     setComposerMode(detail?.composerMode === "note" ? "note" : "reply");
     setAiDraft(null);
     setAiError(null);
@@ -278,7 +278,7 @@ export function ConversationDetailPane({
       helpdeskApi.replyToConversation(conversation!.id, body, status),
     onSuccess: async () => {
       setReplyBody("");
-      setReplyStatus("waiting_on_customer");
+      setReplyStatus("waiting_on_occupant");
       setComposerMode("reply");
       await onMutated?.();
     },
@@ -599,7 +599,7 @@ export function ConversationDetailPane({
                 onUseDraft={() => {
                   if (!aiDraft) return;
                   setReplyBody(aiDraft);
-                  setReplyStatus("waiting_on_customer");
+                  setReplyStatus("waiting_on_occupant");
                   setComposerMode("reply");
                   setActivePanel("reply");
                 }}
@@ -1186,14 +1186,14 @@ function TicketDetailsPanel({
 function TenantPanel({ detail, conversation }: { detail: ConversationDetail; conversation: ConversationRow }) {
   return (
     <section className="rounded-sm border border-border bg-surface p-3.5">
-      <h3 className="font-body text-[14px] font-semibold text-fg">{detail.customer.name}</h3>
-      <p className="font-body text-[12px] text-fg-muted">{detail.customer.company}</p>
+      <h3 className="font-body text-[14px] font-semibold text-fg">{detail.occupant.name}</h3>
+      <p className="font-body text-[12px] text-fg-muted">{detail.occupant.company}</p>
       <div className="mt-2.5 grid gap-1.5 font-body text-[12px] text-fg-muted">
         <Row label="Channel" value={conversation.channel.toUpperCase()} />
-        <Row label="Tier" value={detail.customer.tier} />
-        <Row label="Health" value={detail.customer.health.replaceAll("_", " ")} />
+        <Row label="Tier" value={detail.occupant.tier} />
+        <Row label="Health" value={detail.occupant.health.replaceAll("_", " ")} />
         <Row label="Opened" value={conversation.waitingSinceLabel || "—"} />
-        <Row label="Last seen" value={detail.customer.lastSeenLabel} />
+        <Row label="Last seen" value={detail.occupant.lastSeenLabel} />
       </div>
     </section>
   );

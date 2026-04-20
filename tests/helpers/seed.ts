@@ -12,7 +12,7 @@ const TABLES = [
   "credit_extractions", "credit_documents", "lessees",
   "unit_sheets", "tours", "deal_events", "deals", "units",
   "help_conversation_tags", "help_messages", "help_tickets", "help_conversations",
-  "help_tags", "help_slas", "help_customers", "help_inboxes",
+  "help_tags", "help_slas", "help_occupants", "help_inboxes",
   "token_usage", "platform_sessions", "platform_knowledge",
   "agents", "staff_sessions", "staff_users", "properties", "tenants",
 ] as const;

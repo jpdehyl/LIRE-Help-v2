@@ -9,7 +9,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { db } from "../db.js";
 import {
   helpConversations,
-  helpCustomers,
+  helpOccupants,
   helpMessages,
   helpTickets,
   properties,
@@ -126,13 +126,13 @@ async function recordOutboundReply(
   }
 
   // Third: update conversation bookkeeping. lastMessageAt pushes the thread
-  // to the top; status slides to waiting_on_customer so the human inbox
+  // to the top; status slides to waiting_on_occupant so the human inbox
   // doesn't treat it as freshly inbound.
   await db
     .update(helpConversations)
     .set({
       lastMessageAt: now,
-      status: "waiting_on_customer",
+      status: "waiting_on_occupant",
       unreadCount: 0,
       messageCount: (conversation?.messageCount ?? 0) + 1,
       updatedAt: now,
@@ -165,25 +165,25 @@ async function sendReplyHandler(input: Record<string, unknown>, brief: Conversat
     return "Queued as draft for human review (confidence=low). Do not send another reply.";
   }
 
-  // Look up the customer's channel handle so we know where to send.
-  const [customer] = await db
+  // Look up the tenant contact's channel handle so we know where to send.
+  const [occupant] = await db
     .select()
-    .from(helpCustomers)
+    .from(helpOccupants)
     .where(
       and(
-        eq(helpCustomers.tenantId, brief.tenantId),
-        eq(helpCustomers.id, await customerIdForConversation(brief.conversationId)),
+        eq(helpOccupants.tenantId, brief.tenantId),
+        eq(helpOccupants.id, await occupantIdForConversation(brief.conversationId)),
       ),
     )
     .limit(1);
-  if (!customer?.externalId) {
-    return "send_reply failed: no customer handle on record. Escalate to human.";
+  if (!occupant?.externalId) {
+    return "send_reply failed: no tenant handle on record. Escalate to human.";
   }
 
   try {
-    const { providerMessageId, providerMetadata } = await sendToChannel(brief, customer.externalId, body);
+    const { providerMessageId, providerMetadata } = await sendToChannel(brief, occupant.externalId, body);
     await recordOutboundReply(brief, body, providerMessageId, providerMetadata);
-    return `Reply sent to ${customer.externalId} (${brief.channel}).`;
+    return `Reply sent to ${occupant.externalId} (${brief.channel}).`;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[concierge] send_reply failed", msg);
@@ -191,13 +191,13 @@ async function sendReplyHandler(input: Record<string, unknown>, brief: Conversat
   }
 }
 
-async function customerIdForConversation(conversationId: string): Promise<string> {
+async function occupantIdForConversation(conversationId: string): Promise<string> {
   const [conv] = await db
-    .select({ customerId: helpConversations.customerId })
+    .select({ occupantId: helpConversations.occupantId })
     .from(helpConversations)
     .where(eq(helpConversations.id, conversationId))
     .limit(1);
-  return conv?.customerId ?? "";
+  return conv?.occupantId ?? "";
 }
 
 async function escalateHandler(input: Record<string, unknown>, brief: ConversationBrief): Promise<string> {
@@ -376,7 +376,7 @@ async function updateTicketHandler(input: Record<string, unknown>, brief: Conver
   if (typeof patch.status === "string") {
     await db
       .update(helpConversations)
-      .set({ status: patch.status as "open" | "pending" | "waiting_on_customer" | "resolved", updatedAt: new Date() })
+      .set({ status: patch.status as "open" | "pending" | "waiting_on_occupant" | "resolved", updatedAt: new Date() })
       .where(eq(helpConversations.id, brief.conversationId));
   }
   return `Ticket updated: ${JSON.stringify(patch)}.`;

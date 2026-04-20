@@ -8,12 +8,12 @@ import { Badge, type BadgeTone } from "./badge";
 const statusTone: Record<ConversationStatus, BadgeTone> = {
   open: "success",
   pending: "info",
-  waiting_on_customer: "violet",
+  waiting_on_occupant: "violet",
   resolved: "neutral",
 };
 
 const statusLabel: Partial<Record<ConversationStatus, string>> = {
-  waiting_on_customer: "waiting on tenant",
+  waiting_on_occupant: "waiting on tenant",
 };
 
 const priorityTone: Record<PriorityLevel, BadgeTone> = {

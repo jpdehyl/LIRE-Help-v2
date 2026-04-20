@@ -5,7 +5,7 @@ export type {
   ConversationRow,
   ConversationStatus,
   ConversationTimelineItem,
-  CustomerSummary,
+  OccupantSummary,
   HelpdeskAssigneeOption,
   HelpdeskDashboardMetrics,
   HelpdeskInboxMetric,

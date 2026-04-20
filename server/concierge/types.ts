@@ -33,8 +33,8 @@ export interface ConversationBrief {
   tenantId: string;
   propertyId: string | null;
   channel: Channel;
-  customerName: string | null;
-  customerCompany: string | null;
+  tenantName: string | null;
+  tenantCompany: string | null;
   propertyName: string | null;
   propertyCode: string | null;
   subject: string;

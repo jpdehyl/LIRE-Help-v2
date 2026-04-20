@@ -1,4 +1,4 @@
-// Channel-agnostic intake: upsert customer → upsert conversation → insert
+// Channel-agnostic intake: upsert occupant → upsert conversation → insert
 // the inbound message. Called by channel-specific webhook handlers
 // (twilio-sms routes, future email/whatsapp/zoom) once they've normalised
 // their provider payload into a plain ChannelInbound.
@@ -7,7 +7,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { db } from "../db.js";
 import {
   helpConversations,
-  helpCustomers,
+  helpOccupants,
   helpMessages,
   tenants,
 } from "../../shared/schema.js";
@@ -15,9 +15,9 @@ import type { Channel } from "../concierge/types.js";
 
 export interface ChannelInbound {
   channel: Channel;
-  // Stable handle the customer uses on this channel — phone for SMS/WhatsApp,
+  // Stable handle the occupant uses on this channel — phone for SMS/WhatsApp,
   // email address for email, Zoom user id for Zoom. Doubles as the dedup key
-  // via helpCustomers.externalId and helpConversations.externalThreadId.
+  // via helpOccupants.externalId and helpConversations.externalThreadId.
   handle: string;
   // Tenant phone number / inbox address the message arrived on. Not
   // persisted today but useful for multi-tenant routing in Phase 2+.
@@ -26,20 +26,20 @@ export interface ChannelInbound {
   // Freeform metadata from the provider (Twilio MessageSid, WhatsApp
   // business-account id, etc.). Stored on helpMessages.metadataJson.
   providerMetadata?: Record<string, unknown>;
-  // Optional friendly name for new customers (Twilio gives us city/state
+  // Optional friendly name for new occupants (Twilio gives us city/state
   // but not name; we leave name as null when unknown).
   suggestedName?: string;
   // Optional subject override. Email passes the real Subject header;
   // SMS/WhatsApp derive the subject from the first message body (default).
   subject?: string;
-  // Optional email for helpCustomers.email. Only populated for channels
+  // Optional email for helpOccupants.email. Only populated for channels
   // that actually carry email (Postmark inbound, future SMTP).
   email?: string;
 }
 
 export interface IntakeResult {
   conversationId: string;
-  customerId: string;
+  occupantId: string;
   messageId: string;
   isNewConversation: boolean;
 }
@@ -51,22 +51,22 @@ async function resolveTenantId(): Promise<string | null> {
   return t?.id ?? null;
 }
 
-async function upsertCustomer(tenantId: string, inbound: ChannelInbound): Promise<string> {
+async function upsertOccupantContact(tenantId: string, inbound: ChannelInbound): Promise<string> {
   const existing = await db
     .select()
-    .from(helpCustomers)
-    .where(and(eq(helpCustomers.tenantId, tenantId), eq(helpCustomers.externalId, inbound.handle)))
+    .from(helpOccupants)
+    .where(and(eq(helpOccupants.tenantId, tenantId), eq(helpOccupants.externalId, inbound.handle)))
     .limit(1);
   const now = new Date();
   if (existing[0]) {
     await db
-      .update(helpCustomers)
+      .update(helpOccupants)
       .set({ lastSeenAt: now, updatedAt: now })
-      .where(eq(helpCustomers.id, existing[0].id));
+      .where(eq(helpOccupants.id, existing[0].id));
     return existing[0].id;
   }
   const [row] = await db
-    .insert(helpCustomers)
+    .insert(helpOccupants)
     .values({
       tenantId,
       externalId: inbound.handle,
@@ -80,13 +80,13 @@ async function upsertCustomer(tenantId: string, inbound: ChannelInbound): Promis
   return row!.id;
 }
 
-// One open conversation per (customer, channel). When a new message comes
+// One open conversation per (occupant, channel). When a new message comes
 // in on an existing thread, we reuse the open conversation; otherwise we
-// open a new one. The externalThreadId is the customer handle so
+// open a new one. The externalThreadId is the occupant handle so
 // provider-side threading is stable.
 async function upsertOpenConversation(
   tenantId: string,
-  customerId: string,
+  occupantId: string,
   inbound: ChannelInbound,
 ): Promise<{ id: string; isNew: boolean }> {
   const existing = await db
@@ -95,7 +95,7 @@ async function upsertOpenConversation(
     .where(
       and(
         eq(helpConversations.tenantId, tenantId),
-        eq(helpConversations.customerId, customerId),
+        eq(helpConversations.occupantId, occupantId),
         eq(helpConversations.channel, inbound.channel),
       ),
     )
@@ -108,7 +108,7 @@ async function upsertOpenConversation(
       .update(helpConversations)
       .set({
         lastMessageAt: new Date(),
-        lastCustomerMessageAt: new Date(),
+        lastOccupantMessageAt: new Date(),
         messageCount: (openRow.messageCount ?? 0) + 1,
         unreadCount: (openRow.unreadCount ?? 0) + 1,
         updatedAt: new Date(),
@@ -125,7 +125,7 @@ async function upsertOpenConversation(
     .insert(helpConversations)
     .values({
       tenantId,
-      customerId,
+      occupantId,
       externalThreadId: inbound.handle,
       subject,
       status: "open",
@@ -135,7 +135,7 @@ async function upsertOpenConversation(
       preview: inbound.body.slice(0, 200),
       unreadCount: 1,
       messageCount: 1,
-      lastCustomerMessageAt: new Date(),
+      lastOccupantMessageAt: new Date(),
     })
     .returning();
   return { id: row!.id, isNew: true };
@@ -151,7 +151,7 @@ async function insertInboundMessage(
     .values({
       tenantId,
       conversationId,
-      messageType: "customer",
+      messageType: "occupant",
       messageSource: "human",
       authorLabel: inbound.suggestedName ?? inbound.handle,
       body: inbound.body,
@@ -168,8 +168,8 @@ export async function intakeInbound(inbound: ChannelInbound): Promise<IntakeResu
     console.error("[channels] intake called but no tenant exists — skipping", inbound);
     return null;
   }
-  const customerId = await upsertCustomer(tenantId, inbound);
-  const { id: conversationId, isNew } = await upsertOpenConversation(tenantId, customerId, inbound);
+  const occupantId = await upsertOccupantContact(tenantId, inbound);
+  const { id: conversationId, isNew } = await upsertOpenConversation(tenantId, occupantId, inbound);
   const messageId = await insertInboundMessage(tenantId, conversationId, inbound);
-  return { conversationId, customerId, messageId, isNewConversation: isNew };
+  return { conversationId, occupantId, messageId, isNewConversation: isNew };
 }

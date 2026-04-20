@@ -233,8 +233,8 @@ async function upsertTags(tenantId: string) {
   return tagMap;
 }
 
-async function upsertCustomers(tenantId: string, propertyIds: string[]) {
-  const customers = [
+async function upsertOccupants(tenantId: string, propertyIds: string[]) {
+  const occupants = [
     {
       externalId: "cust-amazon-oak",
       name: "Marcus Webb",
@@ -319,16 +319,16 @@ async function upsertCustomers(tenantId: string, propertyIds: string[]) {
   ];
 
   const ids: Record<string, string> = {};
-  for (const customer of customers) {
-    let [row] = await sql`SELECT id FROM help_customers WHERE tenant_id = ${tenantId} AND external_id = ${customer.externalId} LIMIT 1`;
+  for (const occupant of occupants) {
+    let [row] = await sql`SELECT id FROM help_occupants WHERE tenant_id = ${tenantId} AND external_id = ${occupant.externalId} LIMIT 1`;
     if (!row) {
       [row] = await sql`
-        INSERT INTO help_customers (tenant_id, property_id, external_id, name, email, company, tier, health, last_seen_at)
-        VALUES (${tenantId}, ${customer.propertyId}, ${customer.externalId}, ${customer.name}, ${customer.email}, ${customer.company}, ${customer.tier}, ${customer.health}, now())
+        INSERT INTO help_occupants (tenant_id, property_id, external_id, name, email, company, tier, health, last_seen_at)
+        VALUES (${tenantId}, ${occupant.propertyId}, ${occupant.externalId}, ${occupant.name}, ${occupant.email}, ${occupant.company}, ${occupant.tier}, ${occupant.health}, now())
         RETURNING id
       `;
     }
-    ids[customer.externalId] = row.id as string;
+    ids[occupant.externalId] = row.id as string;
   }
   return ids;
 }
@@ -342,7 +342,7 @@ interface ConversationSeed {
   assigneeIndex: number | null;
   propertyIndex: number;
   inboxSlug: string;
-  customerId: string;
+  occupantId: string;
   preview: string;
   tags: string[];
   slaOffsetHours: number;
@@ -359,7 +359,7 @@ interface ConversationSeed {
 
 function buildConversations(
   staffIds: string[],
-  customerIds: Record<string, string>,
+  occupantIds: Record<string, string>,
 ): ConversationSeed[] {
   return [
     {
@@ -371,7 +371,7 @@ function buildConversations(
       assigneeIndex: 1,
       propertyIndex: 0,
       inboxSlug: "escalations",
-      customerId: customerIds["cust-amazon-oak"]!,
+      occupantId: occupantIds["cust-amazon-oak"]!,
       preview: "Hydraulic seal blew on dock door 14 at 6:45 AM. Trailer cannot exit, blocking 3 other bays. Amazon staging window closes in 90 minutes.",
       tags: ["dock-equipment", "escalation"],
       slaOffsetHours: -1,
@@ -380,7 +380,7 @@ function buildConversations(
       createdAgo: 4,
       messages: [
         {
-          type: "customer",
+          type: "occupant",
           author: "Marcus Webb",
           body: "Hydraulic seal blew on dock door 14 at 6:45 AM. The trailer cannot exit and is blocking bays 12, 13, and 15. Amazon's pickup window closes at 10:30 AM — if we miss it we're looking at a $40K delay charge. This is urgent.",
           minutesAfterCreation: 0,
@@ -398,7 +398,7 @@ function buildConversations(
           minutesAfterCreation: 25,
         },
         {
-          type: "customer",
+          type: "occupant",
           author: "Marcus Webb",
           body: "Amazon granted the extension to 12:30 PM. That buys us time. Please make sure the tech goes directly to bay 3 loading area — I'll have someone waiting. Also need a formal incident report for our insurance.",
           minutesAfterCreation: 40,
@@ -420,7 +420,7 @@ function buildConversations(
       assigneeIndex: 2,
       propertyIndex: 1,
       inboxSlug: "escalations",
-      customerId: customerIds["cust-sysco-stock"]!,
+      occupantId: occupantIds["cust-sysco-stock"]!,
       preview: "Vault B temperature alarm triggered at 31°F and rising. Product at risk. USDA compliance window is 4 hours.",
       tags: ["cold-chain", "escalation", "hvac"],
       slaOffsetHours: 0.5,
@@ -429,7 +429,7 @@ function buildConversations(
       createdAgo: 2,
       messages: [
         {
-          type: "customer",
+          type: "occupant",
           author: "Carlos Reyes",
           body: "Temperature alarm just triggered on Vault B — reading 31°F and trending up. We have $280,000 of Sysco perishables in there. USDA product integrity window is 4 hours at this temp. Need eyes on this NOW.",
           minutesAfterCreation: 0,
@@ -441,7 +441,7 @@ function buildConversations(
           minutesAfterCreation: 2,
         },
         {
-          type: "customer",
+          type: "occupant",
           author: "Carlos Reyes",
           body: "Compressor is running but there's a grinding sound from the mech room. Could be the condenser fan motor. Temp is now at 33°F. We need the contractor here in the next hour or we start moving product.",
           minutesAfterCreation: 8,
@@ -457,13 +457,13 @@ function buildConversations(
     {
       externalId: "conv-oakland-cam-dispute",
       subject: "CAM reconciliation dispute — Q4 charges 34% above estimate",
-      status: "waiting_on_customer",
+      status: "waiting_on_occupant",
       priority: "high",
       assignmentState: "assigned",
       assigneeIndex: 1,
       propertyIndex: 0,
       inboxSlug: "billing",
-      customerId: customerIds["cust-dhl-oak"]!,
+      occupantId: occupantIds["cust-dhl-oak"]!,
       preview: "DHL is disputing $47,200 in Q4 CAM charges. Corrected reconciliation sent — waiting for DHL's written acceptance before closing.",
       tags: ["billing", "escalation"],
       slaOffsetHours: 6,
@@ -472,7 +472,7 @@ function buildConversations(
       createdAgo: 8,
       messages: [
         {
-          type: "customer",
+          type: "occupant",
           author: "Sandra Yee",
           body: "We received the Q4 CAM reconciliation and we're disputing $47,200 of the $139,600 total. The charges appear to include exterior signage renovations and lobby upgrades — neither of which are in our lease scope. Please provide a full line-item breakdown with vendor invoices before we authorize any payment.",
           minutesAfterCreation: 0,
@@ -490,7 +490,7 @@ function buildConversations(
           minutesAfterCreation: 180,
         },
         {
-          type: "customer",
+          type: "occupant",
           author: "Sandra Yee",
           body: "Thank you for the quick initial response. Please ensure the corrected statement includes the calculation methodology — our lease requires full CAM transparency. Also, we will be withholding the disputed amount from next month's payment until this is resolved.",
           minutesAfterCreation: 240,
@@ -506,7 +506,7 @@ function buildConversations(
       assigneeIndex: 3,
       propertyIndex: 2,
       inboxSlug: "vip",
-      customerId: customerIds["cust-tesla-frm"]!,
+      occupantId: occupantIds["cust-tesla-frm"]!,
       preview: "Tesla Components wants to renew Unit 7 (18,000 sq ft) and is expressing interest in adjacent Unit 8 if it comes available before June.",
       tags: ["lease-renewal", "renewal", "pricing"],
       slaOffsetHours: 24,
@@ -515,7 +515,7 @@ function buildConversations(
       createdAgo: 24,
       messages: [
         {
-          type: "customer",
+          type: "occupant",
           author: "Derek Chang",
           body: "Our lease on Unit 7 expires September 30. We want to renew for another 3 years. We've also been told Unit 8 may come available — we'd like a right-of-first-refusal on that space. Our operations are expanding and we need to know our options by Q2. Who do I speak to about lease economics?",
           minutesAfterCreation: 0,
@@ -533,7 +533,7 @@ function buildConversations(
           minutesAfterCreation: 90,
         },
         {
-          type: "customer",
+          type: "occupant",
           author: "Derek Chang",
           body: "Appreciate the responsiveness. A couple of priorities for the renewal: (1) we need 24/7 access to the mech yard expanded, (2) fiber uptime SLA needs to be in the lease, (3) we'll need a small TI allowance for a cleanroom addition. Happy to discuss all on a call — Thursday afternoon works.",
           minutesAfterCreation: 360,
@@ -543,13 +543,13 @@ function buildConversations(
     {
       externalId: "conv-stockton-coi-submission",
       subject: "COI expiration notice — insurance cert renewal required",
-      status: "waiting_on_customer",
+      status: "waiting_on_occupant",
       priority: "medium",
       assignmentState: "assigned",
       assigneeIndex: 2,
       propertyIndex: 1,
       inboxSlug: "support",
-      customerId: customerIds["cust-usfoods-stock"]!,
+      occupantId: occupantIds["cust-usfoods-stock"]!,
       preview: "US Foods certificate of insurance expired 3 days ago. Must receive updated COI within 7 days per lease terms or access to loading docks will be restricted.",
       tags: ["insurance"],
       slaOffsetHours: 48,
@@ -570,7 +570,7 @@ function buildConversations(
           minutesAfterCreation: 30,
         },
         {
-          type: "customer",
+          type: "occupant",
           author: "Bethany Moss",
           body: "Hi — apologies for the delay. Our broker, Marsh, is processing the renewal. I'm told the updated cert will be ready by Friday. I'll forward it to you as soon as I receive it. Do you have a portal for uploads or should I email it?",
           minutesAfterCreation: 120,
@@ -586,13 +586,13 @@ function buildConversations(
     {
       externalId: "conv-oakland-security-incident",
       subject: "After-hours trespassing incident — lot A, east perimeter",
-      status: "waiting_on_customer",
+      status: "waiting_on_occupant",
       priority: "high",
       assignmentState: "assigned",
       assigneeIndex: 1,
       propertyIndex: 0,
       inboxSlug: "escalations",
-      customerId: customerIds["cust-frito-oak"]!,
+      occupantId: occupantIds["cust-frito-oak"]!,
       preview: "Security incident documented. Footage sent to OPD. Waiting for Frito-Lay to confirm co-funding proposal for perimeter lighting upgrade.",
       tags: ["security", "escalation"],
       slaOffsetHours: 6,
@@ -601,7 +601,7 @@ function buildConversations(
       createdAgo: 12,
       messages: [
         {
-          type: "customer",
+          type: "occupant",
           author: "Layla Torres",
           body: "Our night shift supervisor just flagged this: security cameras caught 3 individuals cutting through the east perimeter fence of Lot A at 2:14 AM. One of our trailers was blocked for about 40 minutes. We filed a police report (report #OPD-2024-83741). I need to know what Northstar is doing about the perimeter and if there's surveillance footage we can share with PD.",
           minutesAfterCreation: 0,
@@ -619,7 +619,7 @@ function buildConversations(
           minutesAfterCreation: 60,
         },
         {
-          type: "customer",
+          type: "occupant",
           author: "Layla Torres",
           body: "No employees were present and nothing was taken from our trailers. But this is concerning — this is the second perimeter breach in 6 months. We need to talk about a permanent solution: additional lighting, camera upgrades, or a guard schedule for graveyard shift. Happy to co-fund if Northstar agrees to a matching contribution.",
           minutesAfterCreation: 120,
@@ -635,7 +635,7 @@ function buildConversations(
       assigneeIndex: null,
       propertyIndex: 2,
       inboxSlug: "support",
-      customerId: customerIds["cust-prospect-tech"]!,
+      occupantId: occupantIds["cust-prospect-tech"]!,
       preview: "Prospect Logistics inquiring about Unit 11 at Fremont Flex — 15,000 sq ft for last-mile fulfillment. Move-in target Q3 2026. Strong financials.",
       tags: ["prospective-tenant"],
       slaOffsetHours: 3,
@@ -644,7 +644,7 @@ function buildConversations(
       createdAgo: 6,
       messages: [
         {
-          type: "customer",
+          type: "occupant",
           author: "Robert Kim",
           body: "Hi — I'm the Head of Real Estate at Prospect Logistics. We're looking for 12,000–18,000 sq ft of flex industrial space in the Fremont/Union City area for a last-mile fulfillment center. Move-in target is Q3 2026. I saw your Fremont Flex listing on LoopNet. Is Unit 11 still available? Can we schedule a tour?",
           minutesAfterCreation: 0,
@@ -672,7 +672,7 @@ function buildConversations(
       assigneeIndex: 3,
       propertyIndex: 2,
       inboxSlug: "support",
-      customerId: customerIds["cust-lam-frm"]!,
+      occupantId: occupantIds["cust-lam-frm"]!,
       preview: "Lam Research Unit 9 reporting rodent activity near the utility room. BayShield inspection completed — remediation plan sent. Monitoring follow-up.",
       tags: ["pest-control", "maintenance", "escalation"],
       slaOffsetHours: 6,
@@ -681,7 +681,7 @@ function buildConversations(
       createdAgo: 3,
       messages: [
         {
-          type: "customer",
+          type: "occupant",
           author: "Nadia Patel",
           body: "We found rodent droppings near the utility room in Unit 9 this morning. This is unacceptable — we have food-grade chemical storage and precision equipment. If this isn't addressed today, we'll have no choice but to notify the health department and document the condition for lease non-compliance purposes.",
           minutesAfterCreation: 0,
@@ -699,7 +699,7 @@ function buildConversations(
           minutesAfterCreation: 35,
         },
         {
-          type: "customer",
+          type: "occupant",
           author: "Nadia Patel",
           body: "Thank you for the quick response. Please send a written acknowledgment and the inspection report after BayShield completes their visit. We'll also need documentation of the remediation steps for our internal compliance files. If this is a recurring issue with the building, we'd like to discuss it during our upcoming lease review.",
           minutesAfterCreation: 55,
@@ -715,7 +715,7 @@ function buildConversations(
       assigneeIndex: 2,
       propertyIndex: 1,
       inboxSlug: "escalations",
-      customerId: customerIds["cust-sysco-stock"]!,
+      occupantId: occupantIds["cust-sysco-stock"]!,
       preview: "Electrical panels B and C tripped during peak load. PG&E restored power — full system check in progress.",
       tags: ["escalation", "cold-chain"],
       slaOffsetHours: 6,
@@ -724,7 +724,7 @@ function buildConversations(
       createdAgo: 5,
       messages: [
         {
-          type: "customer",
+          type: "occupant",
           author: "Carlos Reyes",
           body: "Panels B and C went offline 20 minutes ago during peak load. We've got 2 refrigeration units running on backup generator but generator capacity is at 85%. PG&E says 4–6 hours to restore. We need a contingency plan if the generator can't hold — we have $400K in temperature-sensitive product.",
           minutesAfterCreation: 0,
@@ -742,7 +742,7 @@ function buildConversations(
           minutesAfterCreation: 20,
         },
         {
-          type: "customer",
+          type: "occupant",
           author: "Carlos Reyes",
           body: "Yes — if this drags past 6 hours we'll have to notify 3 restaurant chains of potential delivery delays. We have a call with our logistics team at 3 PM. Please send a written incident summary by 2:30 PM that we can use internally and with clients. Include timeline, root cause (if known), and restoration ETA.",
           minutesAfterCreation: 45,
@@ -758,7 +758,7 @@ function buildConversations(
       assigneeIndex: 1,
       propertyIndex: 0,
       inboxSlug: "support",
-      customerId: customerIds["cust-amazon-oak"]!,
+      occupantId: occupantIds["cust-amazon-oak"]!,
       preview: "Amazon has 4 concurrent dock appointments scheduled for Monday 6–8 AM. Building dock capacity is 3 concurrent. Need re-scheduling or dock priority override.",
       tags: ["dock-equipment"],
       slaOffsetHours: 6,
@@ -767,7 +767,7 @@ function buildConversations(
       createdAgo: 18,
       messages: [
         {
-          type: "customer",
+          type: "occupant",
           author: "Marcus Webb",
           body: "I just noticed our dock management system shows 4 concurrent appointments for Monday 6–8 AM window: carriers UPS, FedEx, XPO, and Old Dominion. Building capacity is 3 concurrent docks. One of these needs to be pushed to 8–10 AM. Can you confirm dock 14 is fully operational by then (following Friday's repair)?",
           minutesAfterCreation: 0,
@@ -789,13 +789,13 @@ function buildConversations(
     {
       externalId: "conv-fremont-hvac-unit3",
       subject: "HVAC not cooling — Unit 3 office section overheating",
-      status: "waiting_on_customer",
+      status: "waiting_on_occupant",
       priority: "medium",
       assignmentState: "unassigned",
       assigneeIndex: null,
       propertyIndex: 2,
       inboxSlug: "support",
-      customerId: customerIds["cust-tesla-frm"]!,
+      occupantId: occupantIds["cust-tesla-frm"]!,
       preview: "Tesla Components HVAC filter replaced. Awaiting confirmation from Derek that temperatures are back to normal after 24-hour monitoring window.",
       tags: ["hvac", "maintenance"],
       slaOffsetHours: 6,
@@ -804,7 +804,7 @@ function buildConversations(
       createdAgo: 36,
       messages: [
         {
-          type: "customer",
+          type: "occupant",
           author: "Derek Chang",
           body: "The office section of Unit 3 (our overflow space) has been above 82°F for the past two days. The HVAC unit is running but it's not cooling. We have engineers working in there — this is affecting productivity. Can we get someone to look at it this week?",
           minutesAfterCreation: 0,
@@ -832,7 +832,7 @@ function buildConversations(
       assigneeIndex: 1,
       propertyIndex: 0,
       inboxSlug: "billing",
-      customerId: customerIds["cust-frito-lay"] ?? customerIds["cust-frito-oak"]!,
+      occupantId: occupantIds["cust-frito-lay"] ?? occupantIds["cust-frito-oak"]!,
       preview: "Frito-Lay was billed for 18 parking spaces in March invoice. Lease covers 12 reserved spaces. $840 overcharge confirmed and credit issued.",
       tags: ["billing"],
       slaOffsetHours: 72,
@@ -841,7 +841,7 @@ function buildConversations(
       createdAgo: 72,
       messages: [
         {
-          type: "customer",
+          type: "occupant",
           author: "Layla Torres",
           body: "Our March invoice shows 18 parking spaces billed at $70/space = $1,260. Our lease covers 12 reserved spaces = $840. We're being overcharged $420. Please review and issue a credit to next month's invoice.",
           minutesAfterCreation: 0,
@@ -859,7 +859,7 @@ function buildConversations(
           minutesAfterCreation: 95,
         },
         {
-          type: "customer",
+          type: "occupant",
           author: "Layla Torres",
           body: "Thank you for the quick resolution. Appreciated. Please make sure the correction is permanent — we had a similar issue in Q2 last year.",
           minutesAfterCreation: 240,
@@ -869,13 +869,13 @@ function buildConversations(
     {
       externalId: "conv-stockton-dock-expansion",
       subject: "Lease amendment request — additional dock door access",
-      status: "waiting_on_customer",
+      status: "waiting_on_occupant",
       priority: "medium",
       assignmentState: "assigned",
       assigneeIndex: 2,
       propertyIndex: 1,
       inboxSlug: "vip",
-      customerId: customerIds["cust-usfoods-stock"]!,
+      occupantId: occupantIds["cust-usfoods-stock"]!,
       preview: "US Foods dock expansion proposal sent with revised Q3 pricing. Awaiting US Foods signature on the lease amendment addendum.",
       tags: ["lease-renewal", "pricing"],
       slaOffsetHours: 12,
@@ -884,7 +884,7 @@ function buildConversations(
       createdAgo: 30,
       messages: [
         {
-          type: "customer",
+          type: "occupant",
           author: "Bethany Moss",
           body: "Our Q3 volume projections are 35% above Q2. We currently have access to docks 4 and 5 under our lease. We'd like to amend the lease to add docks 6 and 7 on a priority basis from July 1 through September 30. We're prepared to pay a reasonable premium for this. Can you confirm availability and pricing?",
           minutesAfterCreation: 0,
@@ -906,13 +906,13 @@ function buildConversations(
     {
       externalId: "conv-fremont-parking-dispute",
       subject: "Parking encroachment — Unit 12 vs Unit 13 conflict",
-      status: "waiting_on_customer",
+      status: "waiting_on_occupant",
       priority: "medium",
       assignmentState: "unassigned",
       assigneeIndex: null,
       propertyIndex: 2,
       inboxSlug: "support",
-      customerId: customerIds["cust-lam-frm"]!,
+      occupantId: occupantIds["cust-lam-frm"]!,
       preview: "Lam Research (Unit 12) reports Unit 13 vehicles regularly blocking their allocated loading zone. Conflict resolution letter sent — awaiting Unit 13 written acknowledgement.",
       tags: ["maintenance"],
       slaOffsetHours: 8,
@@ -921,7 +921,7 @@ function buildConversations(
       createdAgo: 18,
       messages: [
         {
-          type: "customer",
+          type: "occupant",
           author: "Nadia Patel",
           body: "This is an ongoing issue. Unit 13 trucks are blocking our loading zone almost every morning from 7–9 AM. We have documented it with photos. This is starting to affect our daily operations.",
           minutesAfterCreation: 0,
@@ -949,7 +949,7 @@ function buildConversations(
       assigneeIndex: null,
       propertyIndex: 0,
       inboxSlug: "support",
-      customerId: customerIds["cust-frito-oak"]!,
+      occupantId: occupantIds["cust-frito-oak"]!,
       preview: "Frito-Lay Zone B warehouse reaching 91°F during afternoon hours. Submitted 3 days ago — needs assignment to facilities team.",
       tags: ["hvac", "maintenance"],
       slaOffsetHours: 5,
@@ -958,7 +958,7 @@ function buildConversations(
       createdAgo: 48,
       messages: [
         {
-          type: "customer",
+          type: "occupant",
           author: "Layla Torres",
           body: "Zone B is getting uncomfortably hot in the afternoons — our temperature sensors are reading 91°F. This is above acceptable limits for our packaging equipment. We need this looked at before Friday.",
           minutesAfterCreation: 0,
@@ -970,7 +970,7 @@ function buildConversations(
           minutesAfterCreation: 5,
         },
         {
-          type: "customer",
+          type: "occupant",
           author: "Layla Torres",
           body: "Yes — it spikes between 1 PM and 4 PM. Worst on south-facing units. Please send someone this week.",
           minutesAfterCreation: 30,
@@ -986,7 +986,7 @@ function buildConversations(
       assigneeIndex: 1,
       propertyIndex: 0,
       inboxSlug: "support",
-      customerId: customerIds["cust-amazon-oak"]!,
+      occupantId: occupantIds["cust-amazon-oak"]!,
       preview: "Amazon DC reports standing water accumulating on the Unit 18 roof after last week's rain. Clogged drain suspected — roofing contractor inspection scheduled.",
       tags: ["maintenance"],
       slaOffsetHours: 7,
@@ -995,7 +995,7 @@ function buildConversations(
       createdAgo: 24,
       messages: [
         {
-          type: "customer",
+          type: "occupant",
           author: "Marcus Webb",
           body: "After last week's rain we noticed significant standing water on the Unit 18 roof visible from our mezzanine. There's a drain on the northeast corner that may be clogged. We're concerned about leaks.",
           minutesAfterCreation: 0,
@@ -1023,7 +1023,7 @@ function buildConversations(
       assigneeIndex: 2,
       propertyIndex: 1,
       inboxSlug: "support",
-      customerId: customerIds["cust-sysco-stock"]!,
+      occupantId: occupantIds["cust-sysco-stock"]!,
       preview: "Sysco requesting Q2 annual inspection to be scheduled before June 30. Coordinating preferred access windows across their 3 units.",
       tags: ["maintenance"],
       slaOffsetHours: 24,
@@ -1032,7 +1032,7 @@ function buildConversations(
       createdAgo: 72,
       messages: [
         {
-          type: "customer",
+          type: "occupant",
           author: "Carlos Reyes",
           body: "Can we get the Q2 annual inspection scheduled? Our lease requires it before June 30. We'd prefer a Monday or Tuesday before 10 AM to minimize disruption to receiving operations.",
           minutesAfterCreation: 0,
@@ -1060,7 +1060,7 @@ function buildConversations(
       assigneeIndex: 3,
       propertyIndex: 2,
       inboxSlug: "vip",
-      customerId: customerIds["cust-tesla-frm"]!,
+      occupantId: occupantIds["cust-tesla-frm"]!,
       preview: "Tesla Components invoking 90-day early termination clause on Unit 5. Reviewing lease terms and evaluating re-leasing timeline. High-value replacement tenant being sourced.",
       tags: ["lease-renewal", "escalation"],
       slaOffsetHours: 10,
@@ -1069,7 +1069,7 @@ function buildConversations(
       createdAgo: 48,
       messages: [
         {
-          type: "customer",
+          type: "occupant",
           author: "Derek Chang",
           body: "We are initiating early termination on Unit 5 per Section 18.3 of our lease agreement. Our effective date would be 90 days from today. Please confirm receipt and advise on the next steps for a clean handover.",
           minutesAfterCreation: 0,
@@ -1097,7 +1097,7 @@ function buildConversations(
       assigneeIndex: 2,
       propertyIndex: 1,
       inboxSlug: "support",
-      customerId: customerIds["cust-usfoods-stock"]!,
+      occupantId: occupantIds["cust-usfoods-stock"]!,
       preview: "US Foods requesting facility badge access for 4 new hires starting Monday. Access Control form submitted — processing with security vendor.",
       tags: ["security"],
       slaOffsetHours: 8,
@@ -1106,7 +1106,7 @@ function buildConversations(
       createdAgo: 16,
       messages: [
         {
-          type: "customer",
+          type: "occupant",
           author: "Bethany Moss",
           body: "We have 4 new team members starting Monday who need badge access to the facility. I've filled out your access control form and emailed it to operations. Can you confirm the processing timeline? We need access active by 6 AM Monday.",
           minutesAfterCreation: 0,
@@ -1134,7 +1134,7 @@ function buildConversations(
       assigneeIndex: 3,
       propertyIndex: 2,
       inboxSlug: "escalations",
-      customerId: customerIds["cust-lam-frm"]!,
+      occupantId: occupantIds["cust-lam-frm"]!,
       preview: "Heavy rain hit Fremont 30 min ago. Water dripping onto a $240K metrology station in Unit 6. Roof + tarp crew dispatched.",
       tags: ["roof-maintenance", "water-damage", "escalation", "maintenance"],
       slaOffsetHours: -0.25,
@@ -1143,7 +1143,7 @@ function buildConversations(
       createdAgo: 1,
       messages: [
         {
-          type: "customer",
+          type: "occupant",
           author: "Nadia Patel",
           body: "Urgent — active roof leak in Unit 6, directly over our R&D metrology bench. Water is coming through near the HVAC curb. It's been raining hard for 30 minutes. The equipment underneath is a $240K coordinate measuring machine and it's getting hit. We've pulled a tarp from the vendor kit but it's not holding. Photos attached.",
           minutesAfterCreation: 0,
@@ -1155,7 +1155,7 @@ function buildConversations(
           minutesAfterCreation: 2,
         },
         {
-          type: "customer",
+          type: "occupant",
           author: "Nadia Patel",
           body: "Copy. We've shifted the CMM out from under it and rolled poly sheeting over the rest of the bench. Leak is now running down the wall and hit a 240V outlet. We killed the breaker. Please hurry.",
           minutesAfterCreation: 10,
@@ -1183,7 +1183,7 @@ function buildConversations(
       assigneeIndex: 1,
       propertyIndex: 0,
       inboxSlug: "escalations",
-      customerId: customerIds["cust-amazon-oak"]!,
+      occupantId: occupantIds["cust-amazon-oak"]!,
       preview: "Supply line burst above the ceiling in loading corridor C at 1:52 AM. Active flooding. Tenant directed to main shutoff; plumber + water extraction dispatched.",
       tags: ["plumbing", "water-damage", "escalation", "maintenance"],
       slaOffsetHours: -2,
@@ -1192,7 +1192,7 @@ function buildConversations(
       createdAgo: 3,
       messages: [
         {
-          type: "customer",
+          type: "occupant",
           author: "Marcus Webb",
           body: "Pipe burst above the ceiling in loading corridor C. Water is coming down in sheets, ceiling tiles collapsed, and it's running toward staged outbound pallets. Our night lead doesn't know where the building shutoff valve is. We need to stop this NOW.",
           minutesAfterCreation: 0,
@@ -1204,7 +1204,7 @@ function buildConversations(
           minutesAfterCreation: 2,
         },
         {
-          type: "customer",
+          type: "occupant",
           author: "Marcus Webb",
           body: "Valve closed. Water is slowing. We've got about 2 inches of standing water in a 40x30 ft section. Pushed pallets to the dry end. Need extraction vendor ASAP — we have cold-chain outbounds staged that can't sit in water.",
           minutesAfterCreation: 6,
@@ -1232,7 +1232,7 @@ function buildConversations(
       assigneeIndex: 2,
       propertyIndex: 1,
       inboxSlug: "support",
-      customerId: customerIds["cust-redwood-stock"]!,
+      occupantId: occupantIds["cust-redwood-stock"]!,
       preview: "Redwood Fulfillment confirmed 30-day move-in. Make-ready checklist kicked off: deep clean, dock service, HVAC, paint, badges for 18, COI, Comcast 1 Gbps, fire permit transfer.",
       tags: ["make-ready", "move-in", "onboarding", "maintenance"],
       slaOffsetHours: 48,
@@ -1241,7 +1241,7 @@ function buildConversations(
       createdAgo: 6,
       messages: [
         {
-          type: "customer",
+          type: "occupant",
           author: "Elena Vasquez",
           body: "Hi — Elena from Redwood Fulfillment. We just countersigned on Unit 4 (Stockton). Target move-in is 30 days out. What's the process to get the unit ready on your side, and what do you need from us? We're planning to run 2 shifts, roughly 18 people to start, ramping to 25 by Q3.",
           minutesAfterCreation: 0,
@@ -1253,7 +1253,7 @@ function buildConversations(
           minutesAfterCreation: 8,
         },
         {
-          type: "customer",
+          type: "occupant",
           author: "Elena Vasquez",
           body: "Perfect — exactly what we needed. Tuesday or Wednesday walk-through works. COI by end of week and W-9 through finance. Internet: Comcast, 1 Gbps symmetric. On the employee list I'll have 14 locked in by Friday; the last 4 firm up the following week.",
           minutesAfterCreation: 120,
@@ -1275,13 +1275,13 @@ function buildConversations(
     {
       externalId: "conv-fremont-stormwater-passthrough",
       subject: "New line item on April invoice — municipal stormwater utility charge",
-      status: "waiting_on_customer",
+      status: "waiting_on_occupant",
       priority: "medium",
       assignmentState: "assigned",
       assigneeIndex: 3,
       propertyIndex: 2,
       inboxSlug: "billing",
-      customerId: customerIds["cust-tesla-frm"]!,
+      occupantId: occupantIds["cust-tesla-frm"]!,
       preview: "Tesla AP flagged a new $1,840 pass-through on April invoice. Confirmed as Fremont municipal stormwater utility — billable per lease Section 9.2(c). Walkthrough with Travis scheduled.",
       tags: ["billing", "pass-through", "lease-renewal"],
       slaOffsetHours: 12,
@@ -1290,7 +1290,7 @@ function buildConversations(
       createdAgo: 18,
       messages: [
         {
-          type: "customer",
+          type: "occupant",
           author: "Derek Chang",
           body: "Our AP team is holding April's invoice because there's a line item we haven't seen before: \"Municipal Stormwater Utility — Pass-through\" for $1,840.17. Can you confirm what this is, where it comes from, and why it's billable to us? We want to verify against the lease before releasing payment.",
           minutesAfterCreation: 0,
@@ -1302,7 +1302,7 @@ function buildConversations(
           minutesAfterCreation: 25,
         },
         {
-          type: "customer",
+          type: "occupant",
           author: "Derek Chang",
           body: "That would help — please send the City's bill and the worksheet. A quick call with Travis also works; any time Thursday afternoon.",
           minutesAfterCreation: 90,
@@ -1330,10 +1330,10 @@ async function seedConversations(
   propertyIds: string[],
   staffIds: string[],
   inboxIds: string[],
-  customerIds: Record<string, string>,
+  occupantIds: Record<string, string>,
   tagMap: Record<string, string>,
 ) {
-  const conversations = buildConversations(staffIds, customerIds);
+  const conversations = buildConversations(staffIds, occupantIds);
   const inboxSlugs = ["support", "escalations", "billing", "vip"];
 
   for (const conv of conversations) {
@@ -1359,15 +1359,15 @@ async function seedConversations(
 
     const [convRow] = await sql`
       INSERT INTO help_conversations (
-        tenant_id, property_id, inbox_id, customer_id, external_thread_id,
+        tenant_id, property_id, inbox_id, occupant_id, external_thread_id,
         subject, status, priority, assignment_state, assignee_staff_id,
         channel, preview, unread_count, message_count,
         first_response_due_at, next_response_due_at, resolution_due_at,
-        last_customer_message_at, last_message_at,
+        last_occupant_message_at, last_message_at,
         closed_at, created_at, updated_at
       )
       VALUES (
-        ${tenantId}, ${propertyId}, ${inboxId}, ${conv.customerId}, ${conv.externalId},
+        ${tenantId}, ${propertyId}, ${inboxId}, ${conv.occupantId}, ${conv.externalId},
         ${conv.subject}, ${conv.status}, ${conv.priority}, ${conv.assignmentState}, ${assigneeStaffId},
         'email', ${conv.preview}, ${conv.status !== "resolved" ? 1 : 0}, ${conv.messages.length},
         ${dueAt}, ${new Date(dueAt.getTime() + 60 * 60 * 1000)}, ${new Date(dueAt.getTime() + 24 * 60 * 60 * 1000)},
@@ -1521,7 +1521,7 @@ async function clearHelpdeskData(tenantId: string): Promise<void> {
   await sql`DELETE FROM help_messages WHERE tenant_id = ${tenantId}`;
   await sql`DELETE FROM help_tickets WHERE tenant_id = ${tenantId}`;
   await sql`DELETE FROM help_conversations WHERE tenant_id = ${tenantId}`;
-  await sql`DELETE FROM help_customers WHERE tenant_id = ${tenantId}`;
+  await sql`DELETE FROM help_occupants WHERE tenant_id = ${tenantId}`;
   console.log("Helpdesk data cleared.");
 }
 
@@ -1581,9 +1581,9 @@ async function main() {
   await clearHelpdeskData(tenantId);
 
   const tagMap = await upsertTags(tenantId);
-  const customerIds = await upsertCustomers(tenantId, propertyIds);
+  const occupantIds = await upsertOccupants(tenantId, propertyIds);
 
-  await seedConversations(tenantId, propertyIds, staffIds, inboxIds, customerIds, tagMap);
+  await seedConversations(tenantId, propertyIds, staffIds, inboxIds, occupantIds, tagMap);
   await seedPlatformKnowledge(tenantId);
 
   console.log("\n=== Berkeley Partners — Pilot Tenant ===\n");

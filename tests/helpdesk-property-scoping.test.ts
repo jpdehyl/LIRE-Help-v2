@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import supertest from "supertest";
 import { getApp } from "./helpers/request.js";
 import { db } from "../server/db.js";
-import { helpConversations, helpCustomers, helpInboxes, properties } from "../shared/schema.js";
+import { helpConversations, helpOccupants, helpInboxes, properties } from "../shared/schema.js";
 import { seedStaff, seedTenant } from "./helpers/seed.js";
 
 describe("helpdesk propertyId scoping (A5)", () => {
@@ -46,16 +46,16 @@ describe("helpdesk propertyId scoping (A5)", () => {
     const [inbox] = await db.insert(helpInboxes).values({
       tenantId, slug: "support", name: "Support", description: null, channel: "email", isDefault: true,
     }).returning();
-    const [customer] = await db.insert(helpCustomers).values({
+    const [occupant] = await db.insert(helpOccupants).values({
       tenantId, name: "Acme", email: "acme@example.com", tier: "standard", health: "stable",
     }).returning();
     await db.insert(helpConversations).values({
-      tenantId, propertyId: propertyX, inboxId: inbox!.id, customerId: customer!.id,
+      tenantId, propertyId: propertyX, inboxId: inbox!.id, occupantId: occupant!.id,
       subject: "X convo", status: "open", priority: "medium", assignmentState: "unassigned", channel: "email",
       preview: "…", unreadCount: 0, messageCount: 1, lastMessageAt: new Date(),
     });
     await db.insert(helpConversations).values({
-      tenantId, propertyId: propertyY, inboxId: inbox!.id, customerId: customer!.id,
+      tenantId, propertyId: propertyY, inboxId: inbox!.id, occupantId: occupant!.id,
       subject: "Y convo", status: "open", priority: "medium", assignmentState: "unassigned", channel: "email",
       preview: "…", unreadCount: 0, messageCount: 1, lastMessageAt: new Date(),
     });

@@ -14,7 +14,7 @@ import type { ConciergeTurnProgressEvent, ToolCall } from "./session-runner.js";
 import type { ConversationBrief } from "./types.js";
 import type { ConciergeSettingsPatch } from "../storage.js";
 import { getConciergeSettings, getPlatformKnowledge, upsertConciergeSettings } from "../storage.js";
-import { helpConversations, helpCustomers, helpMessages, properties } from "../../shared/schema.js";
+import { helpConversations, helpOccupants, helpMessages, properties } from "../../shared/schema.js";
 
 const router = Router();
 router.use(requireStaff);
@@ -83,19 +83,19 @@ async function buildDraftBrief(conversationId: string): Promise<ConversationBrie
     .limit(1);
   if (!conversation) return null;
 
-  const [customer] = conversation.customerId
-    ? await db.select().from(helpCustomers).where(eq(helpCustomers.id, conversation.customerId)).limit(1)
+  const [occupant] = conversation.occupantId
+    ? await db.select().from(helpOccupants).where(eq(helpOccupants.id, conversation.occupantId)).limit(1)
     : [undefined];
   const [property] = conversation.propertyId
     ? await db.select().from(properties).where(eq(properties.id, conversation.propertyId)).limit(1)
     : [undefined];
-  const [latestCustomerMessage] = await db
+  const [latestOccupantMessage] = await db
     .select({ body: helpMessages.body })
     .from(helpMessages)
     .where(
       and(
         eq(helpMessages.conversationId, conversation.id),
-        eq(helpMessages.messageType, "customer"),
+        eq(helpMessages.messageType, "occupant"),
         eq(helpMessages.messageSource, "human"),
       ),
     )
@@ -107,12 +107,12 @@ async function buildDraftBrief(conversationId: string): Promise<ConversationBrie
     tenantId: conversation.tenantId,
     propertyId: conversation.propertyId,
     channel: "web",
-    customerName: customer?.name ?? null,
-    customerCompany: customer?.company ?? null,
+    tenantName: occupant?.name ?? null,
+    tenantCompany: occupant?.company ?? null,
     propertyName: property?.name ?? null,
     propertyCode: property ? derivePropertyCode(property.slug, property.name) : null,
     subject: conversation.subject,
-    latestMessage: latestCustomerMessage?.body ?? conversation.preview ?? conversation.subject,
+    latestMessage: latestOccupantMessage?.body ?? conversation.preview ?? conversation.subject,
     runState: "live",
   };
 }
@@ -310,8 +310,8 @@ async function executeTryItRun(
     tenantId,
     propertyId: null,
     channel: "web",
-    customerName: "Playground operator",
-    customerCompany: null,
+    tenantName: "Playground operator",
+    tenantCompany: null,
     propertyName: null,
     propertyCode: null,
     subject: "Operator try-it playground",
@@ -416,7 +416,7 @@ async function executeTryItRun(
     client,
     identity,
     brief,
-    latestCustomerMessage: body.message,
+    latestOccupantMessage: body.message,
     handleTool,
     onProgress: emitProgress,
     resumeSessionId: body.sessionId,
@@ -604,7 +604,7 @@ async function executeDraftRun(body: z.infer<typeof DraftBodySchema>, streamRes?
     client,
     identity,
     brief,
-    latestCustomerMessage: brief.latestMessage,
+    latestOccupantMessage: brief.latestMessage,
     handleTool,
     onProgress: emitProgress,
   });

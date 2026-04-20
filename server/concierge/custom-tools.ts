@@ -11,7 +11,7 @@ export const CONCIERGE_CUSTOM_TOOLS = [
     type: "custom" as const,
     name: "send_reply",
     description:
-      "Send a reply back to the tenant on the original channel (email, SMS, WhatsApp, Zoom). Use this once you have a complete, confident answer that resolves the customer's question or provides clear next steps. Do NOT use this for clarifying questions — prefer short, direct replies.",
+      "Send a reply back to the tenant on the original channel (email, SMS, WhatsApp, Zoom). Use this once you have a complete, confident answer that resolves the tenant's question or provides clear next steps. Do NOT use this for clarifying questions — prefer short, direct replies.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -112,7 +112,7 @@ export const CONCIERGE_CUSTOM_TOOLS = [
       properties: {
         status: {
           type: "string",
-          enum: ["open", "pending", "waiting_on_customer", "resolved"],
+          enum: ["open", "pending", "waiting_on_occupant", "resolved"],
         },
         priority: {
           type: "string",

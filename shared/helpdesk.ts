@@ -48,12 +48,12 @@ export const inboxChannelKeys: readonly InboxChannelKey[] = [
   "messenger",
 ];
 
-export type ConversationStatus = "open" | "pending" | "waiting_on_customer" | "resolved";
+export type ConversationStatus = "open" | "pending" | "waiting_on_occupant" | "resolved";
 export type PriorityLevel = "low" | "medium" | "high" | "urgent";
 export type SlaState = "healthy" | "at_risk" | "breached";
 export type AssignmentState = "assigned" | "unassigned" | "team";
 export type ConversationVisibilityStatus = "active" | "archived" | "spam" | "deleted";
-export type TimelineItemType = "customer" | "teammate" | "internal_note" | "system";
+export type TimelineItemType = "occupant" | "teammate" | "internal_note" | "system";
 export type ComposerMode = "reply" | "note";
 
 export interface InboxViewDefinition {
@@ -75,7 +75,7 @@ export interface TicketSummary {
   nextMilestone: string;
 }
 
-export interface CustomerSummary {
+export interface OccupantSummary {
   id: string;
   name: string;
   company: string;
@@ -108,7 +108,7 @@ export interface ConversationRow {
   slaCountdownLabel?: string | null;
   tags: string[];
   ticket: TicketSummary;
-  customer: CustomerSummary;
+  occupant: OccupantSummary;
   propertyId: string | null;
   propertyCode: string | null;
   aiHandling: boolean;
@@ -158,7 +158,7 @@ export interface ConversationDetail {
     canSoftDelete: boolean;
   };
   ticket: TicketSummary;
-  customer: CustomerSummary;
+  occupant: OccupantSummary;
   suggestedActions: SuggestionItem[];
   timeline: ConversationTimelineItem[];
   availableAssignees?: HelpdeskAssigneeOption[];
@@ -201,7 +201,7 @@ export interface HelpdeskDashboardMetrics {
     slaAtRisk: number;
     slaBreached: number;
     resolvedToday: number;
-    waitingOnCustomer: number;
+    waitingOnOccupant: number;
   };
   afterHoursHandled: number;
   tenantCount: number;

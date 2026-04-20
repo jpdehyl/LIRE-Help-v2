@@ -1,7 +1,7 @@
 // Drives a single Managed Agent session for one conversation turn.
 //
 // Flow:
-//   1. Channel adapter hands us an inbound customer message (already persisted
+//   1. Channel adapter hands us an inbound tenant message (already persisted
 //      to helpMessages with messageSource="human").
 //   2. runConciergeTurn() opens a session on the pre-created Managed Agent,
 //      seeds it with ConversationBrief + the latest message, and streams
@@ -49,7 +49,7 @@ export interface RunTurnArgs {
   client: Anthropic;
   identity: ConciergeIdentity;
   brief: ConversationBrief;
-  latestCustomerMessage: string;
+  latestOccupantMessage: string;
   handleTool: ToolHandler;
   onProgress?: (event: ConciergeTurnProgressEvent) => void | Promise<void>;
   // When provided, resume the existing session rather than creating a new
@@ -68,7 +68,7 @@ export interface TurnResult {
 }
 
 export async function runConciergeTurn(args: RunTurnArgs): Promise<TurnResult> {
-  const { client, identity, brief, latestCustomerMessage, handleTool, onProgress, resumeSessionId } = args;
+  const { client, identity, brief, latestOccupantMessage, handleTool, onProgress, resumeSessionId } = args;
 
   let sessionId: string;
   const seenEventIds = new Set<string>();
@@ -103,16 +103,16 @@ export async function runConciergeTurn(args: RunTurnArgs): Promise<TurnResult> {
   await onProgress?.({ type: "session", phase: "stream_opened", sessionId });
 
   const messageText = resumed
-    ? `Latest message from the customer:\n${latestCustomerMessage}`
+    ? `Latest message from the tenant:\n${latestOccupantMessage}`
     : [
         `Conversation context:`,
         `- Channel: ${brief.channel}`,
-        `- Customer: ${brief.customerName ?? "unknown"}${brief.customerCompany ? ` (${brief.customerCompany})` : ""}`,
+        `- Tenant: ${brief.tenantName ?? "unknown"}${brief.tenantCompany ? ` (${brief.tenantCompany})` : ""}`,
         `- Property: ${brief.propertyName ?? "unassigned"}${brief.propertyCode ? ` [${brief.propertyCode}]` : ""}`,
         `- Subject: ${brief.subject}`,
         ``,
-        `Latest message from the customer:`,
-        latestCustomerMessage,
+        `Latest message from the tenant:`,
+        latestOccupantMessage,
       ].join("\n");
 
   await client.beta.sessions.events.send(sessionId, {

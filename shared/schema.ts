@@ -287,7 +287,7 @@ export const helpInboxes = pgTable("help_inboxes", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const helpCustomers = pgTable("help_customers", {
+export const helpOccupants = pgTable("help_occupants", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: varchar("tenant_id").references(() => tenants.id).notNull(),
   propertyId: varchar("property_id").references(() => properties.id),
@@ -336,7 +336,7 @@ export const helpConversations = pgTable("help_conversations", {
   tenantId: varchar("tenant_id").references(() => tenants.id).notNull(),
   propertyId: varchar("property_id").references(() => properties.id),
   inboxId: varchar("inbox_id").references(() => helpInboxes.id),
-  customerId: varchar("customer_id").references(() => helpCustomers.id),
+  occupantId: varchar("occupant_id").references(() => helpOccupants.id),
   externalThreadId: text("external_thread_id"),
   subject: text("subject").notNull(),
   status: text("status").notNull().default("open"),
@@ -357,7 +357,7 @@ export const helpConversations = pgTable("help_conversations", {
   firstResponseDueAt: timestamp("first_response_due_at"),
   nextResponseDueAt: timestamp("next_response_due_at"),
   resolutionDueAt: timestamp("resolution_due_at"),
-  lastCustomerMessageAt: timestamp("last_customer_message_at"),
+  lastOccupantMessageAt: timestamp("last_occupant_message_at"),
   lastMessageAt: timestamp("last_message_at").defaultNow().notNull(),
   snoozedUntil: timestamp("snoozed_until"),
   snoozedByStaffId: varchar("snoozed_by_staff_id").references(() => staffUsers.id),
@@ -379,7 +379,7 @@ export const helpTickets = pgTable("help_tickets", {
   assigneeStaffId: varchar("assignee_staff_id").references(() => staffUsers.id),
   nextMilestone: text("next_milestone"),
   firstResponseAt: timestamp("first_response_at"),
-  // Latency in milliseconds between conversation open (or latest customer
+  // Latency in milliseconds between conversation open (or latest tenant
   // message) and the first reply. Populated when the concierge agent or a
   // human sends a reply; used to compute dashboard "avg response".
   responseLatencyMs: integer("response_latency_ms"),
@@ -395,7 +395,7 @@ export const helpMessages = pgTable("help_messages", {
   conversationId: varchar("conversation_id").references(() => helpConversations.id).notNull(),
   authorStaffId: varchar("author_staff_id").references(() => staffUsers.id),
   externalMessageId: text("external_message_id"),
-  messageType: text("message_type").notNull().default("customer"),
+  messageType: text("message_type").notNull().default("occupant"),
   // "human" | "ai" | "system" — lets the dashboard compute % autonomous
   // without brittle string-matching on authorLabel.
   messageSource: text("message_source").notNull().default("human"),
@@ -417,7 +417,7 @@ export const helpConversationTags = pgTable("help_conversation_tags", {
 }));
 
 export type HelpInbox = typeof helpInboxes.$inferSelect;
-export type HelpCustomer = typeof helpCustomers.$inferSelect;
+export type HelpOccupant = typeof helpOccupants.$inferSelect;
 export type HelpSla = typeof helpSlas.$inferSelect;
 export type HelpTag = typeof helpTags.$inferSelect;
 export type HelpConversation = typeof helpConversations.$inferSelect;

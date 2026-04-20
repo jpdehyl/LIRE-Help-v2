@@ -6,7 +6,7 @@ import {
   platformKnowledge,
   platformSessions,
   helpInboxes,
-  helpCustomers,
+  helpOccupants,
   helpSlas,
   helpTags,
   helpConversations,
@@ -29,7 +29,7 @@ import type {
   PlatformSession,
   HelpConversation,
   HelpConversationTag,
-  HelpCustomer,
+  HelpOccupant,
   HelpInbox,
   HelpMessage,
   HelpTag,
@@ -68,7 +68,7 @@ interface HelpdeskContext {
   scope: HelpdeskScope;
   staff: StaffUser[];
   inboxes: HelpInbox[];
-  customers: HelpCustomer[];
+  occupants: HelpOccupant[];
   tags: HelpTag[];
   conversations: HelpConversation[];
   tickets: HelpTicket[];
@@ -135,7 +135,7 @@ function inboxMatchesTeam(row: ConversationRow, teamKey: "maintenance" | "lease_
 }
 
 const priorityOrder: PriorityLevel[] = ["urgent", "high", "medium", "low"];
-const statusOrder: ConversationStatus[] = ["open", "pending", "waiting_on_customer", "resolved"];
+const statusOrder: ConversationStatus[] = ["open", "pending", "waiting_on_occupant", "resolved"];
 
 // ─── Tenants ─────────────────────────────────────────────────────────────────
 
@@ -471,7 +471,7 @@ function deriveSlaCountdownLabel(conversation: HelpConversation, state: SlaState
 function deriveNextMilestone(ticket: HelpTicket | undefined, conversation: HelpConversation): string {
   if (ticket?.nextMilestone) return ticket.nextMilestone;
   if (conversation.status === "resolved") return "Resolved";
-  if (conversation.status === "waiting_on_customer") return "Waiting on tenant reply";
+  if (conversation.status === "waiting_on_occupant") return "Waiting on tenant reply";
   if (conversation.firstResponseDueAt) return `First response ${formatRelative(conversation.firstResponseDueAt)}`;
   if (conversation.nextResponseDueAt) return `Next response ${formatRelative(conversation.nextResponseDueAt)}`;
   if (conversation.resolutionDueAt) return `Resolution ${formatRelative(conversation.resolutionDueAt)}`;
@@ -485,8 +485,8 @@ function deriveWaitingSinceLabel(conversation: HelpConversation): string {
   if (conversation.assignmentState === "unassigned") {
     return conversation.createdAt ? `Unowned since ${formatRelative(conversation.createdAt)}` : "Unassigned";
   }
-  if (conversation.status === "waiting_on_customer") {
-    return conversation.lastCustomerMessageAt ? `Waiting since ${formatRelative(conversation.lastCustomerMessageAt)}` : "Waiting on tenant";
+  if (conversation.status === "waiting_on_occupant") {
+    return conversation.lastOccupantMessageAt ? `Waiting since ${formatRelative(conversation.lastOccupantMessageAt)}` : "Waiting on tenant";
   }
   return conversation.createdAt ? `Opened ${formatRelative(conversation.createdAt)}` : "Open";
 }
@@ -495,7 +495,7 @@ function deriveTimelineItemType(messageType: string): TimelineItemType {
   if (messageType === "internal_note") return "internal_note";
   if (messageType === "system") return "system";
   if (messageType === "teammate") return "teammate";
-  return "customer";
+  return "occupant";
 }
 
 function deriveComposerMode(messages: HelpMessage[]): ComposerMode {
@@ -611,10 +611,10 @@ async function loadHelpdeskContext(tenantId?: string | null, propertyId?: string
   const scope = await resolveHelpdeskScope(tenantId, propertyId, staffId);
   if (!scope) return null;
 
-  const [staff, inboxes, customers, tags, conversations, tickets, messages, conversationTags, tenantProperties] = await Promise.all([
+  const [staff, inboxes, occupants, tags, conversations, tickets, messages, conversationTags, tenantProperties] = await Promise.all([
     db.select().from(staffUsers).where(and(eq(staffUsers.tenantId, scope.tenantId), eq(staffUsers.isActive, true))).orderBy(asc(staffUsers.name)),
     db.select().from(helpInboxes).where(eq(helpInboxes.tenantId, scope.tenantId)).orderBy(asc(helpInboxes.name)),
-    db.select().from(helpCustomers).where(eq(helpCustomers.tenantId, scope.tenantId)).orderBy(asc(helpCustomers.name)),
+    db.select().from(helpOccupants).where(eq(helpOccupants.tenantId, scope.tenantId)).orderBy(asc(helpOccupants.name)),
     db.select().from(helpTags).where(eq(helpTags.tenantId, scope.tenantId)).orderBy(asc(helpTags.name)),
     db.select().from(helpConversations).where(eq(helpConversations.tenantId, scope.tenantId)).orderBy(desc(helpConversations.lastMessageAt)),
     db.select().from(helpTickets).where(eq(helpTickets.tenantId, scope.tenantId)).orderBy(desc(helpTickets.updatedAt)),
@@ -627,7 +627,7 @@ async function loadHelpdeskContext(tenantId?: string | null, propertyId?: string
     scope,
     staff: withinScope(staff, scope.propertyId),
     inboxes: withinScope(inboxes, scope.propertyId),
-    customers: withinScope(customers, scope.propertyId),
+    occupants: withinScope(occupants, scope.propertyId),
     tags: withinScope(tags, scope.propertyId),
     conversations: withinScope(conversations, scope.propertyId),
     tickets: withinScope(tickets, scope.propertyId),
@@ -652,7 +652,7 @@ function buildTagOptions(context: HelpdeskContext): HelpdeskTagOption[] {
 
 function buildConversationRows(context: HelpdeskContext): ConversationRow[] {
   const inboxById = new Map(context.inboxes.map((inbox) => [inbox.id, inbox]));
-  const customerById = new Map(context.customers.map((customer) => [customer.id, customer]));
+  const occupantById = new Map(context.occupants.map((occupant) => [occupant.id, occupant]));
   const ticketByConversationId = new Map(context.tickets.map((ticket) => [ticket.conversationId, ticket]));
   const staffById = new Map(context.staff.map((staffMember) => [staffMember.id, staffMember]));
   const tagById = new Map(context.tags.map((tag) => [tag.id, tag]));
@@ -672,7 +672,7 @@ function buildConversationRows(context: HelpdeskContext): ConversationRow[] {
 
   return context.conversations.map((conversation, index) => {
     const inbox = conversation.inboxId ? inboxById.get(conversation.inboxId) : undefined;
-    const customer = conversation.customerId ? customerById.get(conversation.customerId) : undefined;
+    const occupant = conversation.occupantId ? occupantById.get(conversation.occupantId) : undefined;
     const ticket = ticketByConversationId.get(conversation.id);
     const assigneeStaff = (ticket?.assigneeStaffId ? staffById.get(ticket.assigneeStaffId) : undefined)
       ?? (conversation.assigneeStaffId ? staffById.get(conversation.assigneeStaffId) : undefined);
@@ -704,9 +704,9 @@ function buildConversationRows(context: HelpdeskContext): ConversationRow[] {
     return {
       id: conversation.id,
       subject: conversation.subject,
-      requesterName: customer?.name ?? "Unknown customer",
-      requesterEmail: customer?.email ?? "",
-      company: customer?.company ?? "—",
+      requesterName: occupant?.name ?? "Unknown tenant",
+      requesterEmail: occupant?.email ?? "",
+      company: occupant?.company ?? "—",
       inboxLabel: inbox?.name ?? ticket?.team ?? "Support",
       channel,
       preview: conversation.preview ?? "No preview available.",
@@ -734,13 +734,13 @@ function buildConversationRows(context: HelpdeskContext): ConversationRow[] {
         slaState,
         nextMilestone: deriveNextMilestone(ticket, conversation),
       },
-      customer: {
-        id: customer?.externalId ?? customer?.id ?? `customer-${conversation.id}`,
-        name: customer?.name ?? "Unknown customer",
-        company: customer?.company ?? "—",
-        tier: (customer?.tier as "standard" | "priority" | "strategic") ?? "standard",
-        health: (customer?.health as "stable" | "watch" | "at_risk") ?? "stable",
-        lastSeenLabel: customer?.lastSeenAt ? formatAbsolute(customer.lastSeenAt) : "Unknown",
+      occupant: {
+        id: occupant?.externalId ?? occupant?.id ?? `occupant-${conversation.id}`,
+        name: occupant?.name ?? "Unknown tenant",
+        company: occupant?.company ?? "—",
+        tier: (occupant?.tier as "standard" | "priority" | "strategic") ?? "standard",
+        health: (occupant?.health as "stable" | "watch" | "at_risk") ?? "stable",
+        lastSeenLabel: occupant?.lastSeenAt ? formatAbsolute(occupant.lastSeenAt) : "Unknown",
       },
       propertyId: conversation.propertyId ?? null,
       propertyCode: conversation.propertyId ? propertyCodeById.get(conversation.propertyId) ?? null : null,
@@ -838,7 +838,7 @@ export async function getHelpConversationDetail(
       ...mailboxFlags,
     },
     ticket: row.ticket,
-    customer: row.customer,
+    occupant: row.occupant,
     suggestedActions: deriveSuggestedActions(row),
     timeline,
     availableAssignees: buildAssigneeOptions(context),
@@ -1205,7 +1205,7 @@ export async function replyToHelpConversation(
     context.tickets.find((existingTicket) => existingTicket.conversationId === conversationId),
   );
   const actor = context.staff.find((staff) => staff.id === actorStaffId);
-  const nextStatus = status ?? "waiting_on_customer";
+  const nextStatus = status ?? "waiting_on_occupant";
   const now = new Date();
 
   await db.insert(helpMessages).values({
@@ -1404,7 +1404,7 @@ export async function getHelpdeskDashboardMetrics(
   const context = await loadHelpdeskContext(tenantId, propertyId, staffId);
   if (!context) {
     return {
-      summary: { openConversations: 0, unassigned: 0, slaAtRisk: 0, slaBreached: 0, resolvedToday: 0, waitingOnCustomer: 0 },
+      summary: { openConversations: 0, unassigned: 0, slaAtRisk: 0, slaBreached: 0, resolvedToday: 0, waitingOnOccupant: 0 },
       afterHoursHandled: 0,
       tenantCount: 0,
       autonomousSharePct: null,
@@ -1444,7 +1444,7 @@ export async function getHelpdeskDashboardMetrics(
   const channels = buildChannelMetrics(context.conversations, now);
 
   // Concierge run quality: trailing 7 days.
-  // - autonomousSharePct: of the conversations whose first non-customer
+  // - autonomousSharePct: of the conversations whose first non-occupant
   //   message landed in the last 7 days, what share were sent by the AI
   //   (messageSource === "ai") vs a human teammate.
   // - avgFirstResponseMs: mean of helpTickets.responseLatencyMs populated
@@ -1462,7 +1462,7 @@ export async function getHelpdeskDashboardMetrics(
   for (const [, msgs] of messagesByConvo) {
     const sorted = [...msgs].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
     const firstResponse = sorted.find(
-      (m) => m.messageType !== "customer" && (m.messageSource === "ai" || m.messageSource === "human"),
+      (m) => m.messageType !== "occupant" && (m.messageSource === "ai" || m.messageSource === "human"),
     );
     if (!firstResponse || firstResponse.createdAt < last7d) continue;
     if (firstResponse.messageSource === "ai") aiCount += 1;
@@ -1509,10 +1509,10 @@ export async function getHelpdeskDashboardMetrics(
       slaAtRisk: openRows.filter((row) => row.slaState === "at_risk" || row.slaState === "breached").length,
       slaBreached,
       resolvedToday,
-      waitingOnCustomer: openRows.filter((row) => row.status === "waiting_on_customer").length,
+      waitingOnOccupant: openRows.filter((row) => row.status === "waiting_on_occupant").length,
     },
     afterHoursHandled,
-    tenantCount: new Set(context.customers.map((c) => c.company ?? c.id)).size,
+    tenantCount: new Set(context.occupants.map((o) => o.company ?? o.id)).size,
     autonomousSharePct,
     avgFirstResponseMs,
     firstResponseSampleCount,

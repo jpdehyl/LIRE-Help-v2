@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import supertest from "supertest";
 import { getApp } from "./helpers/request.js";
 import { db } from "../server/db.js";
-import { helpConversationTags, helpConversations, helpCustomers, helpInboxes, helpTags } from "../shared/schema.js";
+import { helpConversationTags, helpConversations, helpOccupants, helpInboxes, helpTags } from "../shared/schema.js";
 import { seedProperty, seedStaff, seedTenant } from "./helpers/seed.js";
 
 describe("helpdesk mutation endpoints block readonly role (A4)", () => {
@@ -27,11 +27,11 @@ describe("helpdesk mutation endpoints block readonly role (A4)", () => {
     const [inbox] = await db.insert(helpInboxes).values({
       tenantId, propertyId, slug: "support", name: "Support", description: null, channel: "email", isDefault: true,
     }).returning();
-    const [customer] = await db.insert(helpCustomers).values({
+    const [occupant] = await db.insert(helpOccupants).values({
       tenantId, propertyId, name: "Acme", email: "acme@example.com", tier: "standard", health: "stable",
     }).returning();
     const [conv] = await db.insert(helpConversations).values({
-      tenantId, propertyId, inboxId: inbox!.id, customerId: customer!.id, subject: "Test",
+      tenantId, propertyId, inboxId: inbox!.id, occupantId: occupant!.id, subject: "Test",
       status: "open", priority: "medium", assignmentState: "unassigned", channel: "email",
       preview: "…", unreadCount: 1, messageCount: 1,
       lastMessageAt: new Date(),
@@ -154,7 +154,7 @@ describe("helpdesk mutation endpoints block readonly role (A4)", () => {
     const mgr = await login("mgr@rg.example.com");
     const res = await mgr.post(`/api/helpdesk/inbox/conversations/${conversationId}/replies`).send({ body: "We have an update for you." });
     expect(res.status).toBe(201);
-    expect(res.body.ticket.status).toBe("waiting_on_customer");
+    expect(res.body.ticket.status).toBe("waiting_on_occupant");
     expect(res.body.timeline.some((item: { type: string; body: string }) => item.type === "teammate" && item.body === "We have an update for you.")).toBe(true);
   });
 

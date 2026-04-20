@@ -16,7 +16,7 @@ import {
 } from "../server/storage.js";
 import {
   helpConversations,
-  helpCustomers,
+  helpOccupants,
   helpInboxes,
   helpMessages,
   helpTickets,
@@ -50,7 +50,7 @@ describe("helpdesk mailbox foundation fixes", () => {
       channel: "email",
       isDefault: true,
     }).returning();
-    const [customer] = await db.insert(helpCustomers).values({
+    const [occupant] = await db.insert(helpOccupants).values({
       tenantId,
       propertyId,
       name: "Acme",
@@ -62,7 +62,7 @@ describe("helpdesk mailbox foundation fixes", () => {
       tenantId,
       propertyId,
       inboxId: inbox!.id,
-      customerId: customer!.id,
+      occupantId: occupant!.id,
       subject: "Foundation test conversation",
       status: "open",
       priority: "medium",
@@ -298,7 +298,7 @@ describe("helpdesk mailbox foundation fixes", () => {
     expect(afterMessages.filter((message) => message.messageType === "internal_note")).toHaveLength(0);
   });
 
-  it("reply creates a teammate timeline item and defaults status to waiting_on_customer", async () => {
+  it("reply creates a teammate timeline item and defaults status to waiting_on_occupant", async () => {
     const detail = await replyToHelpConversation(
       conversationId,
       "We reviewed this and will follow up shortly.",
@@ -309,10 +309,10 @@ describe("helpdesk mailbox foundation fixes", () => {
     );
 
     expect(detail?.timeline.some((item) => item.type === "teammate" && item.body === "We reviewed this and will follow up shortly.")).toBe(true);
-    expect(detail?.ticket.status).toBe("waiting_on_customer");
+    expect(detail?.ticket.status).toBe("waiting_on_occupant");
 
     const [conversation] = await db.select().from(helpConversations).where(eq(helpConversations.id, conversationId));
-    expect(conversation?.status).toBe("waiting_on_customer");
+    expect(conversation?.status).toBe("waiting_on_occupant");
     expect(conversation?.preview).toBe("We reviewed this and will follow up shortly.");
     expect(conversation?.unreadCount).toBe(0);
 
@@ -334,7 +334,7 @@ describe("helpdesk mailbox foundation fixes", () => {
     );
 
     const detail = await getHelpConversationDetail(conversationId, tenantId, null, actorStaffId);
-    expect(detail?.ticket.status).toBe("waiting_on_customer");
+    expect(detail?.ticket.status).toBe("waiting_on_occupant");
 
     const messages = await db.select().from(helpMessages).where(eq(helpMessages.conversationId, conversationId));
     expect(messages.filter((message) => message.messageType === "teammate")).toHaveLength(1);
@@ -343,7 +343,7 @@ describe("helpdesk mailbox foundation fixes", () => {
       firstResponseAt: helpTickets.firstResponseAt,
       status: helpTickets.status,
     }).from(helpTickets).where(eq(helpTickets.conversationId, conversationId));
-    expect(status).toBe("waiting_on_customer");
+    expect(status).toBe("waiting_on_occupant");
     expect(firstResponseAt).not.toBeNull();
   });
 

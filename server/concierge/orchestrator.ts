@@ -11,7 +11,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { eq } from "drizzle-orm";
 import { db } from "../db.js";
-import { helpConversations, helpCustomers, properties } from "../../shared/schema.js";
+import { helpConversations, helpOccupants, properties } from "../../shared/schema.js";
 import type { ConciergeSettings } from "../../shared/schema.js";
 import { getConciergeSettings } from "../storage.js";
 import { loadConciergeIdentity, runConciergeTurn } from "./session-runner.js";
@@ -85,8 +85,8 @@ export async function runConciergeForInbound(args: RunArgs): Promise<void> {
     return;
   }
 
-  const [customer] = conversation.customerId
-    ? await db.select().from(helpCustomers).where(eq(helpCustomers.id, conversation.customerId)).limit(1)
+  const [occupant] = conversation.occupantId
+    ? await db.select().from(helpOccupants).where(eq(helpOccupants.id, conversation.occupantId)).limit(1)
     : [undefined];
 
   const [property] = conversation.propertyId
@@ -98,8 +98,8 @@ export async function runConciergeForInbound(args: RunArgs): Promise<void> {
     tenantId: conversation.tenantId,
     propertyId: conversation.propertyId,
     channel: (conversation.channel as Channel) ?? "sms",
-    customerName: customer?.name ?? null,
-    customerCompany: customer?.company ?? null,
+    tenantName: occupant?.name ?? null,
+    tenantCompany: occupant?.company ?? null,
     propertyName: property?.name ?? null,
     propertyCode: property ? derivePropertyCode(property.slug, property.name) : null,
     subject: conversation.subject,
@@ -113,7 +113,7 @@ export async function runConciergeForInbound(args: RunArgs): Promise<void> {
       client,
       identity,
       brief,
-      latestCustomerMessage: args.inboundBody,
+      latestOccupantMessage: args.inboundBody,
       handleTool: conciergeToolHandler,
     });
     console.log("[concierge] turn complete", { conversationId: brief.conversationId, ...result });
