@@ -24,6 +24,7 @@ import {
   writeDocumentBytes,
 } from "./storage.js";
 import { extractText, UnsupportedMimeTypeError } from "./extract.js";
+import { indexDocument } from "./index-document.js";
 import { kbDocumentKinds, type KbDocumentKind } from "../../shared/schema.js";
 
 const router = Router();
@@ -129,9 +130,11 @@ router.post("/", upload.single("file"), async (req, res) => {
 
     // Extraction inline. Failure is captured but does NOT 500 the upload —
     // the file is still safely stored and the operator can retry.
+    let extracted = false;
     try {
       const { text } = await extractText(req.file.mimetype, req.file.buffer);
       await setKbDocumentExtract(row.id, tenantId, { status: "done", text });
+      extracted = true;
     } catch (err) {
       const message =
         err instanceof UnsupportedMimeTypeError
@@ -140,6 +143,16 @@ router.post("/", upload.single("file"), async (req, res) => {
           ? err.message
           : "Extraction failed";
       await setKbDocumentExtract(row.id, tenantId, { status: "failed", error: message });
+    }
+
+    // Index (chunk + embed) inline. Same failure policy as extraction —
+    // chunking errors or Voyage outages don't fail the upload.
+    if (extracted) {
+      try {
+        await indexDocument(row.id, tenantId);
+      } catch (err) {
+        console.error("[kb-documents index]", err instanceof Error ? err.message : err);
+      }
     }
 
     const updated = await getKbDocument(row.id, tenantId);
@@ -174,13 +187,23 @@ router.post("/:id/reextract", async (req, res) => {
     const row = await getKbDocument(req.params["id"] as string, tenantId);
     if (!row) return res.status(404).json({ message: "Document not found" });
 
+    let extracted = false;
     try {
       const bytes = await readDocumentBytes(row.storagePath);
       const { text } = await extractText(row.mimeType, bytes);
       await setKbDocumentExtract(row.id, tenantId, { status: "done", text });
+      extracted = true;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       await setKbDocumentExtract(row.id, tenantId, { status: "failed", error: message });
+    }
+
+    if (extracted) {
+      try {
+        await indexDocument(row.id, tenantId);
+      } catch (err) {
+        console.error("[kb-documents reextract index]", err instanceof Error ? err.message : err);
+      }
     }
 
     const updated = await getKbDocument(row.id, tenantId);
@@ -188,6 +211,24 @@ router.post("/:id/reextract", async (req, res) => {
   } catch (err) {
     console.error("[kb-documents reextract]", err);
     res.status(500).json({ message: "Unable to re-extract document" });
+  }
+});
+
+// Backfill: re-chunk + re-embed a document whose extractedText is already
+// populated. Useful for documents uploaded before Phase 2 shipped, or after
+// VOYAGE_API_KEY is configured. Idempotent — indexDocument deletes existing
+// chunks before inserting.
+router.post("/:id/reindex", async (req, res) => {
+  try {
+    const tenantId = sessTenantId(req);
+    if (!tenantId) return res.status(403).json({ message: "Tenant context required" });
+    const row = await getKbDocument(req.params["id"] as string, tenantId);
+    if (!row) return res.status(404).json({ message: "Document not found" });
+    const result = await indexDocument(row.id, tenantId);
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    console.error("[kb-documents reindex]", err);
+    res.status(500).json({ message: "Unable to reindex document" });
   }
 });
 

@@ -1,5 +1,5 @@
 import {
-  pgTable, text, integer, boolean, timestamp, varchar, json, jsonb, doublePrecision, index, uniqueIndex,
+  pgTable, text, integer, boolean, timestamp, varchar, json, jsonb, doublePrecision, index, uniqueIndex, vector,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -229,6 +229,26 @@ export const kbDocuments = pgTable("kb_documents", {
 });
 
 export type KbDocument = typeof kbDocuments.$inferSelect;
+
+// ─── KB Document Chunks ──────────────────────────────────────────────────────
+// Retrievable units of a document. Populated after extraction by chunking
+// extractedText into ~800-char slices (with 100-char overlap) and embedding
+// each slice with Voyage (voyage-3-large, 1024 dims). Queried via pgvector
+// cosine similarity at tool-call time through lookup_knowledge.
+
+export const kbDocumentChunks = pgTable("kb_document_chunks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  documentId: varchar("document_id").references(() => kbDocuments.id, { onDelete: "cascade" }).notNull(),
+  tenantId: varchar("tenant_id").references(() => tenants.id).notNull(),
+  chunkIndex: integer("chunk_index").notNull(),
+  content: text("content").notNull(),
+  charCount: integer("char_count").notNull(),
+  pageLabel: text("page_label"),
+  embedding: vector("embedding", { dimensions: 1024 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type KbDocumentChunk = typeof kbDocumentChunks.$inferSelect;
 
 // ─── Platform Sessions ───────────────────────────────────────────────────────
 

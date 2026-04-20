@@ -108,7 +108,7 @@ All routes gated by `requireAdmin` (same as existing KB routes).
 ## Rollout
 
 1. **Schema + volume + upload + extract** — ship behind admin UI only. No agent wiring yet. Validate on real Berkeley lease PDFs and a floor plan. (~1 day.) **— implemented in PR #46; docs table, volume helpers, upload/download/delete routes, pdf-parse + mammoth extraction, admin panel on `/platform-dashboard`. Drawings/images deferred to Phase 2 (Claude vision).**
-2. **Embeddings + pgvector + retrieval extension to `lookup_knowledge`** — flip the agent on for document retrieval. Measure cost per conversation (chunks × tokens). Add Claude-vision extraction for images/drawings while we're here. (~1 day.)
+2. **Embeddings + pgvector + retrieval extension to `lookup_knowledge`** — flip the agent on for document retrieval. Measure cost per conversation (chunks × tokens). Add Claude-vision extraction for images/drawings while we're here. (~1 day.) **— chunks + pgvector + Voyage embeddings + retrieval implemented in PR #47 (stacked on #46). Claude-vision extraction still deferred to a small follow-up.**
 3. **Operator polish** — rename / reassign / re-extract. Download. Property-scoped filter in the agent tool. (~0.5 day.)
 
 ## Open questions

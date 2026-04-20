@@ -362,6 +362,14 @@ function PlatformDocumentsPanel() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["kb-documents"] }),
   });
 
+  const reindex = useMutation({
+    mutationFn: (id: string) => api.post<{ chunkCount: number; embedded: boolean; reason?: string }>(`/api/knowledge/documents/${id}/reindex`, {}),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["kb-documents"] });
+      if (data.reason) alert(`Reindexed: ${data.chunkCount} chunks. Embedding skipped — ${data.reason}.`);
+    },
+  });
+
   const del = useMutation({
     mutationFn: (id: string) => api.delete(`/api/knowledge/documents/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["kb-documents"] }),
@@ -437,9 +445,16 @@ function PlatformDocumentsPanel() {
             <button
               onClick={() => reextract.mutate(d.id)}
               disabled={reextract.isPending}
-              title="Re-extract text"
+              title="Re-extract text (also reindexes)"
               className="flex items-center gap-1 text-xs px-2 py-1 rounded hover:bg-muted text-muted-foreground disabled:opacity-50">
               <RefreshCw className={`h-3 w-3 ${reextract.isPending ? "animate-spin" : ""}`} />
+            </button>
+            <button
+              onClick={() => reindex.mutate(d.id)}
+              disabled={reindex.isPending}
+              title="Re-index for search (chunk + embed from current text)"
+              className="text-[10px] font-mono px-2 py-1 rounded hover:bg-muted text-muted-foreground disabled:opacity-50">
+              {reindex.isPending ? "…" : "IDX"}
             </button>
             <button
               onClick={() => { if (confirm(`Delete "${d.title}"?`)) del.mutate(d.id); }}
