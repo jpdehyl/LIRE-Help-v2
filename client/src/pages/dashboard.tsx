@@ -303,13 +303,13 @@ function SecondaryKpis({
       label: "Portfolio",
       value: properties.length,
       subtitle: properties.length === 1 ? "property" : "properties",
-      href: "/customers",
+      href: "/tenants",
     },
     {
       label: "Tenants · units",
       value: `${metrics.tenantCount} · ${totalUnits}`,
       subtitle: "under management",
-      href: "/customers",
+      href: "/tenants",
     },
   ] as const;
 
@@ -441,7 +441,7 @@ export default function DashboardPage() {
             <section>
               <div className="mb-2.5 flex items-center justify-between gap-3">
                 <div className="eyebrow">Portfolio</div>
-                <Link href="/customers">
+                <Link href="/tenants">
                   <a className="font-body text-[12px] font-medium text-fg-muted hover:text-fg">View all →</a>
                 </Link>
               </div>

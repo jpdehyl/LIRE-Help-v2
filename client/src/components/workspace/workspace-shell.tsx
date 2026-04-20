@@ -35,7 +35,7 @@ const navigationCommands: CommandItem[] = [
   { id: "go-inbox", label: "Go to Inbox", href: "/inbox/all", icon: InboxIcon, group: "Navigation", keywords: "queue conversations support" },
   { id: "go-inbox-unassigned", label: "Unassigned inbox", href: "/inbox/unassigned", icon: InboxIcon, group: "Navigation", keywords: "unassigned triage" },
   { id: "go-inbox-sla", label: "SLA at risk", href: "/inbox/escalations", icon: InboxIcon, group: "Navigation", keywords: "sla breached at risk escalations" },
-  { id: "go-customers", label: "Go to Customers", href: "/customers", icon: Users, group: "Navigation", keywords: "companies accounts" },
+  { id: "go-tenants", label: "Go to Tenants", href: "/tenants", icon: Users, group: "Navigation", keywords: "tenants companies occupants" },
   { id: "go-settings", label: "Go to Settings", href: "/settings", icon: Settings, group: "Navigation", keywords: "preferences config admin" },
   { id: "go-platform", label: "Platform admin", href: "/platform-dashboard", icon: Shield, group: "Navigation", keywords: "admin platform internal" },
 ];

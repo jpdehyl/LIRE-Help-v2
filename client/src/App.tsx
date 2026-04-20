@@ -6,7 +6,7 @@ import InboxPage from "./pages/inbox";
 import LandingPage from "./pages/landing";
 import LoginPage from "./pages/login";
 import PlatformDashboard from "./pages/platform-dashboard";
-import CustomersPage from "./pages/customers";
+import TenantsPage from "./pages/tenants";
 import ConciergePage from "./pages/concierge";
 import SettingsPage from "./pages/settings";
 import SettingsGeneralPage from "./pages/settings-general";
@@ -109,7 +109,7 @@ const settingsTileStubs: readonly SettingsStub[] = [
   {
     path: "/settings/workspace/office-hours",
     title: "Office hours",
-    description: "Choose your office hours to manage customer expectations.",
+    description: "Choose your office hours to manage tenant expectations.",
   },
   {
     path: "/settings/workspace/brands",
@@ -154,7 +154,7 @@ const settingsTileStubs: readonly SettingsStub[] = [
   {
     path: "/settings/channels/switch",
     title: "Switch",
-    description: "Move customers from phone to chat conversations.",
+    description: "Move tenants from phone to chat conversations.",
   },
   {
     path: "/settings/channels/slack",
@@ -194,10 +194,13 @@ function AppRoutes() {
           <InboxPage />
         </RequireAuth>
       </Route>
-      <Route path="/customers">
+      <Route path="/tenants">
         <RequireAuth>
-          <CustomersPage />
+          <TenantsPage />
         </RequireAuth>
+      </Route>
+      <Route path="/customers">
+        <Redirect to="/tenants" />
       </Route>
       <Route path="/concierge">
         <RequireAuth>

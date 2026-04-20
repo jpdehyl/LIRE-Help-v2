@@ -12,6 +12,10 @@ const statusTone: Record<ConversationStatus, BadgeTone> = {
   resolved: "neutral",
 };
 
+const statusLabel: Partial<Record<ConversationStatus, string>> = {
+  waiting_on_customer: "waiting on tenant",
+};
+
 const priorityTone: Record<PriorityLevel, BadgeTone> = {
   low: "neutral",
   medium: "warning",
@@ -30,7 +34,7 @@ function humanize(value: string): string {
 }
 
 export function StatusBadge({ status, size = "sm" }: { status: ConversationStatus; size?: "sm" | "md" }) {
-  return <Badge tone={statusTone[status]} size={size}>{humanize(status)}</Badge>;
+  return <Badge tone={statusTone[status]} size={size}>{statusLabel[status] ?? humanize(status)}</Badge>;
 }
 
 export function PriorityBadge({ priority, size = "sm" }: { priority: PriorityLevel; size?: "sm" | "md" }) {

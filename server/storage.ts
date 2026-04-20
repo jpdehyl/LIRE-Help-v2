@@ -80,7 +80,7 @@ interface HelpdeskContext {
 const viewDefinitionsBase: Record<InboxViewKey, Omit<InboxViewDefinition, "count">> = {
   priority: { key: "priority", label: "Priority", section: "default_views", description: "Urgent threads or SLA-at-risk work that should be handled first" },
   unassigned: { key: "unassigned", label: "Unassigned", section: "default_views", description: "Needs triage and ownership" },
-  awaiting_reply: { key: "awaiting_reply", label: "Awaiting reply", section: "default_views", description: "Customer needs a response" },
+  awaiting_reply: { key: "awaiting_reply", label: "Awaiting reply", section: "default_views", description: "Tenant needs a response" },
   sla_at_risk: { key: "sla_at_risk", label: "SLA at risk", section: "default_views", description: "Response or resolution target is slipping" },
   escalations: { key: "escalations", label: "Escalations", section: "default_views", description: "SLA-breached or flagged for human review" },
   all: { key: "all", label: "All open", section: "default_views", description: "Every thread that is not yet resolved" },
@@ -471,7 +471,7 @@ function deriveSlaCountdownLabel(conversation: HelpConversation, state: SlaState
 function deriveNextMilestone(ticket: HelpTicket | undefined, conversation: HelpConversation): string {
   if (ticket?.nextMilestone) return ticket.nextMilestone;
   if (conversation.status === "resolved") return "Resolved";
-  if (conversation.status === "waiting_on_customer") return "Waiting on customer reply";
+  if (conversation.status === "waiting_on_customer") return "Waiting on tenant reply";
   if (conversation.firstResponseDueAt) return `First response ${formatRelative(conversation.firstResponseDueAt)}`;
   if (conversation.nextResponseDueAt) return `Next response ${formatRelative(conversation.nextResponseDueAt)}`;
   if (conversation.resolutionDueAt) return `Resolution ${formatRelative(conversation.resolutionDueAt)}`;
@@ -486,7 +486,7 @@ function deriveWaitingSinceLabel(conversation: HelpConversation): string {
     return conversation.createdAt ? `Unowned since ${formatRelative(conversation.createdAt)}` : "Unassigned";
   }
   if (conversation.status === "waiting_on_customer") {
-    return conversation.lastCustomerMessageAt ? `Waiting since ${formatRelative(conversation.lastCustomerMessageAt)}` : "Waiting on customer";
+    return conversation.lastCustomerMessageAt ? `Waiting since ${formatRelative(conversation.lastCustomerMessageAt)}` : "Waiting on tenant";
   }
   return conversation.createdAt ? `Opened ${formatRelative(conversation.createdAt)}` : "Open";
 }

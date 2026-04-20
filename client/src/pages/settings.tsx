@@ -52,7 +52,7 @@ const groups: readonly Group[] = [
       {
         icon: Clock,
         title: "Office hours",
-        description: "Choose your office hours to manage customer expectations.",
+        description: "Choose your office hours to manage tenant expectations.",
         href: "/settings/workspace/office-hours",
       },
       {
@@ -123,7 +123,7 @@ const groups: readonly Group[] = [
       {
         icon: ArrowRightLeft,
         title: "Switch",
-        description: "Move customers from phone to chat conversations.",
+        description: "Move tenants from phone to chat conversations.",
         href: "/settings/channels/switch",
       },
       {

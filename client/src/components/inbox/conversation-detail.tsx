@@ -334,7 +334,7 @@ export function ConversationDetailPane({
       <EmptyState
         tone="muted"
         title="Loading conversation"
-        description="Pulling message history, ticket state, and customer context from the helpdesk API."
+        description="Pulling message history, ticket state, and tenant context from the helpdesk API."
       />
     );
   }
