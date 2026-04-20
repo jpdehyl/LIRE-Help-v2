@@ -38,12 +38,20 @@ export interface ToolCall {
 
 export type ToolHandler = (call: ToolCall, brief: ConversationBrief) => Promise<string>;
 
+export type ConciergeTurnProgressEvent =
+  | { type: "session"; phase: "created" | "resumed" | "stream_opened" | "message_sent"; sessionId: string }
+  | { type: "agent"; eventType: string; eventId?: string }
+  | { type: "tool"; phase: "started"; call: ToolCall }
+  | { type: "tool"; phase: "completed"; call: ToolCall; result: string }
+  | { type: "session"; phase: "completed"; sessionId: string; stopReason: string; eventCount: number };
+
 export interface RunTurnArgs {
   client: Anthropic;
   identity: ConciergeIdentity;
   brief: ConversationBrief;
   latestCustomerMessage: string;
   handleTool: ToolHandler;
+  onProgress?: (event: ConciergeTurnProgressEvent) => void | Promise<void>;
   // When provided, resume the existing session rather than creating a new
   // one. The runner only processes events whose id isn't already on the
   // session — so prior-turn events are skipped even though the SSE stream
@@ -60,7 +68,7 @@ export interface TurnResult {
 }
 
 export async function runConciergeTurn(args: RunTurnArgs): Promise<TurnResult> {
-  const { client, identity, brief, latestCustomerMessage, handleTool, resumeSessionId } = args;
+  const { client, identity, brief, latestCustomerMessage, handleTool, onProgress, resumeSessionId } = args;
 
   let sessionId: string;
   const seenEventIds = new Set<string>();
@@ -73,6 +81,7 @@ export async function runConciergeTurn(args: RunTurnArgs): Promise<TurnResult> {
     for await (const event of client.beta.sessions.events.list(sessionId)) {
       seenEventIds.add(event.id);
     }
+    await onProgress?.({ type: "session", phase: "resumed", sessionId });
   } else {
     const session = await client.beta.sessions.create({
       agent: { type: "agent", id: identity.agentId, version: identity.agentVersion },
@@ -85,11 +94,13 @@ export async function runConciergeTurn(args: RunTurnArgs): Promise<TurnResult> {
       },
     });
     sessionId = session.id;
+    await onProgress?.({ type: "session", phase: "created", sessionId });
   }
 
   // Stream-first, then send. If we send before opening the stream, the agent
   // can start processing and emit events before our consumer is attached.
   const stream = await client.beta.sessions.events.stream(sessionId);
+  await onProgress?.({ type: "session", phase: "stream_opened", sessionId });
 
   const messageText = resumed
     ? `Latest message from the customer:\n${latestCustomerMessage}`
@@ -107,6 +118,7 @@ export async function runConciergeTurn(args: RunTurnArgs): Promise<TurnResult> {
   await client.beta.sessions.events.send(sessionId, {
     events: [{ type: "user.message", content: [{ type: "text", text: messageText }] }],
   });
+  await onProgress?.({ type: "session", phase: "message_sent", sessionId });
 
   let eventCount = 0;
   let stopReason = "unknown";
@@ -118,6 +130,11 @@ export async function runConciergeTurn(args: RunTurnArgs): Promise<TurnResult> {
       continue;
     }
     eventCount++;
+    await onProgress?.({
+      type: "agent",
+      eventType: event.type,
+      eventId: "id" in event && typeof event.id === "string" ? event.id : undefined,
+    });
 
     if (event.type === "agent.custom_tool_use") {
       const call: ToolCall = {
@@ -125,7 +142,9 @@ export async function runConciergeTurn(args: RunTurnArgs): Promise<TurnResult> {
         name: (event as { name: string }).name as ConciergeToolName,
         input: ((event as { input?: unknown }).input ?? {}) as Record<string, unknown>,
       };
+      await onProgress?.({ type: "tool", phase: "started", call });
       const result = await handleTool(call, brief);
+      await onProgress?.({ type: "tool", phase: "completed", call, result });
       await client.beta.sessions.events.send(sessionId, {
         events: [{
           type: "user.custom_tool_result",
@@ -149,5 +168,6 @@ export async function runConciergeTurn(args: RunTurnArgs): Promise<TurnResult> {
     }
   }
 
+  await onProgress?.({ type: "session", phase: "completed", sessionId, stopReason, eventCount });
   return { sessionId, stopReason, eventCount, resumed };
 }
