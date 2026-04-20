@@ -538,10 +538,10 @@ function KnowledgeSummaryCard({ summary }: { summary: ConciergeKnowledgeSummary 
       <section className="rounded-md border border-border bg-surface p-4">
         <div className="eyebrow">How it&rsquo;s used</div>
         <p className="mt-2 font-body text-[12.5px] leading-[1.5] text-fg-muted">
-          The agent&rsquo;s system prompt references this catalog through the
-          <code className="mx-1 rounded-xs bg-surface-2 px-1 font-mono text-[11px]">lookup_property_context</code>
-          tool. When a tenant asks a property-specific question, the concierge calls that tool before drafting
-          a reply.
+          The agent reads this catalog through the
+          <code className="mx-1 rounded-xs bg-surface-2 px-1 font-mono text-[11px]">lookup_knowledge</code>
+          tool. On policy/procedure questions (rent, access, dock rules, etc.) the concierge queries this
+          catalog before drafting a reply, and escalates if nothing matches.
         </p>
       </section>
     </aside>
