@@ -5,7 +5,9 @@
 import express, { type Request, type Response } from "express";
 import helmet from "helmet";
 import path from "path";
+import { z } from "zod";
 import { isCorsOriginAllowed, parseAllowedHosts } from "./platform/cors.js";
+import { redact } from "./helpers/redact.js";
 
 export type BuildAppOptions = {
   rootDir?: string;
@@ -41,15 +43,49 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<express.E
 
   // ─── Security & parsing ───────────────────────────────────────────────────
 
+  // B9: strict Content-Security-Policy in production. Kept off in dev so the Vite
+  // middleware + HMR websockets + inline scripts keep working. Once Azure Blob is
+  // in play, add the storage account hostname to img-src / connect-src via env.
   app.use(
     helmet({
-      contentSecurityPolicy: false,
+      contentSecurityPolicy: isProd
+        ? {
+            directives: {
+              defaultSrc: ["'self'"],
+              // The inline hash covers client/index.html's theme-flash-prevention
+              // script. It must run synchronously before first paint, so we pin
+              // its sha256 instead of relaxing script-src to 'unsafe-inline'.
+              // Update this hash if that script changes.
+              scriptSrc: ["'self'", "'sha256-senfA6QUSKWGXgWnC4Hp397yZT0zRyGT/+6hp6rI0r0='"],
+              styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+              fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
+              imgSrc: ["'self'", "data:", "https://*.lire-help.com", "https://*.blob.core.windows.net"],
+              connectSrc: ["'self'", "https://*.lire-help.com"],
+              frameAncestors: ["'none'"],
+              objectSrc: ["'none'"],
+              baseUri: ["'self'"],
+            },
+          }
+        : false,
       crossOriginEmbedderPolicy: false,
+      referrerPolicy: { policy: "strict-origin-when-cross-origin" },
     }),
   );
+  // H15: bound the global JSON parser. Matches express's historical default but
+  // is stated explicitly so a future dep bump can't silently widen it. Reuse a
+  // single parser instance to avoid per-request allocation.
+  const defaultJsonParser = express.json({ limit: "100kb" });
   app.use((req, res, next) => {
+    // B7 carve-out: the credit upload route mounts its own 35MB parser.
     if (req.path === "/api/pilots/credit/documents/upload") return next();
-    return express.json()(req, res, next);
+    // Postmark inbound emails can exceed 100kb; the route mounts its own
+    // 2MB JSON parser.
+    if (req.path === "/webhooks/postmark/inbound") return next();
+    // Zoom webhooks need the raw body for HMAC verification.
+    if (req.path === "/webhooks/zoom/chat") return next();
+    // Meta's WhatsApp signs the raw body too.
+    if (req.path === "/webhooks/whatsapp" || req.path === "/webhooks/whatsapp/") return next();
+    return defaultJsonParser(req, res, next);
   });
 
   // ─── CORS ─────────────────────────────────────────────────────────────────
@@ -135,6 +171,11 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<express.E
   const { default: metricsRoutes } = await import("./metrics-routes.js");
   const { default: leasingRoutes } = await import("./pilots/leasing/routes.js");
   const { default: creditRoutes } = await import("./pilots/credit/routes.js");
+  const { default: twilioRoutes } = await import("./channels/twilio-routes.js");
+  const { default: postmarkRoutes } = await import("./channels/postmark-routes.js");
+  const { default: zoomRoutes } = await import("./channels/zoom-routes.js");
+  const { default: zoomOauthRoutes } = await import("./channels/zoom-oauth-routes.js");
+  const { default: whatsappRoutes } = await import("./channels/whatsapp-routes.js");
 
   app.use("/api/auth", authRoutes);
   app.use("/api/properties", propertiesRoutes);
@@ -147,6 +188,23 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<express.E
   app.use("/api/admin/metrics", metricsRoutes);
   app.use("/api/pilots/leasing", leasingRoutes);
   app.use("/api/pilots/credit", creditRoutes);
+  // Twilio posts form-encoded, not JSON — the route mounts its own
+  // urlencoded parser so we don't widen the global one.
+  app.use("/webhooks/twilio", twilioRoutes);
+  // Postmark inbound emails can exceed the 100kb global JSON cap, so the
+  // route mounts its own 2MB JSON parser.
+  app.use("/webhooks/postmark", postmarkRoutes);
+  // Zoom webhook verification requires the raw body bytes, so the route
+  // mounts express.raw instead of the global JSON parser.
+  app.use("/webhooks/zoom", zoomRoutes);
+  // Zoom user-OAuth flow (General app) — operator visits /auth/zoom/start
+  // once to grant the concierge a refresh token. Tokens are persisted in
+  // channel_oauth_tokens and refreshed on demand.
+  app.use("/auth/zoom", zoomOauthRoutes);
+  // Meta's WhatsApp webhook signs the raw body with X-Hub-Signature-256,
+  // so this route also needs express.raw. GET requests (Meta's
+  // verification handshake) have no body — they're handled separately.
+  app.use("/webhooks/whatsapp", whatsappRoutes);
 
   // ─── /api/public/brand ────────────────────────────────────────────────────
 
@@ -373,17 +431,25 @@ RESTRICTIONS:
 
   // ─── Rate limiting (chat endpoint) ─────────────────────────────────────────
 
-  const { default: rateLimit } = await import("express-rate-limit");
-  const chatLimiter = rateLimit({ windowMs: 60_000, max: 15, message: { error: "Too many requests. Please wait a moment." } });
+  const { chatPerMinuteLimiter, chatPerDayLimiter } = await import("./helpers/rate-limiters.js");
+
+  // B1: strict input shape. Anonymous callers hit this endpoint, so we cap
+  // content length, message count, and reject spoofed system-role entries.
+  const chatBodySchema = z.object({
+    messages: z.array(z.object({
+      role: z.enum(["user", "assistant"]),
+      content: z.string().min(1).max(4000),
+    })).min(1).max(20),
+    sessionId: z.string().max(128).optional(),
+  });
 
   // ─── Chat endpoint (concierge) ────────────────────────────────────────────
 
-  app.post("/api/chat", chatLimiter, async (req: Request, res: Response) => {
+  app.post("/api/chat", chatPerMinuteLimiter, chatPerDayLimiter, async (req: Request, res: Response) => {
     try {
-      const { messages, sessionId } = req.body;
-
-      if (!Array.isArray(messages) || messages.length === 0) {
-        return res.status(400).json({ error: "messages required" });
+      const parsed = chatBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "invalid_payload", issues: parsed.error.issues });
       }
 
       if (!ANTHROPIC_API_KEY) {
@@ -393,7 +459,7 @@ RESTRICTIONS:
         });
       }
 
-      const trimmed = messages.slice(-20);
+      const trimmed = parsed.data.messages.slice(-20);
       const tenantId = await resolveTenantIdFromHost(req);
 
       const upstream = await fetch("https://api.anthropic.com/v1/messages", {
@@ -412,9 +478,9 @@ RESTRICTIONS:
       });
 
       if (!upstream.ok) {
-        const err = await upstream.text();
-        console.error("Anthropic error:", upstream.status, err);
-        return res.status(502).json({ error: "upstream_error", detail: err });
+        const errText = await upstream.text();
+        console.error("[chat] anthropic upstream", upstream.status, redact(errText));
+        return res.status(502).json({ error: "upstream_error" });
       }
 
       const data = (await upstream.json()) as {
@@ -422,17 +488,21 @@ RESTRICTIONS:
         usage?: { input_tokens: number; output_tokens: number };
       };
       const raw = data.content?.[0]?.text ?? "";
-      const escalate = raw.includes("[ESCALATE]");
-      const response = raw.replace("[ESCALATE]", "").trim();
+      // Only honor [ESCALATE] when it appears at the trailing edge of the reply.
+      // The user can trivially include the literal token in their message history
+      // and nudge the model to echo it mid-reply; that shouldn't poison metrics.
+      const trailing = raw.trim().endsWith("[ESCALATE]");
+      const response = raw.replace(/\[ESCALATE\]\s*$/, "").trim();
 
-      if (sessionId) {
-        console.log(`[${sessionId}] ${trimmed.length + 1} msgs, escalated: ${escalate}`);
+      if (parsed.data.sessionId) {
+        console.log(`[${parsed.data.sessionId}] ${trimmed.length + 1} msgs, escalated: ${trailing}`);
       }
 
       // Non-blocking token logging
       if (data.usage) {
         logTokenUsage({
-          sessionId: sessionId ?? null,
+          tenantId: tenantId ?? null,
+          sessionId: parsed.data.sessionId ?? null,
           operation: "concierge_chat",
           model: "claude-haiku-4-5-20251001",
           inputTokens: data.usage.input_tokens,
@@ -440,11 +510,10 @@ RESTRICTIONS:
         });
       }
 
-      res.json({ response, escalate });
+      res.json({ response, escalate: trailing });
     } catch (err: unknown) {
-      console.error("Chat error:", err);
-      const message = err instanceof Error ? err.message : "Unknown error";
-      res.status(500).json({ error: message });
+      console.error("[chat]", err instanceof Error ? err.message : err);
+      res.status(500).json({ error: "chat_failed" });
     }
   });
 

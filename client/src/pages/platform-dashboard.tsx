@@ -3,7 +3,7 @@ import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { Link } from "wouter";
 import { useState } from "react";
-import { Building2, Bot, ExternalLink, Plus, LogOut, BookMarked, ChevronUp, ChevronDown, X, Loader2, Link2, Save, MessageSquare, Zap, TrendingUp, AlertTriangle, Tag, ChevronRight, UserPlus, Eye, EyeOff, Sun, Moon, BarChart3, DollarSign, Users } from "lucide-react";
+import { Building2, Bot, ExternalLink, Plus, LogOut, BookMarked, ChevronUp, ChevronDown, X, Loader2, Link2, Save, MessageSquare, Zap, TrendingUp, AlertTriangle, Tag, ChevronRight, UserPlus, Eye, EyeOff, Sun, Moon, BarChart3, DollarSign, Users, FileText, Upload, Download, RefreshCw, Trash2 } from "lucide-react";
 
 interface AgentRow {
   id: string;
@@ -298,6 +298,159 @@ function PlatformKbPanel() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+interface KbDocumentRow {
+  id: string;
+  propertyId: string | null;
+  kind: "lease" | "drawing" | "policy" | "sow" | "other";
+  title: string;
+  originalName: string;
+  mimeType: string;
+  sizeBytes: number;
+  extractStatus: "pending" | "done" | "failed";
+  extractError: string | null;
+  extractedCharCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const DOC_KINDS: KbDocumentRow["kind"][] = ["lease", "drawing", "policy", "sow", "other"];
+
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function PlatformDocumentsPanel() {
+  const qc = useQueryClient();
+  const [file, setFile] = useState<File | null>(null);
+  const [kind, setKind] = useState<KbDocumentRow["kind"]>("policy");
+  const [title, setTitle] = useState("");
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const { data: docs = [], isLoading } = useQuery<KbDocumentRow[]>({
+    queryKey: ["kb-documents"],
+    queryFn: () => api.get("/api/knowledge/documents"),
+  });
+
+  const upload = useMutation({
+    mutationFn: async () => {
+      if (!file) throw new Error("Pick a file first.");
+      const form = new FormData();
+      form.append("file", file);
+      form.append("kind", kind);
+      if (title.trim()) form.append("title", title.trim());
+      const res = await fetch("/api/knowledge/documents", { method: "POST", body: form, credentials: "include" });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.message ?? `Upload failed (${res.status})`);
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["kb-documents"] });
+      setFile(null);
+      setTitle("");
+      setUploadError(null);
+    },
+    onError: (err) => setUploadError(err instanceof Error ? err.message : String(err)),
+  });
+
+  const reextract = useMutation({
+    mutationFn: (id: string) => api.post(`/api/knowledge/documents/${id}/reextract`, {}),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["kb-documents"] }),
+  });
+
+  const del = useMutation({
+    mutationFn: (id: string) => api.delete(`/api/knowledge/documents/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["kb-documents"] }),
+  });
+
+  return (
+    <div className="rounded-lg border bg-card overflow-hidden">
+      <div className="px-5 py-4 border-b flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <FileText className="h-5 w-5 text-primary" />
+          <div>
+            <h2 className="font-semibold text-sm">Knowledge documents</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Leases, drawings, policy PDFs · {docs.length} file{docs.length === 1 ? "" : "s"}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-5 py-4 border-b bg-muted/30 flex flex-wrap items-center gap-2">
+        <input
+          type="file"
+          accept=".pdf,.docx,.doc,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown"
+          onChange={(e) => { setFile(e.target.files?.[0] ?? null); setUploadError(null); }}
+          className="text-xs flex-1 min-w-0"
+        />
+        <select value={kind} onChange={(e) => setKind(e.target.value as KbDocumentRow["kind"])}
+          className="text-xs border rounded-md px-2 py-1.5 bg-background">
+          {DOC_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
+        </select>
+        <input placeholder="Title (optional)" value={title} onChange={(e) => setTitle(e.target.value)}
+          className="text-xs border rounded-md px-2 py-1.5 bg-background w-48" />
+        <button
+          onClick={() => upload.mutate()}
+          disabled={!file || upload.isPending}
+          className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 font-medium">
+          {upload.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />} Upload
+        </button>
+      </div>
+      {uploadError && (
+        <div className="px-5 py-2 text-xs text-red-600 border-b bg-red-50">{uploadError}</div>
+      )}
+
+      <div className="divide-y">
+        {isLoading && <div className="flex items-center justify-center py-8 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin mr-2" /> Loading…</div>}
+        {!isLoading && docs.length === 0 && <div className="py-10 text-center text-sm text-muted-foreground">No documents yet. Upload a lease, drawing, or policy PDF to get started.</div>}
+        {docs.map((d) => (
+          <div key={d.id} className="px-5 py-3.5 flex items-center gap-3">
+            <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 text-sm font-medium leading-snug">
+                <span className="truncate">{d.title}</span>
+                <span className="text-[10px] uppercase tracking-wide font-mono text-muted-foreground">{d.kind}</span>
+              </div>
+              <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
+                <span className="truncate">{d.originalName}</span>
+                <span>·</span>
+                <span>{formatBytes(d.sizeBytes)}</span>
+                <span>·</span>
+                <span className={
+                  d.extractStatus === "done" ? "text-emerald-600"
+                  : d.extractStatus === "failed" ? "text-red-600"
+                  : "text-amber-600"
+                }>
+                  {d.extractStatus === "done" ? `extracted · ${d.extractedCharCount.toLocaleString()} chars`
+                  : d.extractStatus === "failed" ? `extract failed${d.extractError ? `: ${d.extractError}` : ""}`
+                  : "pending"}
+                </span>
+              </div>
+            </div>
+            <a href={`/api/knowledge/documents/${d.id}/download`} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1 text-xs px-2 py-1 rounded hover:bg-muted text-muted-foreground">
+              <Download className="h-3 w-3" />
+            </a>
+            <button
+              onClick={() => reextract.mutate(d.id)}
+              disabled={reextract.isPending}
+              title="Re-extract text"
+              className="flex items-center gap-1 text-xs px-2 py-1 rounded hover:bg-muted text-muted-foreground disabled:opacity-50">
+              <RefreshCw className={`h-3 w-3 ${reextract.isPending ? "animate-spin" : ""}`} />
+            </button>
+            <button
+              onClick={() => { if (confirm(`Delete "${d.title}"?`)) del.mutate(d.id); }}
+              disabled={del.isPending}
+              title="Delete"
+              className="flex items-center gap-1 text-xs px-2 py-1 rounded hover:bg-red-50 text-red-600 disabled:opacity-50">
+              <Trash2 className="h-3 w-3" />
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -628,6 +781,7 @@ export default function PlatformDashboard() {
         {activeTab === "kb" && (
           <div className="space-y-6">
             <PlatformKbPanel />
+            <PlatformDocumentsPanel />
           </div>
         )}
 

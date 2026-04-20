@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { Plus } from "lucide-react";
 import { InboxShell } from "../components/inbox/inbox-shell";
 import { DEFAULT_INBOX_VIEW_KEY, inboxViewKeys } from "../components/inbox/types";
@@ -22,15 +22,20 @@ function coerceViewKey(viewId?: string): InboxViewKey {
 }
 
 export default function InboxPage({ viewId }: InboxPageProps) {
-  const [location, navigate] = useLocation();
+  const [, navigate] = useLocation();
+  // useSearch reacts to query-string changes; useLocation only tracks the
+  // pathname, so memoizing window.location.search on `location` leaves the
+  // conversation selection stuck on its initial value when a row is
+  // clicked — the URL updates but the component doesn't re-read it.
+  const searchString = useSearch();
   const routeView = coerceViewKey(viewId);
-  const search = useMemo(() => new URLSearchParams(window.location.search), [location]);
+  const search = useMemo(() => new URLSearchParams(searchString), [searchString]);
   const selectedConversationId = search.get("conversation");
   const filterPropertyId = search.get("propertyId") ?? null;
 
   const navigationQuery = useQuery({
-    queryKey: ["helpdesk", "inbox", "navigation"],
-    queryFn: helpdeskApi.getNavigation,
+    queryKey: ["helpdesk", "inbox", "navigation", filterPropertyId ?? ""],
+    queryFn: () => helpdeskApi.getNavigation(filterPropertyId),
   });
 
   const selectedView = navigationQuery.data?.views.some((view) => view.key === routeView)
@@ -55,8 +60,11 @@ export default function InboxPage({ viewId }: InboxPageProps) {
     </button>
   );
 
+  const selectedViewLabel =
+    navigationQuery.data?.views.find((view) => view.key === selectedView)?.label ?? "Inbox";
+
   return (
-    <WorkspaceShell title="Inbox" eyebrow="Operations" actions={actions}>
+    <WorkspaceShell title={selectedViewLabel} eyebrow="Operations / Inbox" actions={actions}>
       <InboxShell
         views={navigationQuery.data?.views ?? []}
         navigationLoading={navigationQuery.isLoading}
@@ -65,7 +73,7 @@ export default function InboxPage({ viewId }: InboxPageProps) {
         selectedConversationId={selectedConversationId}
         filterPropertyId={filterPropertyId}
         onSelectView={(view) => updateRoute(view, selectedConversationId)}
-        onSelectConversation={(conversationId) => updateRoute(selectedView, conversationId)}
+        onSelectConversation={(conversationId) => updateRoute(selectedView, conversationId ?? null)}
       />
     </WorkspaceShell>
   );

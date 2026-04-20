@@ -6,14 +6,15 @@ import InboxPage from "./pages/inbox";
 import LandingPage from "./pages/landing";
 import LoginPage from "./pages/login";
 import PlatformDashboard from "./pages/platform-dashboard";
-import TicketsPage from "./pages/tickets";
 import CustomersPage from "./pages/customers";
+import ConciergePage from "./pages/concierge";
 import SettingsPage from "./pages/settings";
 import SettingsGeneralPage from "./pages/settings-general";
 import SettingsChannelsEmailPage from "./pages/settings-channels-email";
 import SettingsInboxesPage from "./pages/settings-inboxes";
 import SettingsWorkflowsPage from "./pages/settings-workflows";
 import SettingsPlaceholderPage from "./pages/settings-placeholder";
+import SettingsAiAutomationPage from "./pages/settings-ai-automation";
 import LeasingPage from "./pages/leasing";
 import CreditReviewPage from "./pages/credit-review";
 
@@ -193,14 +194,14 @@ function AppRoutes() {
           <InboxPage />
         </RequireAuth>
       </Route>
-      <Route path="/tickets">
-        <RequireAuth>
-          <TicketsPage />
-        </RequireAuth>
-      </Route>
       <Route path="/customers">
         <RequireAuth>
           <CustomersPage />
+        </RequireAuth>
+      </Route>
+      <Route path="/concierge">
+        <RequireAuth>
+          <ConciergePage />
         </RequireAuth>
       </Route>
 
@@ -224,6 +225,11 @@ function AppRoutes() {
       <Route path="/settings/workflows">
         <RequireAuth>
           <SettingsWorkflowsPage />
+        </RequireAuth>
+      </Route>
+      <Route path="/settings/ai-automation">
+        <RequireAuth>
+          <SettingsAiAutomationPage />
         </RequireAuth>
       </Route>
       {settingsTileStubs.map((stub) => (

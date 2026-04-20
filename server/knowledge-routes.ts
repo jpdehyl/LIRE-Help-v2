@@ -1,8 +1,14 @@
 import { Router } from "express";
 import { requireAdmin } from "./middleware/auth.js";
 import { getPlatformKnowledge, createPlatformKnowledge, updatePlatformKnowledge, deletePlatformKnowledge, reorderPlatformKnowledge } from "./storage.js";
+import kbDocumentsRouter from "./kb-documents/routes.js";
 
 const router = Router();
+
+// /api/knowledge/documents — uploaded files (leases, drawings, policy PDFs).
+// requireAdmin applies to every nested route; the sub-router reads tenant
+// from session like the platform KB routes above.
+router.use("/documents", requireAdmin, kbDocumentsRouter);
 
 function tenantIdOrNull(req: Parameters<typeof requireAdmin>[0]): string | null {
   const sess = req.session as any;

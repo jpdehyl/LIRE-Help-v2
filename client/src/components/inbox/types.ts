@@ -11,8 +11,7 @@ export type {
   HelpdeskInboxMetric,
   HelpdeskRecentActivityItem,
   HelpdeskStatusCount,
-  InboxFilterState,
-  InboxScaffoldData,
+  InboxChannelKey,
   InboxSectionKey,
   InboxViewDefinition,
   InboxViewKey,
@@ -23,4 +22,4 @@ export type {
   TimelineItemType,
 } from "../../../../shared/helpdesk";
 
-export { DEFAULT_INBOX_VIEW_KEY, inboxViewKeys } from "../../../../shared/helpdesk";
+export { DEFAULT_INBOX_VIEW_KEY, inboxChannelKeys, inboxViewKeys } from "../../../../shared/helpdesk";

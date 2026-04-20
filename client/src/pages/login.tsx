@@ -184,14 +184,10 @@ export default function LoginPage() {
               </button>
             </form>
 
-            <div className="mt-[18px] flex items-center justify-between font-body text-[12px] text-[#737373]">
+            <div className="mt-[18px] font-body text-[12px] text-[#737373]">
               <a href="#" className="text-[#737373] no-underline hover:text-[#111111]">
                 Forgot password?
               </a>
-              <span>
-                Demo:{" "}
-                <code className="font-mono text-[11px] text-[#111111]">demo@northstar.com / Demo2026</code>
-              </span>
             </div>
           </div>
         </div>

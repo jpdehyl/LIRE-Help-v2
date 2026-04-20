@@ -1,4 +1,5 @@
 import { logTokenUsage } from "../../token-logger.js";
+import { redact } from "../../helpers/redact.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Claude-backed primitives for Pilot B (tenant financial review).
@@ -66,7 +67,7 @@ async function callClaude(params: {
 
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`Claude ${params.model} error: ${res.status} ${body}`);
+    throw new Error(`Claude ${params.model} error: ${res.status} ${redact(body)}`);
   }
 
   const data = (await res.json()) as ClaudeResponse;
