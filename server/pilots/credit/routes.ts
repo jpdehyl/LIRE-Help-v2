@@ -1,5 +1,5 @@
 import express, { Router, type Request, type Response } from "express";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import { db } from "../../db.js";
 import {
@@ -265,14 +265,18 @@ router.get("/lessees/:lesseeId/extractions", async (req: Request, res: Response)
   const docIds = docs.map((d: { id: string }) => d.id);
   if (docIds.length === 0) return res.json({ extractions: [] });
 
+  // H4: filter in SQL via inArray, not in JS — previously pulled every
+  // extraction for the tenant and filtered client-side, scaling linearly
+  // with tenant volume instead of lessee volume.
   const extractions = await db
     .select()
     .from(creditExtractions)
-    .where(eq(creditExtractions.tenantId, tenantId));
+    .where(and(
+      eq(creditExtractions.tenantId, tenantId),
+      inArray(creditExtractions.documentId, docIds),
+    ));
 
-  return res.json({
-    extractions: extractions.filter((e: { documentId: string }) => docIds.includes(e.documentId)),
-  });
+  return res.json({ extractions });
 });
 
 router.post("/checklist-runs", async (req: Request, res: Response) => {
@@ -423,12 +427,15 @@ router.post("/checklist-runs/:runId/evaluate", async (req: Request, res: Respons
   const docs = await db.select().from(creditDocuments).where(eq(creditDocuments.lesseeId, run.lesseeId));
   const docIds = docs.map((d: { id: string }) => d.id);
 
+  // H4: filter in SQL via inArray, not in JS.
   const rawExtractions = docIds.length === 0
     ? []
-    : await db.select().from(creditExtractions).where(eq(creditExtractions.tenantId, tenantId));
+    : await db.select().from(creditExtractions).where(and(
+        eq(creditExtractions.tenantId, tenantId),
+        inArray(creditExtractions.documentId, docIds),
+      ));
 
   const relevant: ExtractedValue[] = rawExtractions
-    .filter((e: { documentId: string }) => docIds.includes(e.documentId))
     .map((e: { lineItem: string; value: string | null; unit: string | null; page: number | null; rawText: string | null; confidence: number | null; documentId: string }) => ({
       line_item: e.lineItem,
       value: e.value,
@@ -493,10 +500,13 @@ router.post("/memos/:memoId/draft", async (req: Request, res: Response) => {
   const [lessee] = await db.select().from(lessees).where(eq(lessees.id, memo.lesseeId)).limit(1);
   const docs = await db.select().from(creditDocuments).where(eq(creditDocuments.lesseeId, memo.lesseeId));
   const docIds = docs.map((d: { id: string }) => d.id);
+  // H4: filter in SQL via inArray, not in JS.
   const extractions = docIds.length === 0
     ? []
-    : (await db.select().from(creditExtractions).where(eq(creditExtractions.tenantId, tenantId)))
-        .filter((e: { documentId: string }) => docIds.includes(e.documentId));
+    : await db.select().from(creditExtractions).where(and(
+        eq(creditExtractions.tenantId, tenantId),
+        inArray(creditExtractions.documentId, docIds),
+      ));
 
   const template = await loadTenantConfigRaw(tenantSlug, "memo-template.md");
 
