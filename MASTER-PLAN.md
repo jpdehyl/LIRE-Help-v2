@@ -301,5 +301,33 @@ Berkeley Partners (enterprise tenant):
 
 ---
 
+## Cross-Project Operating Disciplines (added 2026-04-17)
+
+These disciplines are inherited from cross-project DeHyl feedback memories and apply to every release of every product. They are NOT optional.
+
+### Tenant-QA pre-flight (mandatory)
+
+Before any real client onboarding or production rollout of a new flow, always validate against `tenant-qa` first:
+
+- Create `tenant-qa` (slug `qa`, owner `tenant-qa@dehyl.ca`) with synthetic-but-realistic data
+- Walk every wizard / critical flow end-to-end against tenant-qa
+- All acceptance criteria must pass against tenant-qa BEFORE any real tenant touches the flow
+- Tenant-qa is permanent — serves as a regression fixture for all future releases
+- Bugs found in tenant-qa block the real-tenant rollout until fixed
+
+Reference memory: `feedback_tenant_qa_preflight`. Pattern formalized 2026-04-17 with Sites-Help (Russell and Sons pilot).
+
+### Other cross-project rules
+
+- **Anthropic-first agent stack** (`feedback_anthropic_first`)
+- **No emojis in UI/code/output** (`feedback_no_emojis`)
+- **No AI-invented data** (`feedback_no_ai_lies`)
+- **Agent grounding with real date+location** (`feedback_agent_grounding`)
+- **Pre-build before push to Railway** (`feedback_railway_prebuild`)
+- **Save backlogs at session end** (`feedback_save_backlog`)
+- **Audit on tenant creation** (`feedback_audit_on_tenant`)
+
+---
+
 *Last updated: April 2026 · Dehyl SAS · Medellín, Colombia*
 *Built by Alejandro Domínguez — mune100g@gmail.com*
